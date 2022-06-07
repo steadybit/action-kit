@@ -1,12 +1,12 @@
 {
-  "name": "nodejs-http-api",
+  "name": "example-nodejs-logging-attack",
   "version": "1.0.0",
   "description": "Example showcasing an implementation of a custom attack",
   "main": "src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "docker:build": "docker build -t nodejs-logging-attack .",
-    "docker:start": "docker run -it --rm --init nodejs-logging-attack"
+    "docker:build": "docker build -t example-nodejs-logging-attack .",
+    "docker:start": "docker run -it --rm --init example-nodejs-logging-attack"
   },
   "author": "Steadybit GmbH",
   "license": "MIT",
