@@ -6,9 +6,19 @@ If you are new to Steadybit's custom attacks, this example app
 will help you understand the fundamental contracts and control
 flows.
 
-## Starting the Example
+## Starting the example
 
 ```sh
 npm install
 npm start
+```
+
+## Starting the example using Docker
+
+```sh
+docker run -it \
+  --rm \
+  --init \
+  -p 3000:3000 \
+  ghcr.io/steadybit/example-nodejs-logging-attack:main
 ```
