@@ -1,12 +1,16 @@
 {
   "name": "@steadybit/custom-attacks",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "TypeScript type definitions for Steadybit's custom attacks schema.",
   "types": "api.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/steadybit/custom-attacks.git"
   },
+  "files": [
+    "CHANGELOG.md",
+    "api.d.ts"
+  ],
   "author": "Steadybit GmbH",
   "license": "MIT",
   "bugs": {
