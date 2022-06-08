@@ -10,7 +10,7 @@ router.get('/attacks', (_, res) => {
   const response: IndexResponse = {
     attacks: [
       {
-        url: '/attacks/logging',
+        path: '/attacks/logging',
       }
     ]
   };
