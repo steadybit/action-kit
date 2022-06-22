@@ -7,13 +7,12 @@ import express from 'express';
 export const router = express.Router();
 
 router.get('/attacks', (_, res) => {
-  const response: IndexResponse = {
-    attacks: [
-      {
-        path: '/attacks/logging',
-      }
-    ]
-  };
-  res.json(response);
+	const response: IndexResponse = {
+		attacks: [
+			{
+				path: '/attacks/logging',
+			},
+		],
+	};
+	res.json(response);
 });
-
