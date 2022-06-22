@@ -14,6 +14,7 @@ router.get('/attacks/logging', (_, res) => {
 		version: '1.0.0',
 		category: 'resource',
 		target: 'container',
+		timeControl: 'ONE_SHOT',
 
 		parameters: [
 			{

@@ -21,6 +21,7 @@ export interface DescribeAttackResponse {
 	version: string;
 	//TODO: support target-less attacks?
 	target: 'container' | 'host' | 'kubernetes-deployment' | 'zone' | 'ec2-instance';
+	timeControl: 'ONE_SHOT' | 'BY_AGENT';
 	parameters?: Array<AttackParameter>;
 	prepare: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
 	start: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
