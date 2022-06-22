@@ -1,15 +1,13 @@
 # Steadybit Attak API
 
-This repository represents a **work-in-progress** documentation and implementation
-of Steadybit's custom attack mechanism. If you are curious to learn more,
+This repository represents a **work-in-progress** documentation and implementation of Steadybit's custom attack mechanism. If you are curious to learn more,
 [reach out to us](https://www.steadybit.com/contact).
 
 > **To Do**: Create json schema for the api.
 
 ## Registering and Discovering Attacks
 
-New attacks are discovered from attack index(es) queried by http.
-These indexes must be declared to the agents using environment variables:
+New attacks are discovered from attack index(es) queried by http. These indexes must be declared to the agents using environment variables:
 
 ```shell
 # Attack index to query
@@ -35,9 +33,8 @@ STEADYBIT_AGENT_ATTACKS_CUSTOM_1_BASIC_PASSWORD=<password> #Password used for Ba
 
 ## Attack Description
 
-Each path from the index response is queried to describe each attack.
-Beside `name` and `description`, this defines which targets can be attacked and what parameters can be configured by the user.
-The `prepare`, `start` and `stop` properties specify the endpoint to be called for each action.
+Each path from the index response is queried to describe each attack. Beside `name` and `description`, this defines which targets can be attacked and what
+parameters can be configured by the user. The `prepare`, `start` and `stop` properties specify the endpoint to be called for each action.
 
 [Example Describe Attack Response](./typescript-api/api.d.ts#L15):
 
@@ -73,8 +70,10 @@ The `prepare`, `start` and `stop` properties specify the endpoint to be called f
 
 The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 
-1) The `prepare` step is called with configuration and target to attack and must return `200 OK` and a json body with a state object which is then passed the `start` and `stop` steps.
-2) The `start` step is called with the state returned by the `prepare` step. Must return `200 OK` on success or `500 Server Error` on failure. May also return a json body with a state object which is then passed the `stop` step. 
+1) The `prepare` step is called with configuration and target to attack and must return `200 OK` and a json body with a state object which is then passed
+   the `start` and `stop` steps.
+2) The `start` step is called with the state returned by the `prepare` step. Must return `200 OK` on success or `500 Server Error` on failure. May also return a
+   json body with a state object which is then passed the `stop` step.
 3) The `stop` step is called with the state returned by the `prepare`/`start` step. Must return `200 OK` on success or `500 Server Error`on failure.
 
 > **Note**: The `stop` request will also be issued if the `start` request fails. In case of timeout for `start` we can't tell if the attack was started or not, therefore a `stop` request is issued. So the state should contain all data to start and stop the request.
@@ -149,6 +148,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 #### Start
 
 [Example Start Request](./typescript-api/api.d.ts#L77):
+
 ```json
 {
   "state": {
@@ -159,6 +159,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 ```
 
 [Example Start Response](./typescript-api/api.d.ts#L81):
+
 ```json
 {
   "state": {
@@ -171,6 +172,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 #### Stop
 
 [Example Stop Request](./typescript-api/api.d.ts#L85):
+
 ```json
 {
   "state": {
@@ -180,8 +182,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 }
 ```
 
-
-
 ## Example
 
-If you want to get started, we suggest to start with the [logging attack](https://github.com/steadybit/custom-attacks/tree/main/examples/nodejs-logging-attack) example.
+If you want to get started, we suggest to start with the [logging attack](https://github.com/steadybit/custom-attacks/tree/main/examples/nodejs-logging-attack)
+example.
