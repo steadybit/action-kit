@@ -11,12 +11,12 @@ New attacks are discovered from attack index(es) queried by http. These indexes 
 
 ```shell
 # Attack index to query
-STEADYBIT_AGENT_ATTACKS_CUSTOM_0_URL=http://custom-attacks-A
+STEADYBIT_AGENT_ATTACKS_EXTENSIONS_0_URL=http://custom-attacks-A
 
-STEADYBIT_AGENT_ATTACKS_CUSTOM_1_URL=http://custom-attacks-B
-STEADYBIT_AGENT_ATTACKS_CUSTOM_1_METHOD=GET #Http verb used to query the index (default: GET)
-STEADYBIT_AGENT_ATTACKS_CUSTOM_1_BASIC_USERNAME=<user> #Username used for Basic Authentication  
-STEADYBIT_AGENT_ATTACKS_CUSTOM_1_BASIC_PASSWORD=<password> #Password used for Basic Authentication
+STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_URL=http://custom-attacks-B
+STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_METHOD=GET #Http verb used to query the index (default: GET)
+STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_BASIC_USERNAME=<user> #Username used for Basic Authentication  
+STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_BASIC_PASSWORD=<password> #Password used for Basic Authentication
 ```
 
 [Example Index Response](./typescript-api/api.d.ts#L11):
