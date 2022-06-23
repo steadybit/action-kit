@@ -36,7 +36,12 @@ STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_BASIC_PASSWORD=<password> #Password used fo
 Each path from the index response is queried to describe each attack. Beside `name` and `description`, this defines which targets can be attacked and what
 parameters can be configured by the user. The `prepare`, `start` and `stop` properties specify the endpoint to be called for each action.
 
-#### Time-Control
+#### `version`
+
+The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same
+attack version.
+
+#### `timeControl`
 
 There are 3 options:
 
