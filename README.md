@@ -1,4 +1,4 @@
-# Steadybit Attak API
+# Steadybit Attack API
 
 This repository represents a **work-in-progress** documentation and implementation of Steadybit's custom attack mechanism. If you are curious to learn more,
 [reach out to us](https://www.steadybit.com/contact).
@@ -46,6 +46,7 @@ parameters can be configured by the user. The `prepare`, `start` and `stop` prop
   "version": "1.0.0",
   "category": "resource",
   "target": "container",
+  "timeControl": "ONE_SHOT",
   "parameters": [
     {
       "name": "text",
@@ -87,7 +88,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 
 #### Prepare
 
-[Example Prepare Request](./typescript-api/api.d.ts#L65):
+[Example Prepare Request](./typescript-api/api.d.ts#L66):
 
 ```json
 {
@@ -134,7 +135,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 
 ```
 
-[Example Prepare Response](./typescript-api/api.d.ts#L73):
+[Example Prepare Response](./typescript-api/api.d.ts#L74):
 
 ```json
 {
@@ -147,7 +148,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 
 #### Start
 
-[Example Start Request](./typescript-api/api.d.ts#L77):
+[Example Start Request](./typescript-api/api.d.ts#L78):
 
 ```json
 {
@@ -158,7 +159,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 }
 ```
 
-[Example Start Response](./typescript-api/api.d.ts#L81):
+[Example Start Response](./typescript-api/api.d.ts#L82):
 
 ```json
 {
@@ -171,7 +172,7 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 
 #### Stop
 
-[Example Stop Request](./typescript-api/api.d.ts#L85):
+[Example Stop Request](./typescript-api/api.d.ts#L86):
 
 ```json
 {
