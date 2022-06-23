@@ -36,6 +36,15 @@ STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_BASIC_PASSWORD=<password> #Password used fo
 Each path from the index response is queried to describe each attack. Beside `name` and `description`, this defines which targets can be attacked and what
 parameters can be configured by the user. The `prepare`, `start` and `stop` properties specify the endpoint to be called for each action.
 
+#### Time-Control
+
+There are 3 options:
+
+1. One-Shots (e.g. killing processes) - `"timeControl": "ONE_SHOT"`
+2. Start, wait a certain time and then stop (e.g. network blackhole) - `"timeControl": "BY_AGENT"` - steadybit agent controls timing, the attack needs a
+   parameter `duration` of type `duration`.
+3. Start and wait for finish (e.g. service rollover) - not yet supported - waits for the external action to finish.
+
 [Example Describe Attack Response](./typescript-api/api.d.ts#L15):
 
 ```json
@@ -78,11 +87,6 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
 3) The `stop` step is called with the state returned by the `prepare`/`start` step. Must return `200 OK` on success or `500 Server Error`on failure.
 
 > **Note**: The `stop` request will also be issued if the `start` request fails. In case of timeout for `start` we can't tell if the attack was started or not, therefore a `stop` request is issued. So the state should contain all data to start and stop the request.
-
-> **TBD**: How to deal with time control? There are 3 scenarios to consider:
-> 1. One-Shots (e.g. killing processes)
-> 2. Start, wait a certain time and then stop (e.g. network blackhole) - steadybit agent controls timing.
-> 2. Start and wait for finish (e.g. service rollover) - waits for the external action to finish.
 
 > **TBD**: How to transport logs and/or error messages
 
