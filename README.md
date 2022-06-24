@@ -5,6 +5,10 @@ This repository represents a **work-in-progress** documentation and implementati
 
 > **To Do**: Create json schema for the api.
 
+## Overview
+
+![](custom-attacks.png)
+
 ## Registering and Discovering Attacks
 
 New attacks are discovered from attack index(es) queried by http. These indexes must be declared to the agents using environment variables:
@@ -91,7 +95,8 @@ The Attack execution is divided into three steps: `prepare`, `start` and `stop`:
    json body with a state object which is then passed the `stop` step.
 3) The `stop` step is called with the state returned by the `prepare`/`start` step. Must return `200 OK` on success or `500 Server Error`on failure.
 
-> **Note**: The `stop` request will also be issued if the `start` request fails. In case of timeout for `start` we can't tell if the attack was started or not, therefore a `stop` request is issued. So the state should contain all data to start and stop the request.
+> **Note**: The `stop` request will also be issued if the `start` request fails. In case of timeout for `start` we can't tell if the attack was started or not,
+> therefore a `stop` request is issued. So the state should contain all data to start and stop the request.
 
 > **TBD**: How to transport logs and/or error messages
 
