@@ -7,7 +7,7 @@ This repository represents a **work-in-progress** documentation and implementati
 
 ## Overview
 
-![](custom-attacks.png)
+![](custom-attacks.svg)
 
 ## Registering and Discovering Attacks
 
