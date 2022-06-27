@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-import describingEndpointRef from '../schema/describingEndpointRef.json';
-import attackListResponse from '../schema/attackListResponse.json';
-import mutatingEndpointRef from '../schema/mutatingEndpointRef.json';
 import Ajv, { ErrorObject } from 'ajv';
+
+import attackListResponse from '../schema/attackListResponse.json';
+import describingEndpointRef from '../schema/describingEndpointRef.json';
+import mutatingEndpointRef from '../schema/mutatingEndpointRef.json';
 
 const ajv = new Ajv({ schemas: [describingEndpointRef, attackListResponse, mutatingEndpointRef], allErrors: true });
 
