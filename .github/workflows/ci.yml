@@ -29,8 +29,8 @@ jobs:
         cache: 'npm'
         cache-dependency-path: 'json-schema/package-lock.json'
     - run: npm ci
-    - run: npm lint
-    - run: npm test
+    - run: npm run lint
+    - run: npm run test
 
   build-and-push-example-nodejs-logging-attack-docker-image:
     runs-on: ubuntu-latest
