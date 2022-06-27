@@ -13,7 +13,7 @@
   },
   "files": [
     "CHANGELOG.md",
-    "attack-api.schema.json"
+    "schema/*"
   ],
   "author": "Steadybit GmbH",
   "license": "MIT",

@@ -1,0 +1,18 @@
+{
+  "$id": "https://schema.steadybit.io/attack-api/attackListResponse",
+  "title": "Attack List Response",
+  "description": "Lists all attacks that the platform/agent could execute.",
+  "type": "object",
+  "properties": {
+    "attacks": {
+      "type": "array",
+      "items": {
+        "$ref": "describingEndpointRef"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "attacks"
+  ]
+}
