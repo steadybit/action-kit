@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.steadybit.io/attack-api/attack-api.schema.json",
+  "title": "Attack API",
+  "description": "",
+  "type": "object",
+  "$defs": {
+    "httpEndpointRef": {
+      "title": "HTTP Endpoint Reference",
+      "description": "HTTP endpoint which the Steadybit platform/agent could communicate with.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute path of the HTTP endpoint.",
+          "pattern": "^/.*$"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE"
+          ],
+          "description": "HTTP method to use when calling the HTTP endpoint."
+        }
+      },
+      "required": [
+        "path",
+        "method"
+      ]
+    }
+  }
+}
