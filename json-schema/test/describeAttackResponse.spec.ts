@@ -12,6 +12,7 @@ describe('describeAttackResponse', () => {
 				name: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
+				category: 'resource',
 				target: 'host',
 				timeControl: 'ONE_SHOT',
 				parameters: [],
@@ -40,6 +41,7 @@ describe('describeAttackResponse', () => {
 				name: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
+				category: 'resource',
 				target: 'host',
 				timeControl: 'ONE_SHOT',
 				parameters: [
@@ -74,6 +76,7 @@ describe('describeAttackResponse', () => {
 				name: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
+				category: 'resource',
 				target: 'host',
 				timeControl: 'ONE_SHOT',
 				parameters: [

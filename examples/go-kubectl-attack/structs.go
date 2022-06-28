@@ -25,6 +25,7 @@ type DescribeAttackResponse struct {
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
 	Version     string            `json:"version"`
+	Category    string            `json:"category"`
 	Target      string            `json:"target"`
 	TimeControl string            `json:"timeControl"`
 	Parameters  []AttackParameter `json:"parameters"`

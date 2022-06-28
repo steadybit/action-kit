@@ -70,6 +70,7 @@
     "name",
     "version",
     "description",
+    "category",
     "target",
     "timeControl",
     "parameters",
