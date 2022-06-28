@@ -1,7 +1,7 @@
 {
   "name": "example-nodejs-logging-attack",
   "version": "1.0.0",
-  "description": "Example showcasing an implementation of a custom attack",
+  "description": "Example showcasing an implementation of an attack",
   "main": "src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -13,7 +13,7 @@
   "author": "Steadybit GmbH",
   "license": "MIT",
   "devDependencies": {
-    "@steadybit/custom-attacks": "^0.1.0",
+    "@steadybit/attack-api": "^0.1.0",
     "@types/express": "^4.17.13",
     "@types/node": "^17.0.40",
     "@typescript-eslint/eslint-plugin": "^5.9.0",

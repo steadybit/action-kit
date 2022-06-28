@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-import { DescribeAttackResponse, PrepareResponse, StartResponse } from '@steadybit/custom-attacks';
+import { DescribeAttackResponse, PrepareResponse, StartResponse } from '@steadybit/attack-api';
 import express from 'express';
 
 export const router = express.Router();
@@ -10,7 +10,7 @@ router.get('/attacks/logging', (_, res) => {
 	const response: DescribeAttackResponse = {
 		id: 'logging-attack',
 		name: 'Logging Attack',
-		description: 'Prints the received payload to the console to illustrate the custom attack API.',
+		description: 'Prints the received payload to the console to illustrate the attack API.',
 		version: '1.0.0',
 		category: 'resource',
 		target: 'container',

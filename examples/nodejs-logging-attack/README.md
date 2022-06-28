@@ -1,7 +1,6 @@
-# Custom Attack Example: Logging
+# Attack Example: Logging
 
-A tiny custom attack implementation which exposes the required HTTP APIs and logs all interactions with it to the console. If you are new to Steadybit's custom
-attacks, this example app will help you understand the fundamental contracts and control flows.
+A tiny attack implementation which exposes the required HTTP APIs and logs all interactions with it to the console. If you are new to Steadybit's attacks, this example app will help you understand the fundamental contracts and control flows.
 
 ## Starting the example
 

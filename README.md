@@ -1,13 +1,10 @@
 # Steadybit Attack Kit
 
-This repository represents a **work-in-progress** documentation and implementation of Steadybit's custom attack mechanism. If you are curious to learn more,
-[reach out to us](https://www.steadybit.com/contact).
-
-> **To Do**: Create json schema for the api.
+This repository represents a **work-in-progress** documentation and implementation of Steadybit's attack mechanism. If you are curious to learn more, [reach out to us](https://www.steadybit.com/contact).
 
 ## Overview
 
-![](custom-attacks.svg)
+![](attack-flow.svg)
 
 ## Registering and Discovering Attacks
 
@@ -60,7 +57,7 @@ There are 3 options:
 {
   "id": "logging-attack",
   "name": "Logging Attack",
-  "description": "Prints the received payload to the console to illustrate the custom attack API.",
+  "description": "Prints the received payload to the console to illustrate the attack API.",
   "version": "1.0.0",
   "category": "resource",
   "target": "container",

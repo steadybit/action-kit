@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-import { IndexResponse } from '@steadybit/custom-attacks';
+import { IndexResponse } from '@steadybit/attack-api';
 import express from 'express';
 
 export const router = express.Router();
