@@ -32,3 +32,31 @@ type DescribeAttackResponse struct {
 	Start       EndpointRef       `json:"start"`
 	Stop        EndpointRef       `json:"stop"`
 }
+
+type Target struct {
+	Name       string              `json:"name"`
+	Attributes map[string][]string `json:"attributes"`
+}
+
+type PrepareAttackRequest struct {
+	Config map[string]interface{} `json:"config"`
+	Target Target                 `json:"target"`
+}
+
+type RolloutRestartState struct {
+	Cluster    string
+	Namespace  string
+	Deployment string
+}
+
+type PrepareAttackResponse struct {
+	State RolloutRestartState `json:"state"`
+}
+
+type StartAttackRequest struct {
+	State RolloutRestartState `json:"state"`
+}
+
+type StartAttackResponse struct {
+	State RolloutRestartState `json:"state"`
+}
