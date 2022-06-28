@@ -73,7 +73,7 @@ func prepareRolloutRestart(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(PrepareAttackResponse{
 		State: RolloutRestartState{
 			Cluster:    prepareAttackRequest.Target.Attributes["k8s.cluster-name"][0],
-			Namespace:  prepareAttackRequest.Target.Attributes["k8s.deployment"][0],
+			Namespace:  prepareAttackRequest.Target.Attributes["k8s.namespace"][0],
 			Deployment: prepareAttackRequest.Target.Attributes["k8s.deployment"][0],
 		},
 	})
