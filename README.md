@@ -1,4 +1,4 @@
-# Steadybit Attack API
+# Steadybit Attack Kit
 
 This repository represents a **work-in-progress** documentation and implementation of Steadybit's custom attack mechanism. If you are curious to learn more,
 [reach out to us](https://www.steadybit.com/contact).

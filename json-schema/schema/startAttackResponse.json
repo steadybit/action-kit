@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/startAttackResponse",
+  "$id": "https://schema.steadybit.io/attack-kit/startAttackResponse",
   "title": "Start Attack Response",
   "description": "The HTTP response payload returned by the attack start endpoints.",
   "type": "object",

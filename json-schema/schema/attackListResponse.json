@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/attackListResponse",
+  "$id": "https://schema.steadybit.io/attack-kit/attackListResponse",
   "title": "Attack List Response",
   "description": "Lists all attacks that the platform/agent could execute.",
   "type": "object",

@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/mutatingEndpointRef",
+  "$id": "https://schema.steadybit.io/attack-kit/mutatingEndpointRef",
   "title": "HTTP Endpoint Reference",
   "description": "HTTP endpoint which the Steadybit platform/agent could communicate with.",
   "type": "object",

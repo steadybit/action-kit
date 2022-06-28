@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/describeAttackResponse",
+  "$id": "https://schema.steadybit.io/attack-kit/describeAttackResponse",
   "title": "Describe Attack Response",
   "description": "Provides details about a possible attack, e.g., what configuration options it has, how to present it to end-users and how to trigger the attack.",
   "type": "object",

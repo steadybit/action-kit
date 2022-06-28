@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/attackParameter",
+  "$id": "https://schema.steadybit.io/attack-kit/attackParameter",
   "title": "Attack Parameter",
   "description": "",
   "type": "object",

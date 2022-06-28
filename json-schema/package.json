@@ -1,5 +1,5 @@
 {
-  "name": "@steadybit/attack-api-json-schema",
+  "name": "@steadybit/attack-kit-json-schema",
   "version": "0.1.0",
   "description": "The JSON schema for the Steadybit attack API",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/steadybit/attack-api.git"
+    "url": "git+https://github.com/steadybit/attack-kit.git"
   },
   "files": [
     "CHANGELOG.md",
@@ -18,9 +18,9 @@
   "author": "Steadybit GmbH",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/steadybit/attack-api/issues"
+    "url": "https://github.com/steadybit/attack-kit/issues"
   },
-  "homepage": "https://github.com/steadybit/attack-api#readme",
+  "homepage": "https://github.com/steadybit/attack-kit#readme",
   "devDependencies": {
     "@babel/preset-env": "^7.18.2",
     "@babel/preset-typescript": "^7.17.12",

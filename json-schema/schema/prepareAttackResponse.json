@@ -1,5 +1,5 @@
 {
-  "$id": "https://schema.steadybit.io/attack-api/prepareAttackResponse",
+  "$id": "https://schema.steadybit.io/attack-kit/prepareAttackResponse",
   "title": "Prepare Attack Response",
   "description": "The HTTP response payload of the attack prepare endpoints.",
   "type": "object",
