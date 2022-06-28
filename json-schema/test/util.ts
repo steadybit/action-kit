@@ -3,11 +3,15 @@
 
 import Ajv, { ErrorObject } from 'ajv';
 
-import attackListResponse from '../schema/attackListResponse.json';
-import describingEndpointRef from '../schema/describingEndpointRef.json';
-import mutatingEndpointRef from '../schema/mutatingEndpointRef.json';
+import fs from 'fs';
+import path from 'path';
 
-const ajv = new Ajv({ schemas: [describingEndpointRef, attackListResponse, mutatingEndpointRef], allErrors: true });
+const pathToSchemas = path.join(__dirname, '..', 'schema');
+
+const schemas = fs.readdirSync(pathToSchemas).map((file) => {
+	const fileContent = fs.readFileSync(path.join(pathToSchemas, file), { encoding: 'utf8' });
+	return JSON.parse(fileContent);
+});
 
 export interface ValidationResult {
 	valid: boolean;
@@ -16,6 +20,11 @@ export interface ValidationResult {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validate(schema: any, test: any): ValidationResult {
+	const ajv = new Ajv({
+		schemas: schemas.filter((s) => s.$id !== schema.$id),
+		allErrors: true,
+	});
+
 	const validate = ajv.compile(schema);
 	const valid = validate(test);
 	return {

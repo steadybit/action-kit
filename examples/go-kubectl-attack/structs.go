@@ -6,5 +6,5 @@ type DescribingEndpointRef struct {
 }
 
 type AttackListResponse struct {
-	Attacks []DescribingEndpointRef `json:"name"`
+	Attacks []DescribingEndpointRef `json:"attacks"`
 }

@@ -17,7 +17,7 @@ export interface DescribeAttackResponse {
 	name: string;
 	//TODO: icon for ui?
 	description: string;
-	category: 'resource' | 'network' | 'state';
+	category?: 'resource' | 'network' | 'state';
 	version: string;
 	//TODO: support target-less attacks?
 	target: 'container' | 'host' | 'kubernetes-deployment' | 'zone' | 'ec2-instance';
@@ -33,14 +33,12 @@ export interface AttackParameter {
 	name: string;
 	description?: string;
 	//TODO: decouple UI element from type?
-	type: 'string' | 'string[]' | 'integer' | 'boolean' | 'percentage' | 'duration';
+	type: 'string' | 'string[]' | 'password' | 'integer' | 'boolean' | 'percentage' | 'duration';
 	required?: boolean;
+	// whether this parameter should be placed under the expandable advanced section within the user interface
 	advanced?: boolean;
 	order?: number;
 	defaultValue?: string;
-	options?: { label: string; value: string; }[];
-	min?: number;
-	max?: number;
 }
 
 export interface BooleanParameter extends AttackParameter {
@@ -48,9 +46,9 @@ export interface BooleanParameter extends AttackParameter {
 }
 
 export interface IntegerParameter extends AttackParameter {
-	type: 'integer' | 'percentage' | 'duration';
-	min: number;
-	max: number;
+	type: 'integer' | 'percentage';
+	min?: number;
+	max?: number;
 }
 
 export interface StringParameter extends AttackParameter {

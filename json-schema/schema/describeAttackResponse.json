@@ -1,0 +1,80 @@
+{
+  "$id": "https://schema.steadybit.io/attack-api/describeAttackResponse",
+  "title": "Describe Attack Response",
+  "description": "Provides details about a possible attack, e.g., what configuration options it has, how to present it to end-users and how to trigger the attack.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "A technical ID that is used to uniquely identify this type of attack. You will typically want to use something like `org.example.attacks.my-fancy-attack`."
+    },
+    "name": {
+      "type": "string",
+      "description": "A human-readable label for the attack."
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. While Steadybit does not evaluate the structure of the version string, we do recommend usage of semver strings."
+    },
+    "description": {
+      "type": "string",
+      "description": "Description for end-users to help them understand what the attack is doing."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "resource",
+        "network",
+        "state"
+      ],
+      "description": ""
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "container",
+        "host",
+        "kubernetes-deployment",
+        "zone",
+        "ec2-instance"
+      ],
+      "description": ""
+    },
+    "timeControl": {
+      "type": "string",
+      "enum": [
+        "ONE_SHOT",
+        "BY_AGENT"
+      ],
+      "description": "Attacks can either be an instantaneous event (`ONE_SHOT`), e.g., the restart of a host, or an activity over a period of time (`BY_AGENT`), e.g., network blackholes."
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "attackParameter"
+      },
+      "uniqueItems": true
+    },
+    "prepare": {
+      "$ref": "mutatingEndpointRef"
+    },
+    "start": {
+      "$ref": "mutatingEndpointRef"
+    },
+    "stop": {
+      "$ref": "mutatingEndpointRef"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "description",
+    "target",
+    "timeControl",
+    "parameters",
+    "prepare",
+    "start",
+    "stop"
+  ]
+}

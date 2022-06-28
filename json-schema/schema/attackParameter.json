@@ -1,0 +1,54 @@
+{
+  "$id": "https://schema.steadybit.io/attack-api/attackParameter",
+  "title": "Attack Parameter",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "A human-readable label for the attack parameter."
+    },
+    "name": {
+      "type": "string",
+      "description": "The key under which the attack parameter is stored. This key can then be found within the prepare request's config field."
+    },
+    "description": {
+      "type": "string",
+      "description": "Description for end-users to help them understand the attack parameter."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "string",
+        "string[]",
+        "password",
+        "integer",
+        "boolean",
+        "percentage",
+        "duration"
+      ],
+      "description": "What kind of value this parameter is capturing. The type selection influences the `config` passed as part of the `PrepareRequest`. It also results in improved user-interface elements."
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Whether or not end-users need to specify a value for this parameter."
+    },
+    "advanced": {
+      "type": "boolean",
+      "description": "Whether this parameter should be placed under the expandable advanced section within the user interface."
+    },
+    "order": {
+      "type": "integer",
+      "description": "You can define this fields to order the parameters in the user interface. The lower the value, the higher the position."
+    },
+    "defaultValue": {
+      "type": "string",
+      "description": "A default value for this parameter. This value will be used if the user does not specify a value for this parameter."
+    }
+  },
+  "required": [
+    "label",
+    "name",
+    "type"
+  ]
+}
