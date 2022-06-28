@@ -1,0 +1,34 @@
+{
+  "$id": "https://schema.steadybit.io/attack-api/prepareAttackRequest",
+  "title": "Prepare Attack Request",
+  "description": "The HTTP request payload passed to the attack prepare endpoints.",
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "description": "The attack configuration. This is contains the end-user configuration done for the attack. Possible configuration parameters are defined through the attack description."
+    },
+    "target": {
+      "type": "object",
+      "description": "The target to attack as identified by a discovery.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "object",
+          "description": "These attributes include detailed information about the target provided through the discovery. These attributes are typically used as additional parameters within the attack implementation.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "config"
+  ]
+}
