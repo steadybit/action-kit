@@ -9,7 +9,7 @@ describe('describeAttackResponse', () => {
 		expect(
 			validate(schema, {
 				id: 'org.example.attacks.foobar',
-				name: 'My Foobar Attack',
+				label: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
 				category: 'resource',
@@ -38,7 +38,7 @@ describe('describeAttackResponse', () => {
 		expect(
 			validate(schema, {
 				id: 'org.example.attacks.foobar',
-				name: 'My Foobar Attack',
+				label: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
 				category: 'resource',
@@ -73,7 +73,7 @@ describe('describeAttackResponse', () => {
 		expect(
 			validate(schema, {
 				id: 'org.example.attacks.foobar',
-				name: 'My Foobar Attack',
+				label: 'My Foobar Attack',
 				description: 'Something about the attack',
 				version: '1.0.0',
 				category: 'resource',

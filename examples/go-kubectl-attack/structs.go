@@ -22,7 +22,7 @@ type AttackParameter struct {
 
 type DescribeAttackResponse struct {
 	Id          string            `json:"id"`
-	Name        string            `json:"name"`
+	Label       string            `json:"label"`
 	Description string            `json:"description"`
 	Version     string            `json:"version"`
 	Category    string            `json:"category"`

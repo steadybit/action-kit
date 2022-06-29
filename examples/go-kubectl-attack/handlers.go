@@ -26,7 +26,7 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(DescribeAttackResponse{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
-		Name:        "Kubernetes Rollout Restart Deployment",
+		Label:       "Kubernetes Rollout Restart Deployment",
 		Description: "Execute a rollout restart for a Kubernetes deployment",
 		Version:     "1.0.1",
 		Category:    "resource",
