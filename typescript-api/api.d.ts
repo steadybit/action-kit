@@ -15,7 +15,7 @@ export interface IndexResponse {
 export interface DescribeAttackResponse {
 	id: string;
 	name: string;
-	//TODO: icon for ui?
+	icon: string;
 	description: string;
 	category?: 'resource' | 'network' | 'state';
 	version: string;
