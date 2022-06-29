@@ -12,6 +12,11 @@
       "type": "string",
       "description": "A human-readable label for the attack."
     },
+    "icon": {
+      "type": "string",
+      "description": "An icon that is used to identify your attack in the ui. Needs to be a data-uri containing an image.",
+      "maxLength": 1000000
+    },
     "version": {
       "type": "string",
       "description": "The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. While Steadybit does not evaluate the structure of the version string, we do recommend usage of semver strings."
