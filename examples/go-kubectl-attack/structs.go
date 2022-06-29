@@ -48,6 +48,7 @@ type RolloutRestartState struct {
 	Cluster    string
 	Namespace  string
 	Deployment string
+	Wait       bool
 }
 
 type PrepareAttackResponse struct {
