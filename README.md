@@ -43,7 +43,8 @@ parameters can be configured by the user. The `prepare`, `start` and `stop` prop
 #### `icon`
 
 An icon that is used to identify your attack in the ui. Needs to be a data-uri containing an image. You can use a online generator for that, for
-example https://dopiaza.org/tools/datauri.
+example https://dopiaza.org/tools/datauri. For best compatibility we suggest to use svg with `fill="currentColor"`. The max length for the data-uri is
+1,000,000.
 
 #### `version`
 
