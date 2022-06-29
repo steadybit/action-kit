@@ -8,7 +8,7 @@ This repository represents a **work-in-progress** documentation and implementati
 
 ## Registering and Discovering Attacks
 
-New attacks are discovered from attack index(es) queried by http. These indexes must be declared to the agents using environment variables:
+New attacks are discovered from attack index(es) queried by HTTP. These indexes must be declared to the agents using environment variables:
 
 ```shell
 # Attack index to query
@@ -31,6 +31,8 @@ STEADYBIT_AGENT_ATTACKS_EXTENSIONS_1_BASIC_PASSWORD=<password> #Password used fo
   ]
 }
 ```
+
+Please note that teams configured in Steadybit need to be granted access to new attacks. You can grant access to attacks via Steadybit's team settings views.
 
 ## Attack Description
 
