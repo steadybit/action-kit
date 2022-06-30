@@ -5,6 +5,11 @@ type EndpointRef struct {
 	Path   string `json:"path"`
 }
 
+type ErrorResponse struct {
+	Title  string `json:"title"`
+	Detail string `json:"title"`
+}
+
 type AttackListResponse struct {
 	Attacks []EndpointRef `json:"attacks"`
 }
@@ -31,6 +36,7 @@ type DescribeAttackResponse struct {
 	Parameters  []AttackParameter `json:"parameters"`
 	Prepare     EndpointRef       `json:"prepare"`
 	Start       EndpointRef       `json:"start"`
+	State       EndpointRef       `json:"state"`
 	Stop        EndpointRef       `json:"stop"`
 }
 
@@ -61,4 +67,12 @@ type StartAttackRequest struct {
 
 type StartAttackResponse struct {
 	State RolloutRestartState `json:"state"`
+}
+
+type AttackStateRequest struct {
+	State RolloutRestartState `json:"state"`
+}
+
+type AttackStateResponse struct {
+	Completed bool `json:"completed"`
 }

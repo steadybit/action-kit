@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strings"
 )
 
 func getAttackList(w http.ResponseWriter, _ *http.Request, _ []byte) {
@@ -31,7 +32,7 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 		Version:     "1.0.1",
 		Category:    "resource",
 		Target:      "kubernetes-deployment",
-		TimeControl: "ONE_SHOT",
+		TimeControl: "INTERNAL",
 		Parameters: []AttackParameter{
 			{
 				Label:        "Wait for rollout completion",
@@ -49,6 +50,10 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 			"POST",
 			"/attacks/rollout-restart/start",
 		},
+		State: EndpointRef{
+			"POST",
+			"/attacks/rollout-restart/state",
+		},
 		Stop: EndpointRef{
 			"POST",
 			"/attacks/rollout-restart/stop",
@@ -57,14 +62,19 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 }
 
 func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var prepareAttackRequest PrepareAttackRequest
 	err := json.Unmarshal(body, &prepareAttackRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Title:  "Failed to read request body",
+			Detail: err.Error(),
+		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	wait := false
 	if prepareAttackRequest.Config["wait"] != nil {
 		wait = prepareAttackRequest.Config["wait"].(bool)
@@ -80,10 +90,16 @@ func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) 
 }
 
 func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var startAttackRequest StartAttackRequest
 	err := json.Unmarshal(body, &startAttackRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Title:  "Failed to read request body",
+			Detail: err.Error(),
+		})
 		return
 	}
 
@@ -98,31 +114,66 @@ func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
 		ErrorLogger.Printf("Failed to execute rollout restart %s: %s", cmdErr, cmdOut)
-		http.Error(w, cmdErr.Error(), http.StatusInternalServerError)
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Title:  fmt.Sprintf("Failed to execute rollout restart %s: %s", cmdErr, cmdOut),
+			Detail: cmdErr.Error(),
+		})
 		return
 	}
 
-	if startAttackRequest.State.Wait {
-		cmd := exec.Command("kubectl",
-			"rollout",
-			"status",
-			"--namespace",
-			startAttackRequest.State.Namespace,
-			fmt.Sprintf("deployment/%s", startAttackRequest.State.Deployment))
-		cmdOut, cmdErr := cmd.CombinedOutput()
-		if cmdErr != nil {
-			ErrorLogger.Printf("Failed to watch rollout status %s: %s", cmdErr, cmdOut)
-			http.Error(w, cmdErr.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(StartAttackResponse{
 		State: startAttackRequest.State,
 	})
 }
 
-func stopRolloutRestart(w http.ResponseWriter, req *http.Request, body []byte) {
-	InfoLogger.Printf("noop\n")
+func rolloutRestartState(w http.ResponseWriter, _ *http.Request, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var attackStateRequest AttackStateRequest
+	err := json.Unmarshal(body, &attackStateRequest)
+	if err != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Title:  "Failed to read request body",
+			Detail: err.Error(),
+		})
+		return
+	}
+
+	InfoLogger.Printf("Checking rollout restart attack state for %s\n", attackStateRequest)
+
+	if !attackStateRequest.State.Wait {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(AttackStateResponse{
+			true,
+		})
+		return
+	}
+
+	cmd := exec.Command("kubectl",
+		"rollout",
+		"status",
+		"--watch=false",
+		"--namespace",
+		attackStateRequest.State.Namespace,
+		fmt.Sprintf("deployment/%s", attackStateRequest.State.Deployment))
+	cmdOut, cmdErr := cmd.CombinedOutput()
+	if cmdErr != nil {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Title:  fmt.Sprintf("Failed to check rollout status %s: %s", cmdErr, cmdOut),
+			Detail: cmdErr.Error(),
+		})
+		return
+	}
+
+	cmdOutStr := string(cmdOut)
+	completed := !strings.Contains(strings.ToLower(cmdOutStr), "waiting")
+	json.NewEncoder(w).Encode(AttackStateResponse{
+		completed,
+	})
+}
+
+func stopRolloutRestart(_ http.ResponseWriter, _ *http.Request, _ []byte) {
 }
