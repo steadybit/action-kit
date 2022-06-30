@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-import { DescribeAttackResponse, PrepareResponse, StartResponse, StateResponse, StopResponse } from '@steadybit/attack-api';
+import {
+	DescribeAttackResponse,
+	PrepareResponse,
+	StartResponse,
+	StatusResponse,
+	StopResponse,
+} from '@steadybit/attack-api';
 import express from 'express';
 
 export const router = express.Router();
@@ -43,8 +49,8 @@ router.get('/attacks/logging', (_, res) => {
 		start: {
 			path: '/attacks/logging/start',
 		},
-		state: {
-			path: '/attacks/logging/state',
+		status: {
+			path: '/attacks/logging/status',
 		},
 		stop: {
 			path: '/attacks/logging/stop',
@@ -79,16 +85,16 @@ router.post('/attacks/logging/start', (req, res) => {
 	res.json(response);
 });
 
-router.post('/attacks/logging/state', (req, res) => {
-	console.log('Got state request:', JSON.stringify(req.body));
+router.post('/attacks/logging/status', (req, res) => {
+	console.log('Got status request:', JSON.stringify(req.body));
 
-	const response: StateResponse = {
+	const response: StatusResponse = {
 		completed: true,
 		state: {
 			...req.body.state,
-			generatedBy: 'state',
+			generatedBy: 'status',
 		},
-		messages: [{ message: 'Check the attack state!' }],
+		messages: [{ message: 'Check the attack status!' }],
 	};
 	res.json(response);
 });
