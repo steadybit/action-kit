@@ -1,6 +1,6 @@
 {
   "name": "@steadybit/attack-api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript type definitions for Steadybit's attack API.",
   "scripts": {
     "lint": "eslint api.d.ts",
