@@ -30,7 +30,6 @@ export interface SuccessfulDescribeAttackResponse {
 	description: string;
 	category?: 'resource' | 'network' | 'state';
 	version: string;
-	//TODO: support target-less attacks?
 	target: 'container' | 'host' | 'kubernetes-deployment' | 'kubernetes-namespace' | 'zone' | 'ec2-instance';
 	timeControl: 'INSTANTANEOUS' | 'INTERNAL' | 'EXTERNAL';
 	parameters?: Array<BooleanParameter | IntegerParameter | StringParameter | MultiOptionParameter>;
@@ -44,7 +43,6 @@ export interface AttackParameter {
 	label: string;
 	name: string;
 	description?: string;
-	//TODO: decouple UI element from type?
 	type: 'string' | 'string[]' | 'password' | 'integer' | 'boolean' | 'percentage' | 'duration';
 	required?: boolean;
 	// whether this parameter should be placed under the expandable advanced section within the user interface
