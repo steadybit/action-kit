@@ -50,9 +50,9 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 			"POST",
 			"/attacks/rollout-restart/start",
 		},
-		State: EndpointRef{
+		Status: EndpointRef{
 			"POST",
-			"/attacks/rollout-restart/state",
+			"/attacks/rollout-restart/status",
 		},
 		Stop: EndpointRef{
 			"POST",

@@ -36,7 +36,7 @@ type DescribeAttackResponse struct {
 	Parameters  []AttackParameter `json:"parameters"`
 	Prepare     EndpointRef       `json:"prepare"`
 	Start       EndpointRef       `json:"start"`
-	State       EndpointRef       `json:"state"`
+	Status      EndpointRef       `json:"status"`
 	Stop        EndpointRef       `json:"stop"`
 }
 
