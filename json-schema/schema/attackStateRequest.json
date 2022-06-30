@@ -1,0 +1,15 @@
+{
+  "$id": "https://schema.steadybit.io/attack-kit/attackStateRequest",
+  "title": "Attack State Request",
+  "description": "The HTTP request payload passed to the attack state endpoints.",
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "object",
+      "description": "The attack state as returned by the prepare, start or previous state endpoint call."
+    }
+  },
+  "required": [
+    "state"
+  ]
+}

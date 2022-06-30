@@ -14,7 +14,7 @@ describe('describeAttackResponse', () => {
 				version: '1.0.0',
 				category: 'resource',
 				target: 'host',
-				timeControl: 'ONE_SHOT',
+				timeControl: 'INSTANTANEOUS',
 				parameters: [],
 				prepare: {
 					method: 'POST',
@@ -24,6 +24,12 @@ describe('describeAttackResponse', () => {
 				start: {
 					method: 'POST',
 					path: '/start',
+				},
+
+				state: {
+					method: 'POST',
+					path: '/state',
+					callInterval: '10s'
 				},
 
 				stop: {
@@ -43,7 +49,7 @@ describe('describeAttackResponse', () => {
 				version: '1.0.0',
 				category: 'resource',
 				target: 'host',
-				timeControl: 'ONE_SHOT',
+				timeControl: 'INSTANTANEOUS',
 				parameters: [
 					{
 						label: 'Secret Key',
@@ -78,7 +84,7 @@ describe('describeAttackResponse', () => {
 				version: '1.0.0',
 				category: 'resource',
 				target: 'host',
-				timeControl: 'ONE_SHOT',
+				timeControl: 'INSTANTANEOUS',
 				parameters: [
 					{
 						label: 'Secret Key',

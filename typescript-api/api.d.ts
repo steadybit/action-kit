@@ -8,6 +8,13 @@ export interface HttpEndpointRef<ALLOWED_METHODS extends Method> {
 	path: string;
 }
 
+export interface HttpEndpointRefWithCallInternval<ALLOWED_METHODS extends Method> extends HttpEndpointRef<ALLOWED_METHODS> {
+	/**
+	 * The duration, e.g., `100ms` or `1s`.
+	 */
+	callInterval?: string;
+}
+
 export type IndexResponse = SuccessfulIndexResponse | Problem;
 
 export interface SuccessfulIndexResponse {
@@ -25,10 +32,11 @@ export interface SuccessfulDescribeAttackResponse {
 	version: string;
 	//TODO: support target-less attacks?
 	target: 'container' | 'host' | 'kubernetes-deployment' | 'kubernetes-namespace' | 'zone' | 'ec2-instance';
-	timeControl: 'ONE_SHOT' | 'BY_AGENT';
+	timeControl: 'INSTANTANEOUS' | 'INTERNAL' | 'EXTERNAL';
 	parameters?: Array<BooleanParameter | IntegerParameter | StringParameter | MultiOptionParameter>;
 	prepare: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
 	start: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
+	state: HttpEndpointRefWithCallInternval<'POST' | 'PUT' | 'DELETE'>;
 	stop: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
 }
 
@@ -73,7 +81,7 @@ export interface PrepareRequest {
 	};
 }
 
-export type PrepareResponse = SuccessfulStartResponse | Problem;
+export type PrepareResponse = SuccessfulPrepareResponse | Problem;
 
 export interface SuccessfulPrepareResponse {
 	state: any;
@@ -88,6 +96,18 @@ export type StartResponse = SuccessfulStartResponse | Problem;
 
 export interface SuccessfulStartResponse {
 	state: any;
+	messages?: Message[];
+}
+
+export interface StateRequest {
+	state: any;
+}
+
+export type StateResponse = SuccessfulStateResponse | Problem;
+
+export interface SuccessfulStateResponse {
+	completed: boolean;
+	state?: any;
 	messages?: Message[];
 }
 

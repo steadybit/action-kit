@@ -48,10 +48,11 @@
     "timeControl": {
       "type": "string",
       "enum": [
-        "ONE_SHOT",
-        "BY_AGENT"
+        "INSTANTANEOUS",
+        "INTERNAL",
+        "EXTERNAL"
       ],
-      "description": "Attacks can either be an instantaneous event (`ONE_SHOT`), e.g., the restart of a host, or an activity over a period of time (`BY_AGENT`), e.g., network blackholes."
+      "description": "Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations."
     },
     "parameters": {
       "type": "array",
@@ -65,6 +66,23 @@
     },
     "start": {
       "$ref": "mutatingEndpointRef"
+    },
+    "state": {
+      "allOf": [
+        {
+          "$ref": "mutatingEndpointRef"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "callInterval": {
+              "type": "string",
+              "pattern": "^\\d+(ms|s)$",
+              "description": "At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`."
+            }
+          }
+        }
+      ]
     },
     "stop": {
       "$ref": "mutatingEndpointRef"
