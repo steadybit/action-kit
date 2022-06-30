@@ -8,28 +8,7 @@
       "type": "object",
       "properties": {
         "messages": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string"
-              },
-              "level": {
-                "type": "string",
-                "enum": [
-                  "debug",
-                  "info",
-                  "error"
-                ],
-                "default": "info"
-              }
-            },
-            "required": [
-              "message"
-            ]
-          },
-          "description": "Log-messages that will be passed to the agent log."
+          "$ref": "messages"
         }
       }
     },

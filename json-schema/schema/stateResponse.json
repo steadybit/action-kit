@@ -9,28 +9,7 @@
       "description": "Any kind of attack specific state that will be passed to the next endpoints."
     },
     "messages": {
-      "type": "array",
-      "description": "Log-messages that will be passed to the agent log.",
-      "items": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "level": {
-            "type": "string",
-            "enum": [
-              "debug",
-              "info",
-              "error"
-            ],
-            "default": "info"
-          }
-        },
-        "required": [
-          "message"
-        ]
-      }
+      "$ref": "messages"
     }
   },
   "required": [
