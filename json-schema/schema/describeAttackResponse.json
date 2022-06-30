@@ -72,7 +72,7 @@
   },
   "required": [
     "id",
-    "name",
+    "label",
     "version",
     "description",
     "category",
