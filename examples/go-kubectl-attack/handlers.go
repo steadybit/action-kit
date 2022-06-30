@@ -29,7 +29,7 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
 		Label:       "Kubernetes Rollout Restart Deployment",
 		Description: "Execute a rollout restart for a Kubernetes deployment",
-		Version:     "1.0.1",
+		Version:     "1.0.2",
 		Category:    "resource",
 		Target:      "kubernetes-deployment",
 		TimeControl: "INTERNAL",
