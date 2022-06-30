@@ -1,0 +1,29 @@
+{
+  "$id": "https://schema.steadybit.io/attack-kit/attackStatusResponse",
+  "title": "Attack Status Response",
+  "description": "The HTTP response payload returned by the attack status endpoints.",
+  "type": "object",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "object",
+          "description": "Any kind of attack specific state that will be passed to the next endpoints. In contrast to other endpoints, this endpoint does not have to include state in the response. If it is defined however, the state will be passed to subsequent status and stop endpoint calls."
+        },
+        "messages": {
+          "$ref": "messages"
+        }
+      },
+      "required": [
+        "completed"
+      ]
+    },
+    {
+      "$ref": "errorResponse"
+    }
+  ]
+}

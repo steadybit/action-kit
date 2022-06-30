@@ -67,7 +67,7 @@
     "start": {
       "$ref": "mutatingEndpointRef"
     },
-    "state": {
+    "status": {
       "allOf": [
         {
           "$ref": "mutatingEndpointRef"
@@ -98,7 +98,6 @@
     "timeControl",
     "parameters",
     "prepare",
-    "start",
-    "stop"
+    "start"
   ]
 }

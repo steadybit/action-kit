@@ -29,7 +29,7 @@ func main() {
 	http.Handle("/attacks/rollout-restart", loggingMiddleware(getRolloutRestartDescription))
 	http.Handle("/attacks/rollout-restart/prepare", loggingMiddleware(prepareRolloutRestart))
 	http.Handle("/attacks/rollout-restart/start", loggingMiddleware(startRolloutRestart))
-	http.Handle("/attacks/rollout-restart/state", loggingMiddleware(rolloutRestartState))
+	http.Handle("/attacks/rollout-restart/status", loggingMiddleware(rolloutRestartStatus))
 	http.Handle("/attacks/rollout-restart/stop", loggingMiddleware(stopRolloutRestart))
 
 	port := 8083

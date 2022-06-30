@@ -1,7 +1,7 @@
 {
-  "$id": "https://schema.steadybit.io/attack-kit/attackStateRequest",
-  "title": "Attack State Request",
-  "description": "The HTTP request payload passed to the attack state endpoints.",
+  "$id": "https://schema.steadybit.io/attack-kit/attackStatusRequest",
+  "title": "Attack Status Request",
+  "description": "The HTTP request payload passed to the attack status endpoints.",
   "type": "object",
   "properties": {
     "state": {

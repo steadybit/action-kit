@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
 import { validate } from './util';
-import schema from '../schema/attackStateResponse.json';
+import schema from '../schema/attackStatusResponse.json';
 
-describe('attackStateResponse', () => {
+describe('attackStatusResponse', () => {
 	it('must not require state', () => {
 		expect(validate(schema, {
 		}).valid).toEqual(false);

@@ -4,8 +4,8 @@
 import { router as indexRouter } from './routes/index';
 import { router as loggingAttackRouter } from './routes/loggingAttack';
 import express from 'express';
+import cors from 'cors';
 
-const cors = require('cors');
 const app = express();
 const port = 3001;
 

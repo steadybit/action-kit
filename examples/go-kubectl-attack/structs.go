@@ -7,7 +7,7 @@ type EndpointRef struct {
 
 type ErrorResponse struct {
 	Title  string `json:"title"`
-	Detail string `json:"title"`
+	Detail string `json:"detail"`
 }
 
 type AttackListResponse struct {
@@ -69,10 +69,10 @@ type StartAttackResponse struct {
 	State RolloutRestartState `json:"state"`
 }
 
-type AttackStateRequest struct {
+type AttackStatusRequest struct {
 	State RolloutRestartState `json:"state"`
 }
 
-type AttackStateResponse struct {
+type AttackStatusResponse struct {
 	Completed bool `json:"completed"`
 }

@@ -127,11 +127,11 @@ func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
 	})
 }
 
-func rolloutRestartState(w http.ResponseWriter, _ *http.Request, body []byte) {
+func rolloutRestartStatus(w http.ResponseWriter, _ *http.Request, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var attackStateRequest AttackStateRequest
-	err := json.Unmarshal(body, &attackStateRequest)
+	var attackStatusRequest AttackStatusRequest
+	err := json.Unmarshal(body, &attackStatusRequest)
 	if err != nil {
 		w.WriteHeader(500)
 		json.NewEncoder(w).Encode(ErrorResponse{
@@ -141,11 +141,11 @@ func rolloutRestartState(w http.ResponseWriter, _ *http.Request, body []byte) {
 		return
 	}
 
-	InfoLogger.Printf("Checking rollout restart attack state for %s\n", attackStateRequest)
+	InfoLogger.Printf("Checking rollout restart attack status for %s\n", attackStatusRequest)
 
-	if !attackStateRequest.State.Wait {
+	if !attackStatusRequest.State.Wait {
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(AttackStateResponse{
+		json.NewEncoder(w).Encode(AttackStatusResponse{
 			true,
 		})
 		return
@@ -156,8 +156,8 @@ func rolloutRestartState(w http.ResponseWriter, _ *http.Request, body []byte) {
 		"status",
 		"--watch=false",
 		"--namespace",
-		attackStateRequest.State.Namespace,
-		fmt.Sprintf("deployment/%s", attackStateRequest.State.Deployment))
+		attackStatusRequest.State.Namespace,
+		fmt.Sprintf("deployment/%s", attackStatusRequest.State.Deployment))
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
 		w.WriteHeader(500)
@@ -170,7 +170,7 @@ func rolloutRestartState(w http.ResponseWriter, _ *http.Request, body []byte) {
 
 	cmdOutStr := string(cmdOut)
 	completed := !strings.Contains(strings.ToLower(cmdOutStr), "waiting")
-	json.NewEncoder(w).Encode(AttackStateResponse{
+	json.NewEncoder(w).Encode(AttackStatusResponse{
 		completed,
 	})
 }

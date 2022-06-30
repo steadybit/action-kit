@@ -35,7 +35,7 @@ export interface SuccessfulDescribeAttackResponse {
 	parameters?: Array<BooleanParameter | IntegerParameter | StringParameter | MultiOptionParameter>;
 	prepare: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
 	start: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
-	state: HttpEndpointRefWithCallInternval<'POST' | 'PUT' | 'DELETE'>;
+	status: HttpEndpointRefWithCallInternval<'POST' | 'PUT' | 'DELETE'>;
 	stop: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
 }
 
@@ -97,13 +97,13 @@ export interface SuccessfulStartResponse {
 	messages?: Message[];
 }
 
-export interface StateRequest {
+export interface StatusRequest {
 	state: any;
 }
 
-export type StateResponse = SuccessfulStateResponse | Problem;
+export type StatusResponse = SuccessfulStatusResponse | Problem;
 
-export interface SuccessfulStateResponse {
+export interface SuccessfulStatusResponse {
 	completed: boolean;
 	state?: any;
 	messages?: Message[];
