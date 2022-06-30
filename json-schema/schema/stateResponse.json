@@ -1,0 +1,39 @@
+{
+  "$id": "https://schema.steadybit.io/attack-kit/stateResponse",
+  "title": "Successful Response",
+  "description": "A successful response with attack state",
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "object",
+      "description": "Any kind of attack specific state that will be passed to the next endpoints."
+    },
+    "messages": {
+      "type": "array",
+      "description": "Log-messages that will be passed to the agent log.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "debug",
+              "info",
+              "error"
+            ],
+            "default": "info"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    }
+  },
+  "required": [
+    "state"
+  ]
+}

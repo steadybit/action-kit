@@ -34,7 +34,7 @@ describe('describeAttackResponse', () => {
 		).toEqual(true);
 	});
 
-  it('must validate nested parameters', () => {
+	it('must validate nested parameters', () => {
 		expect(
 			validate(schema, {
 				id: 'org.example.attacks.foobar',
@@ -45,12 +45,12 @@ describe('describeAttackResponse', () => {
 				target: 'host',
 				timeControl: 'ONE_SHOT',
 				parameters: [
-          {
-            label: 'Secret Key',
-            name: 'secretKey',
-            type: 'password',
-          }
-        ],
+					{
+						label: 'Secret Key',
+						name: 'secretKey',
+						type: 'password',
+					},
+				],
 				prepare: {
 					method: 'POST',
 					path: '/prepare',
@@ -69,7 +69,7 @@ describe('describeAttackResponse', () => {
 		).toEqual(true);
 	});
 
-  it('must validate nested parameters', () => {
+	it('must validate nested parameters', () => {
 		expect(
 			validate(schema, {
 				id: 'org.example.attacks.foobar',
@@ -80,12 +80,12 @@ describe('describeAttackResponse', () => {
 				target: 'host',
 				timeControl: 'ONE_SHOT',
 				parameters: [
-          {
-            label: 'Secret Key',
-            name: 'secretKey',
-            type: 'unknown',
-          }
-        ],
+					{
+						label: 'Secret Key',
+						name: 'secretKey',
+						type: 'unknown',
+					},
+				],
 				prepare: {
 					method: 'POST',
 					path: '/prepare',

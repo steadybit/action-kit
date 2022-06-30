@@ -8,11 +8,15 @@ export interface HttpEndpointRef<ALLOWED_METHODS extends Method> {
 	path: string;
 }
 
-export interface IndexResponse {
+export type IndexResponse = SuccessfulIndexResponse | Problem;
+
+export interface SuccessfulIndexResponse {
 	attacks: HttpEndpointRef<'GET'>[];
 }
 
-export interface DescribeAttackResponse {
+export type DescribeAttackResponse = SuccessfulDescribeAttackResponse | Problem;
+
+export interface SuccessfulDescribeAttackResponse {
 	id: string;
 	label: string;
 	icon: string;
@@ -69,19 +73,43 @@ export interface PrepareRequest {
 	};
 }
 
-export interface PrepareResponse {
+export type PrepareResponse = SuccessfulStartResponse | Problem;
+
+export interface SuccessfulPrepareResponse {
 	state: any;
+	messages?: Message[];
 }
 
 export interface StartRequest {
 	state: any;
 }
 
-export interface StartResponse {
+export type StartResponse = SuccessfulStartResponse | Problem;
+
+export interface SuccessfulStartResponse {
 	state: any;
+	messages?: Message[];
 }
 
 export interface StopRequest {
 	state: any;
 	canceled: boolean;
+}
+
+export type StopResponse = SuccessfulStopResponse | Problem;
+
+export interface SuccessfulStopResponse {
+	messages?: Message[];
+}
+
+export interface Problem {
+	type?: string;
+	title: string;
+	detail?: string;
+	instance?: string;
+}
+
+export interface Message {
+	message: string;
+	level?: 'debug' | 'info' | 'error';
 }

@@ -2,37 +2,16 @@
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
 import { validate } from './util';
-import schema from '../schema/startAttackResponse.json';
+import schema from '../schema/stopAttackResponse.json';
 
-describe('startAttackResponse', () => {
-	it('must require state', () => {
-		expect(validate(schema, {}).valid).toEqual(false);
-	});
-
-	it('must support minimum required fields', () => {
-		expect(
-			validate(schema, {
-				state: {},
-			}).valid
-		).toEqual(true);
-	});
-
-	it('must support arbitrary state fields', () => {
-		expect(
-			validate(schema, {
-				state: {
-					anything: true,
-				},
-			}).valid
-		).toEqual(true);
+describe('stopAttackResponse', () => {
+	it('must support empty response', () => {
+		expect(validate(schema, {}).valid).toEqual(true);
 	});
 
 	it('must support log messages', () => {
 		expect(
 			validate(schema, {
-				state: {
-					anything: true,
-				},
 				messages: [{ message: 'one', level: 'debug' }, { message: 'two', level: 'info' }, { message: 'three' }],
 			}).valid
 		).toEqual(true);

@@ -3,13 +3,12 @@
   "title": "Start Attack Response",
   "description": "The HTTP response payload returned by the attack start endpoints.",
   "type": "object",
-  "properties": {
-    "state": {
-      "type": "object",
-      "description": "The new attack state that will be passed to the stop endpoint."
+  "anyOf": [
+    {
+      "$ref": "stateResponse"
+    },
+    {
+      "$ref": "errorResponse"
     }
-  },
-  "required": [
-    "state"
   ]
 }

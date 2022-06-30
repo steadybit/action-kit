@@ -1,0 +1,40 @@
+{
+  "$id": "https://schema.steadybit.io/attack-kit/stopAttackResponse",
+  "title": "Stop Attack Response",
+  "description": "The HTTP response payload returned by the attack stop endpoints.",
+  "type": "object",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "info",
+                  "error"
+                ],
+                "default": "info"
+              }
+            },
+            "required": [
+              "message"
+            ]
+          },
+          "description": "Log-messages that will be passed to the agent log."
+        }
+      }
+    },
+    {
+      "$ref": "errorResponse"
+    }
+  ]
+}

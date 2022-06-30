@@ -5,11 +5,8 @@ import { validate } from './util';
 import schema from '../schema/prepareAttackResponse.json';
 
 describe('prepareAttackResponse', () => {
-  it('must require state', () => {
-		expect(
-			validate(schema, {
-			}).valid
-		).toEqual(false);
+	it('must require state', () => {
+		expect(validate(schema, {}).valid).toEqual(false);
 	});
 
 	it('must support minimum required fields', () => {
@@ -26,6 +23,26 @@ describe('prepareAttackResponse', () => {
 				state: {
 					anything: true,
 				},
+			}).valid
+		).toEqual(true);
+	});
+
+	it('must support log messages', () => {
+		expect(
+			validate(schema, {
+				state: {
+					anything: true,
+				},
+				messages: [{ message: 'one', level: 'debug' }, { message: 'two', level: 'info' }, { message: 'three' }],
+			}).valid
+		).toEqual(true);
+	});
+
+	it('must support rfc 7807 problems', () => {
+		expect(
+			validate(schema, {
+				title: 'Something went wrong',
+				details: 'Terrible things happens',
 			}).valid
 		).toEqual(true);
 	});
