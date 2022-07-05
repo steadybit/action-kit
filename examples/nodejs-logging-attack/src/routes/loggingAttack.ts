@@ -20,7 +20,7 @@ router.get('/attacks/logging', (_, res) => {
 		description: 'Prints the received payload to the console to illustrate the attack API.',
 		version: '1.0.0',
 		category: 'resource',
-		target: 'container',
+		targetType: 'cat',
 		timeControl: 'INTERNAL',
 
 		parameters: [

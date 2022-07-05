@@ -31,7 +31,7 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 		Description: "Execute a rollout restart for a Kubernetes deployment",
 		Version:     "1.0.2",
 		Category:    "resource",
-		Target:      "kubernetes-deployment",
+		TargetType:  "kubernetes-deployment",
 		TimeControl: "INTERNAL",
 		Parameters: []AttackParameter{
 			{

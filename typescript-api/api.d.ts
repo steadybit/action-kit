@@ -8,7 +8,8 @@ export interface HttpEndpointRef<ALLOWED_METHODS extends Method> {
 	path: string;
 }
 
-export interface HttpEndpointRefWithCallInternval<ALLOWED_METHODS extends Method> extends HttpEndpointRef<ALLOWED_METHODS> {
+export interface HttpEndpointRefWithCallInternval<ALLOWED_METHODS extends Method>
+	extends HttpEndpointRef<ALLOWED_METHODS> {
 	/**
 	 * The duration, e.g., `100ms` or `1s`.
 	 */
@@ -30,7 +31,7 @@ export interface SuccessfulDescribeAttackResponse {
 	description: string;
 	category?: 'resource' | 'network' | 'state';
 	version: string;
-	target: 'container' | 'host' | 'kubernetes-deployment' | 'kubernetes-namespace' | 'zone' | 'ec2-instance';
+	targetType: string;
 	timeControl: 'INSTANTANEOUS' | 'INTERNAL' | 'EXTERNAL';
 	parameters?: Array<BooleanParameter | IntegerParameter | StringParameter | MultiOptionParameter>;
 	prepare: HttpEndpointRef<'POST' | 'PUT' | 'DELETE'>;
