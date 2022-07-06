@@ -34,15 +34,8 @@
       ],
       "description": ""
     },
-    "target": {
+    "targetType": {
       "type": "string",
-      "enum": [
-        "container",
-        "host",
-        "kubernetes-deployment",
-        "zone",
-        "ec2-instance"
-      ],
       "description": ""
     },
     "timeControl": {
