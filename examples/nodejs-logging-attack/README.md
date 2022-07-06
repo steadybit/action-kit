@@ -14,6 +14,20 @@ npm install
 npm start
 ```
 
+## Starting the example through Kubernetes
+
+This is the recommended approach to give this example app a try. The app is deployed within a namespace `example-nodejs-logging-attack` as a deployment
+called `example-nodejs-logging-attack`. Several other resources are created as well to permit access to the relevant API endpoints. For more details, please
+inspect `kubernetes.yml`.
+
+```sh
+kubectl apply -f kubernetes.yml
+```
+
+Once deployed in your Kubernetes cluster the example is reachable
+through `http://example-nodejs-logging-attack.example-nodejs-logging-attack.svc.cluster.local:8084/attacks`. Steadybit agents can be configured to support this
+attack provider through the environment variable `STEADYBIT_AGENT_ATTACKS_EXTENSIONS_0_URL`.
+
 ## Starting the example using Docker
 
 ```sh
