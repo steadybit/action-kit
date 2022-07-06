@@ -31,7 +31,7 @@ type DescribeAttackResponse struct {
 	Description string            `json:"description"`
 	Version     string            `json:"version"`
 	Category    string            `json:"category"`
-	Target      string            `json:"target"`
+	TargetType  string            `json:"targetType"`
 	TimeControl string            `json:"timeControl"`
 	Parameters  []AttackParameter `json:"parameters"`
 	Prepare     EndpointRef       `json:"prepare"`
