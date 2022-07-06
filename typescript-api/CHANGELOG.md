@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- Changed `target` in `SuccessfulDescribeAttackResponse` to `targetType`
+
 ## 0.3.0
 
 - Fix copy paste mistake in status endpoint
