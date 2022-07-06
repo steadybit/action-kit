@@ -20,6 +20,6 @@ npm start
 docker run -it \
   --rm \
   --init \
-  -p 3001:3001 \
+  -p 8084:8084 \
   ghcr.io/steadybit/example-nodejs-logging-attack:main
 ```
