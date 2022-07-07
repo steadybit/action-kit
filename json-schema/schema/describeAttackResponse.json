@@ -19,7 +19,7 @@
     },
     "version": {
       "type": "string",
-      "description": "The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. While Steadybit does not evaluate the structure of the version string, we do recommend usage of semver strings."
+      "description": "The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. We do recommend usage of semver strings."
     },
     "description": {
       "type": "string",
