@@ -1,4 +1,4 @@
-<img src="./logo.png" width="400" align="right" alt="AttackKit logo depicting a crosshair within a rounded rectangle">
+<img src="./logo.png" width="300" align="right" alt="AttackKit logo depicting a crosshair within a rounded rectangle">
 
 # Steadybit AttackKit
 
