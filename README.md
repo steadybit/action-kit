@@ -1,3 +1,5 @@
+<img src="./logo.png" width="400" align="right" alt="AttackKit logo depicting a crosshair within a rounded rectangle">
+
 # Steadybit AttackKit
 
 The Steadybit AttackKit enables the extension of Steadybit with new attack capabilities that you can use within experiments. For example, AttackKit can be used to author open/closed source attacks to attack AWS, Azure, and Google Cloud services that Steadybit cannot natively attack.
