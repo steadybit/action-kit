@@ -4,20 +4,24 @@ This document explains the attack API, control flow and the contracts behind it.
 
 ## Overview
 
-Attacks are implemented with the help of AttackKit and the attack API through an implementation of an attack provider. Attack providers are HTTP servers implementing the attack API to describe which attacks are supported and how to execute these. The following diagram illustrates who is issuing calls and in what phases.
+Attacks are implemented with the help of AttackKit and the attack API through an implementation of an attack provider. Attack providers are HTTP servers
+implementing the attack API to describe which attacks are supported and how to execute these. The following diagram illustrates who is issuing calls and in what
+phases.
 
 ![UML sequence diagram showing in what order the APIs are called](attack-flow.svg)
 
 As can be seen above, the attack provider is called by the Steadybit agent in two phases:
 
-- In the attack registration phase, Steadybit learns about the supported attacks. Once this phase is completed, attacks will be usable within Steadybit, e.g., within the experiment editor.
+- In the attack registration phase, Steadybit learns about the supported attacks. Once this phase is completed, attacks will be usable within Steadybit, e.g.,
+  within the experiment editor.
 - The attack execution phase occurs whenever an attack is executed, e.g., as part of an experiment.
 
 The following section explain the various API endpoints, their responsibilities and structures in more detail.
 
 ## Attack List
 
-As the name implies, the attack list returns a list of supported attacks. Or, more specifically, HTTP endpoints that the agent should call to learn more about the attacks.
+As the name implies, the attack list returns a list of supported attacks. Or, more specifically, HTTP endpoints that the agent should call to learn more about
+the attacks.
 
 This endpoint needs to be [registered with Steadybit agents](./attack-registration.md).
 
@@ -39,8 +43,8 @@ This endpoint needs to be [registered with Steadybit agents](./attack-registrati
 
 ### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `IndexResponse`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackListResponse`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `IndexResponse`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackListResponse`
 
 ## Attack Description
 
@@ -48,11 +52,11 @@ An attack description is required for each attack. The HTTP endpoint serving the
 
 Attack descriptions expose information about the presentation, configuration and behavior of attacks. For example:
 
- - What should the attack be called?
- - Which configuration options should be presented to end-users within the user interface?
- - Can the attack be stopped, or is this an instantaneous event, e.g., host reboots?
+- What should the attack be called?
+- Which configuration options should be presented to end-users within the user interface?
+- Can the attack be stopped, or is this an instantaneous event, e.g., host reboots?
 
-Attack description is a somewhat evolved topic, and you can find much more detailed information within our separate attack description document. 
+Attack description is a somewhat evolved topic, and you can find much more detailed information within our separate attack description document.
 
 ### Example
 
@@ -102,37 +106,43 @@ Attack description is a somewhat evolved topic, and you can find much more detai
 
 ### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `DescribeAttackResponse`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `describeAttackResponse`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `DescribeAttackResponse`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `describeAttackResponse`
 
 ### Versioning
 
-Attacks are versioned strictly, and Steadybit will ignore definition changes for the same version. Remember to update the version every time you update the attack description.
+Attacks are versioned strictly, and Steadybit will ignore definition changes for the same version. Remember to update the version every time you update the
+attack description.
 
 ### Time Control
 
 Time control informs Steadybit about behavioral aspects of the attack. At this moment, there are three options:
 
- - Instantaneous that cannot be undone, e.g., killing processes or shutting down servers: `"timeControl": "INSTANTANEOUS"`
- - Attacks spanning a configurable amount of time that are stoppable, e.g., causing CPU/memory stress, network configuration changes: `"timeControl": "EXTERNAL"`. Note that these attacks require a parameter named `duration` with type `duration`.
- - Attacks spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
+- Instantaneous that cannot be undone, e.g., killing processes or shutting down servers: `"timeControl": "INSTANTANEOUS"`
+- Attacks spanning a configurable amount of time that are stoppable, e.g., causing CPU/memory stress, network configuration changes: `"timeControl": "EXTERNAL"`
+  . Note that these attacks require a parameter named `duration` with type `duration`.
+- Attacks spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
 
 ## Attack Execution
 
 Attack execution is divided into three steps:
 
- - preparation
- - start
- - status
- - stop
+- preparation
+- start
+- status
+- stop
 
-HTTP endpoints represent each step. Steadybit learns about these endpoints through the attack description documented in the previous sections. The following sub-sections explain the responsibilities of each of the endpoints in detail. 
+HTTP endpoints represent each step. Steadybit learns about these endpoints through the attack description documented in the previous sections. The following
+sub-sections explain the responsibilities of each of the endpoints in detail.
 
 ### Preparation
 
-The preparation (or short `prepare`) step receives the attack's configuration options (representing the parameters defined in the attack description) and a selected target. The HTTP endpoint must respond with an HTTP status code `200` and a JSON response body containing a state object.
+The preparation (or short `prepare`) step receives the attack's configuration options (representing the parameters defined in the attack description) and a
+selected target. The HTTP endpoint must respond with an HTTP status code `200` and a JSON response body containing a state object.
 
-The state object is later used in HTTP requests to the start and stop endpoints. So you will want to include all the execution relevant information within the state object, e.g., a subset of the target's attributes, the configuration options and the original state (in case you are going to do some system modification as part of the start step).
+The state object is later used in HTTP requests to the start and stop endpoints. So you will want to include all the execution relevant information within the
+state object, e.g., a subset of the target's attributes, the configuration options and the original state (in case you are going to do some system modification
+as part of the start step).
 
 #### Example
 
@@ -145,9 +155,15 @@ The state object is later used in HTTP requests to the start and stop endpoints.
   "target": {
     "name": "demo-dev/steadybit-demo/gateway",
     "attributes": {
-      "k8s.deployment": ["gateway"],
-      "k8s.namespace": ["steadybit-demo"],
-      "k8s.cluster-name": ["demo-dev"]
+      "k8s.deployment": [
+        "gateway"
+      ],
+      "k8s.namespace": [
+        "steadybit-demo"
+      ],
+      "k8s.cluster-name": [
+        "demo-dev"
+      ]
     }
   }
 }
@@ -165,16 +181,19 @@ The state object is later used in HTTP requests to the start and stop endpoints.
 
 #### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `prepareAttackRequest`, `prepareAttackResponse`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `prepareAttackRequest`, `prepareAttackResponse`
 
 ### Start
 
 The actual attack happens within the start step, i.e., this is where you will typically modify the system, kill processes or reboot servers.
 
-The start step receives the prepare step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure. A JSON response body containing a state object may be returned. This state object is later passed to the stop step.
+The start step receives the prepare step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure. A JSON
+response body containing a state object may be returned. This state object is later passed to the stop step.
 
-This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the start endpoint. For example, you can trigger a deployment change within the start endpoint, but the start endpoint may not block until the deployment change is fully rolled out (this is what the status endpoint is for).
+This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the start endpoint. For example,
+you can trigger a deployment change within the start endpoint, but the start endpoint may not block until the deployment change is fully rolled out (this is
+what the status endpoint is for).
 
 #### Example
 
@@ -202,16 +221,20 @@ This endpoint must respond within a few seconds. It is not permitted to block un
 
 #### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `startAttackRequest`, `startAttackResponse`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `startAttackRequest`, `startAttackResponse`
 
 ### Status
 
-The status step exists to observe the status of the attack execution. For example, when triggering a deployment change you would use the status endpoint to inspect whether the deployment change was processed.
+The status step exists to observe the status of the attack execution. For example, when triggering a deployment change you would use the status endpoint to
+inspect whether the deployment change was processed.
 
-The status step receives the prepare, start or previous state step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure.
+The status step receives the prepare, start or previous state step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success
+or `500` on failure.
 
-This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the status endpoint. For example, you can inspect a deployment change's state within the status endpoint, but the status endpoint may not block until the deployment change is fully rolled out. The status endpoint is continuously called until it responds with `completed=true`.
+This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the status endpoint. For example,
+you can inspect a deployment change's state within the status endpoint, but the status endpoint may not block until the deployment change is fully rolled out.
+The status endpoint is continuously called until it responds with `completed=true`.
 
 #### Example
 
@@ -234,14 +257,15 @@ This endpoint must respond within a few seconds. It is not permitted to block un
 
 #### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackStatusRequest`, `attackStatusResponse`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackStatusRequest`, `attackStatusResponse`
 
 ### Stop
 
 The stop step exists to revert system modifications, stop CPU/memory stress or any other attacks.
 
-The stop step receives the prepare, status or start step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure.
+The stop step receives the prepare, status or start step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on
+failure.
 
 #### Example
 
@@ -261,5 +285,5 @@ The stop step receives the prepare, status or start step's state object. The HTT
 
 #### References
 
- - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StopRequest`
- - [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `stopAttackRequest`
+- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StopRequest`
+- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `stopAttackRequest`
