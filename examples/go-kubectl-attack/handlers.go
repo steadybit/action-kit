@@ -4,6 +4,7 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/steadybit/attack-kit/go/attack_kit_api"
 	"net/http"
 	"os/exec"
 	"strings"
