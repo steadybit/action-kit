@@ -9,7 +9,7 @@ The types are generated automatically from the AttackKit [OpenAPI specification]
 Add the following to your `go.mod` file:
 
 ```
-require github.com/steadybit/attack-kit/go/attack_kit_api v0.1.0
+go get github.com/steadybit/attack-kit/go/attack_kit_api@v0.1.0
 ```
 
 ## Usage
