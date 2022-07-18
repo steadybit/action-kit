@@ -15,23 +15,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  json-schema:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./json-schema
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
-        cache: 'npm'
-        cache-dependency-path: 'json-schema/package-lock.json'
-    - run: npm ci
-    - run: npm run lint
-    - run: npm run test
-  
   go-attack-kit-api:
     runs-on: ubuntu-latest
     defaults:
