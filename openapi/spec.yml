@@ -12,393 +12,403 @@ produces:
 components:
   schemas:
     AttackList:
-      "title": "Attack List"
-      "description": "Lists all attacks that the platform/agent could execute."
-      "type": "object"
-      "properties":
-        {
-          "attacks":
-            {
-              "type": "array",
-              "items":
-                { "$ref": "#/components/schemas/DescribingEndpointReference" },
-              "uniqueItems": true,
-            },
-        }
-      "required": ["attacks"]
+      title: Attack List
+      description: Lists all attacks that the platform/agent could execute.
+      type: object
+      properties:
+        attacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DescribingEndpointReference'
+          uniqueItems: true
+      required:
+        - attacks
     AttackKitError:
-      "title": "Error"
-      "description": "RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios"
-      "properties":
-        {
-          "type":
-            {
-              "type": "string",
-              "description": "A URI reference that identifies the problem type.",
-            },
-          "title":
-            {
-              "type": "string",
-              "description": "A short, human-readable summary of the problem type.",
-            },
-          "detail":
-            {
-              "type": "string",
-              "description": "A human-readable explanation specific to this occurrence of the problem.",
-            },
-          "instance":
-            {
-              "type": "string",
-              "description": "A URI reference that identifies the specific occurrence of the problem.",
-            },
-        }
-      "required": ["title"]
+      title: Error
+      description: >-
+        RFC 7807 Problem Details for HTTP APIs compliant response body for error
+        scenarios
+      properties:
+        type:
+          type: string
+          description: A URI reference that identifies the problem type.
+        title:
+          type: string
+          description: 'A short, human-readable summary of the problem type.'
+        detail:
+          type: string
+          description: >-
+            A human-readable explanation specific to this occurrence of the
+            problem.
+        instance:
+          type: string
+          description: >-
+            A URI reference that identifies the specific occurrence of the
+            problem.
+      required:
+        - title
     Messages:
-      "title": "Messages"
-      "description": "Log-messages that will be passed to the agent log."
-      "type": "array"
-      "items": { "$ref": "#/components/schemas/Message" }
+      title: Messages
+      description: Log-messages that will be passed to the agent log.
+      type: array
+      items:
+        $ref: '#/components/schemas/Message'
     KeyedMessages:
-      "properties": { "messages": { "$ref": "#/components/schemas/Messages" } }
+      properties:
+        messages:
+          $ref: '#/components/schemas/Messages'
     Message:
-      "title": "Message"
-      "description": "Log-message that will be passed to the agent log."
-      "type": "object"
-      "properties":
-        {
-          "message": { "type": "string" },
-          "level":
-            {
-              "type": "string",
-              "enum": ["debug", "info", "error"],
-              "default": "info",
-            },
-        }
-      "required": ["message"]
+      title: Message
+      description: Log-message that will be passed to the agent log.
+      type: object
+      properties:
+        message:
+          type: string
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - error
+          default: info
+      required:
+        - message
     AttackDescription:
-      "title": "Attack Description"
-      "description": "Provides details about a possible attack, e.g., what configuration options it has, how to present it to end-users and how to trigger the attack."
-      "type": "object"
-      "properties":
-        {
-          "id":
-            {
-              "type": "string",
-              "description": "A technical ID that is used to uniquely identify this type of attack. You will typically want to use something like `org.example.attacks.my-fancy-attack`.",
-            },
-          "label":
-            {
-              "type": "string",
-              "description": "A human-readable label for the attack.",
-            },
-          "icon":
-            {
-              "type": "string",
-              "description": "An icon that is used to identify your attack in the ui. Needs to be a data-uri containing an image.",
-              "maxLength": 1000000,
-              "pattern": "^data:.*$",
-            },
-          "version":
-            {
-              "type": "string",
-              "description": "The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. We do recommend usage of semver strings.",
-            },
-          "description":
-            {
-              "type": "string",
-              "description": "Description for end-users to help them understand what the attack is doing.",
-            },
-          "category":
-            {
-              "type": "string",
-              "enum": ["resource", "network", "state"],
-              "description": "Used for categorization of the attack within user interfaces.",
-            },
-          "targetType":
-            {
-              "type": "string",
-              "description": "What target type this attack should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.",
-            },
-          "timeControl":
-            {
-              "type": "string",
-              "enum": ["INSTANTANEOUS", "INTERNAL", "EXTERNAL"],
-              "description": "Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.",
-            },
-          "parameters":
-            {
-              "type": "array",
-              "items": { "$ref": "#/components/schemas/AttackParameter" },
-              "uniqueItems": true,
-            },
-          "prepare":
-            { "$ref": "#/components/schemas/MutatingEndpointReference" },
-          "start": { "$ref": "#/components/schemas/MutatingEndpointReference" },
-          "status":
-            {
-              "$ref": "#/components/schemas/MutatingEndpointReferenceWithCallInterval"
-            },
-          "stop": { "$ref": "#/components/schemas/MutatingEndpointReference" },
-        }
-      "required":
-        [
-          "id",
-          "label",
-          "version",
-          "description",
-          "category",
-          "targetType",
-          "timeControl",
-          "parameters",
-          "prepare",
-          "start",
-        ]
+      title: Attack Description
+      description: >-
+        Provides details about a possible attack, e.g., what configuration
+        options it has, how to present it to end-users and how to trigger the
+        attack.
+      type: object
+      properties:
+        id:
+          type: string
+          description: >-
+            A technical ID that is used to uniquely identify this type of
+            attack. You will typically want to use something like
+            `org.example.attacks.my-fancy-attack`.
+        label:
+          type: string
+          description: A human-readable label for the attack.
+        icon:
+          type: string
+          description: >-
+            An icon that is used to identify your attack in the ui. Needs to be
+            a data-uri containing an image.
+          maxLength: 1000000
+          pattern: '^data:.*$'
+        version:
+          type: string
+          description: >-
+            The version of the attack. Remember to increase the value everytime
+            you update the definitions. The platform will ignore any definition
+            changes with the same attack version. We do recommend usage of
+            semver strings.
+        description:
+          type: string
+          description: >-
+            Description for end-users to help them understand what the attack is
+            doing.
+        category:
+          type: string
+          enum:
+            - resource
+            - network
+            - state
+          description: Used for categorization of the attack within user interfaces.
+        targetType:
+          type: string
+          description: >-
+            What target type this attack should be offered for. Matches the `id`
+            field within `DescribeTargetTypeResponse` within DiscoveryKit.
+        timeControl:
+          type: string
+          enum:
+            - INSTANTANEOUS
+            - INTERNAL
+            - EXTERNAL
+          description: >-
+            Attacks can either be an instantaneous event, e.g., the restart of a
+            host, or an activity spanning over an unspecified duration. For
+            those attacks having a duration, we differentiate between
+            internally, e.g., waiting for a deployment to finish, and
+            externally, e.g., waiting for a user-specified time to pass,
+            controlled durations.
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttackParameter'
+          uniqueItems: true
+        prepare:
+          $ref: '#/components/schemas/MutatingEndpointReference'
+        start:
+          $ref: '#/components/schemas/MutatingEndpointReference'
+        status:
+          $ref: '#/components/schemas/MutatingEndpointReferenceWithCallInterval'
+        stop:
+          $ref: '#/components/schemas/MutatingEndpointReference'
+      required:
+        - id
+        - label
+        - version
+        - description
+        - category
+        - targetType
+        - timeControl
+        - parameters
+        - prepare
+        - start
     AttackParameter:
-      "properties":
-        {
-          "label":
-            {
-              "type": "string",
-              "description": "A human-readable label for the attack parameter.",
-            },
-          "name":
-            {
-              "type": "string",
-              "description": "The key under which the attack parameter is stored. This key can then be found within the prepare request's config field.",
-            },
-          "description":
-            {
-              "type": "string",
-              "description": "Description for end-users to help them understand the attack parameter.",
-            },
-          "type":
-            {
-              "type": "string",
-              "enum":
-                [
-                  "string",
-                  "string[]",
-                  "password",
-                  "integer",
-                  "boolean",
-                  "percentage",
-                  "duration",
-                ],
-              "description": "What kind of value this parameter is capturing. The type selection influences the `config` passed as part of the `PrepareRequest`. It also results in improved user-interface elements.",
-            },
-          "required":
-            {
-              "type": "boolean",
-              "description": "Whether or not end-users need to specify a value for this parameter.",
-            },
-          "advanced":
-            {
-              "type": "boolean",
-              "description": "Whether this parameter should be placed under the expandable advanced section within the user interface.",
-            },
-          "order":
-            {
-              "type": "integer",
-              "description": "You can define this fields to order the parameters in the user interface. The lower the value, the higher the position.",
-            },
-          "defaultValue":
-            {
-              "type": "string",
-              "description": "A default value for this parameter. This value will be used if the user does not specify a value for this parameter.",
-            },
-        }
-      "required": ["label", "name", "type"]
+      properties:
+        label:
+          type: string
+          description: A human-readable label for the attack parameter.
+        name:
+          type: string
+          description: >-
+            The key under which the attack parameter is stored. This key can
+            then be found within the prepare request's config field.
+        description:
+          type: string
+          description: >-
+            Description for end-users to help them understand the attack
+            parameter.
+        type:
+          type: string
+          enum:
+            - string
+            - 'string[]'
+            - password
+            - integer
+            - boolean
+            - percentage
+            - duration
+          description: >-
+            What kind of value this parameter is capturing. The type selection
+            influences the `config` passed as part of the `PrepareRequest`. It
+            also results in improved user-interface elements.
+        required:
+          type: boolean
+          description: Whether or not end-users need to specify a value for this parameter.
+        advanced:
+          type: boolean
+          description: >-
+            Whether this parameter should be placed under the expandable
+            advanced section within the user interface.
+        order:
+          type: integer
+          description: >-
+            You can define this fields to order the parameters in the user
+            interface. The lower the value, the higher the position.
+        defaultValue:
+          type: string
+          description: >-
+            A default value for this parameter. This value will be used if the
+            user does not specify a value for this parameter.
+      required:
+        - label
+        - name
+        - type
     Target:
-      "type": "object"
-      "description": "The target to attack as identified by a discovery."
-      "properties":
-        {
-          "name": { "type": "string" },
-          "attributes":
-            {
-              "type": "object",
-              "description": "These attributes include detailed information about the target provided through the discovery. These attributes are typically used as additional parameters within the attack implementation.",
-              "additionalProperties":
-                { "type": "array", "items": { "type": "string" } },
-            },
-        }
-      "required": ["name", "attributes"]
+      type: object
+      description: The target to attack as identified by a discovery.
+      properties:
+        name:
+          type: string
+        attributes:
+          type: object
+          description: >-
+            These attributes include detailed information about the target
+            provided through the discovery. These attributes are typically used
+            as additional parameters within the attack implementation.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+        - name
+        - attributes
     AttackState:
-      "title": "Attack State"
-      "description": "Any kind of attack specific state that will be passed to the next endpoints."
-      "type": "object"
+      title: Attack State
+      description: >-
+        Any kind of attack specific state that will be passed to the next
+        endpoints.
+      type: object
     AttackStateAndMessages:
-      "title": "Attack State and Messages"
-      "type": "object"
-      "properties":
-        {
-          "state": { "$ref": "#/components/schemas/AttackState" },
-          "messages": { "$ref": "#/components/schemas/Messages" },
-        }
-      "required": ["state"]
+      title: Attack State and Messages
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/AttackState'
+        messages:
+          $ref: '#/components/schemas/Messages'
+      required:
+        - state
     AttackStatus:
       properties:
-        "completed": { "type": "boolean" }
-        "state": { "$ref": "#/components/schemas/AttackState" }
-        "messages": { "$ref": "#/components/schemas/Messages" }
-      required: ["completed"]
+        completed:
+          type: boolean
+        state:
+          $ref: '#/components/schemas/AttackState'
+        messages:
+          $ref: '#/components/schemas/Messages'
+      required:
+        - completed
     DescribingEndpointReference:
-      "title": "HTTP Endpoint Reference"
-      "description": "HTTP endpoint which the Steadybit platform/agent could communicate with."
-      "properties":
-        "path":
-          "description": "Absolute path of the HTTP endpoint."
-          "type": "string"
-          "pattern": "^/.*$"
-        "method":
-          "description": "HTTP method to use when calling the HTTP endpoint."
-          "type": "string"
-          "enum": ["GET"]
-      "required": ["path", "method"]
+      title: HTTP Endpoint Reference
+      description: HTTP endpoint which the Steadybit platform/agent could communicate with.
+      properties:
+        path:
+          description: Absolute path of the HTTP endpoint.
+          type: string
+          pattern: ^/.*$
+        method:
+          description: HTTP method to use when calling the HTTP endpoint.
+          type: string
+          enum:
+            - GET
+      required:
+        - path
+        - method
     MutatingEndpointReference:
-      "title": "HTTP Endpoint Reference"
-      "description": "HTTP endpoint which the Steadybit platform/agent could communicate with."
-      "properties":
-        "path":
-          "type": "string"
-          "description": "Absolute path of the HTTP endpoint."
-          "pattern": "^/.*$"
-        "method":
-          "type": "string"
-          "enum": ["POST", "PUT", "DELETE"]
-          "description": "HTTP method to use when calling the HTTP endpoint."
-      "required": ["path", "method"]
+      title: HTTP Endpoint Reference
+      description: HTTP endpoint which the Steadybit platform/agent could communicate with.
+      properties:
+        path:
+          type: string
+          description: Absolute path of the HTTP endpoint.
+          pattern: ^/.*$
+        method:
+          type: string
+          enum:
+            - POST
+            - PUT
+            - DELETE
+          description: HTTP method to use when calling the HTTP endpoint.
+      required:
+        - path
+        - method
     MutatingEndpointReferenceWithCallInterval:
-      "title": "HTTP Endpoint Reference"
-      "description": "HTTP endpoint which the Steadybit platform/agent could communicate with."
-      "allOf":
-        [
-          { "$ref": "#/components/schemas/MutatingEndpointReference" },
-          {
-            "type": "object",
-            "properties":
-              {
-                "callInterval":
-                  {
-                    "type": "string",
-                    "pattern": "^\\d+(ns|ms|s|m|h|d)$",
-                    "description": "At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`.",
-                  },
-              },
-          },
-        ]
+      title: HTTP Endpoint Reference
+      description: HTTP endpoint which the Steadybit platform/agent could communicate with.
+      allOf:
+        - $ref: '#/components/schemas/MutatingEndpointReference'
+        - type: object
+          properties:
+            callInterval:
+              type: string
+              pattern: ^\d+(ns|ms|s|m|h|d)$
+              description: >-
+                At what frequency should the state endpoint be called? Takes
+                durations in the format of `100ms` or `10s`.
   requestBodies:
     PrepareAttackRequestBody:
-      "title": "Prepare Attack Request"
-      "description": "The HTTP request payload passed to the attack prepare endpoints."
+      title: Prepare Attack Request
+      description: The HTTP request payload passed to the attack prepare endpoints.
       content:
         application/json:
           schema:
-            "type": "object"
-            "properties":
-              {
-                "config":
-                  {
-                    "type": "object",
-                    "description": "The attack configuration. This contains the end-user configuration done for the attack. Possible configuration parameters are defined through the attack description.",
-                  },
-                "target": { "$ref": "#/components/schemas/Target" },
-              }
-            "required": ["config", "target"]
+            type: object
+            properties:
+              config:
+                type: object
+                description: >-
+                  The attack configuration. This contains the end-user
+                  configuration done for the attack. Possible configuration
+                  parameters are defined through the attack description.
+              target:
+                $ref: '#/components/schemas/Target'
+            required:
+              - config
+              - target
     StartAttackRequestBody:
-      "title": "Start Attack Request"
-      "description": "The HTTP request payload passed to the start attack endpoints."
+      title: Start Attack Request
+      description: The HTTP request payload passed to the start attack endpoints.
       content:
         application/json:
           schema:
-            "type": "object"
-            "properties":
-              { "state": { "$ref": "#/components/schemas/AttackState" } }
-            "required": ["state"]
+            type: object
+            properties:
+              state:
+                $ref: '#/components/schemas/AttackState'
+            required:
+              - state
     AttackStatusRequestBody:
-      "title": "Attack Status Request"
-      "description": "The HTTP request payload passed to the attack status endpoints."
+      title: Attack Status Request
+      description: The HTTP request payload passed to the attack status endpoints.
       content:
         application/json:
           schema:
-            "type": "object"
-            "properties":
-              { "state": { "$ref": "#/components/schemas/AttackState" } }
-            "required": ["state"]
+            type: object
+            properties:
+              state:
+                $ref: '#/components/schemas/AttackState'
+            required:
+              - state
     StopAttackRequestBody:
-      "title": "Stop Attack Request"
-      "description": "The HTTP request payload passed to the stop attack endpoints."
+      title: Stop Attack Request
+      description: The HTTP request payload passed to the stop attack endpoints.
       content:
         application/json:
           schema:
-            "type": "object"
-            "properties":
-              { "state": { "$ref": "#/components/schemas/AttackState" } }
-            "required": ["state"]
+            type: object
+            properties:
+              state:
+                $ref: '#/components/schemas/AttackState'
+            required:
+              - state
   responses:
     AttackListResponse:
-      "title": "Attack List Response"
-      "description": "Response for the attack list endpoint"
+      title: Attack List Response
+      description: Response for the attack list endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/AttackList" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/AttackList'
+              - $ref: '#/components/schemas/AttackKitError'
     DescribeAttackResponse:
-      "title": "Describe Attack Response"
-      "description": "Response for the describe attack endpoint"
+      title: Describe Attack Response
+      description: Response for the describe attack endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/AttackDescription" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/AttackDescription'
+              - $ref: '#/components/schemas/AttackKitError'
     PrepareAttackResponse:
-      "title": "Prepare Attack Response"
-      "description": "Response for the attack preparation endpoint"
+      title: Prepare Attack Response
+      description: Response for the attack preparation endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/AttackStateAndMessages" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/AttackStateAndMessages'
+              - $ref: '#/components/schemas/AttackKitError'
     StartAttackResponse:
-      "title": "Start Attack Response"
-      "description": "Response for the start attack endpoint"
+      title: Start Attack Response
+      description: Response for the start attack endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/AttackStateAndMessages" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/AttackStateAndMessages'
+              - $ref: '#/components/schemas/AttackKitError'
     AttackStatusResponse:
-      "title": "Attack Status Response"
-      "description": "Response for the start attack endpoint"
+      title: Attack Status Response
+      description: Response for the start attack endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/AttackStatus" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/AttackStatus'
+              - $ref: '#/components/schemas/AttackKitError'
     StopAttackResponse:
-      "title": "Stop Attack Response"
-      "description": "Response for the stop attack endpoint"
+      title: Stop Attack Response
+      description: Response for the stop attack endpoint
       content:
         application/json:
           schema:
-            "anyOf":
-              [
-                { "$ref": "#/components/schemas/KeyedMessages" },
-                { "$ref": "#/components/schemas/AttackKitError" },
-              ]
+            anyOf:
+              - $ref: '#/components/schemas/KeyedMessages'
+              - $ref: '#/components/schemas/AttackKitError'
