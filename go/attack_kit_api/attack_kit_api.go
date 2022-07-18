@@ -14,13 +14,6 @@ const (
 	State    AttackDescriptionCategory = "state"
 )
 
-// Defines values for AttackDescriptionStatusMethod.
-const (
-	AttackDescriptionStatusMethodDELETE AttackDescriptionStatusMethod = "DELETE"
-	AttackDescriptionStatusMethodPOST   AttackDescriptionStatusMethod = "POST"
-	AttackDescriptionStatusMethodPUT    AttackDescriptionStatusMethod = "PUT"
-)
-
 // Defines values for AttackDescriptionTimeControl.
 const (
 	EXTERNAL      AttackDescriptionTimeControl = "EXTERNAL"
@@ -58,6 +51,13 @@ const (
 	MutatingEndpointReferenceMethodPUT    MutatingEndpointReferenceMethod = "PUT"
 )
 
+// Defines values for MutatingEndpointReferenceWithCallIntervalMethod.
+const (
+	MutatingEndpointReferenceWithCallIntervalMethodDELETE MutatingEndpointReferenceWithCallIntervalMethod = "DELETE"
+	MutatingEndpointReferenceWithCallIntervalMethodPOST   MutatingEndpointReferenceWithCallIntervalMethod = "POST"
+	MutatingEndpointReferenceWithCallIntervalMethodPUT    MutatingEndpointReferenceWithCallIntervalMethod = "PUT"
+)
+
 // Provides details about a possible attack, e.g., what configuration options it has, how to present it to end-users and how to trigger the attack.
 type AttackDescription struct {
 	// Used for categorization of the attack within user interfaces.
@@ -80,23 +80,16 @@ type AttackDescription struct {
 	Prepare MutatingEndpointReference `json:"prepare"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
-	Start  MutatingEndpointReference `json:"start"`
-	Status *struct {
-		// At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`.
-		CallInterval *string `json:"callInterval,omitempty"`
+	Start MutatingEndpointReference `json:"start"`
 
-		// HTTP method to use when calling the HTTP endpoint.
-		Method AttackDescriptionStatusMethod `json:"method"`
-
-		// Absolute path of the HTTP endpoint.
-		Path string `json:"path"`
-	} `json:"status,omitempty"`
+	// HTTP endpoint which the Steadybit platform/agent could communicate with.
+	Status *MutatingEndpointReferenceWithCallInterval `json:"status,omitempty"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
 	Stop *MutatingEndpointReference `json:"stop,omitempty"`
 
 	// What target type this attack should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.
-	TargetType *string `json:"targetType,omitempty"`
+	TargetType string `json:"targetType"`
 
 	// Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 	TimeControl AttackDescriptionTimeControl `json:"timeControl"`
@@ -107,9 +100,6 @@ type AttackDescription struct {
 
 // Used for categorization of the attack within user interfaces.
 type AttackDescriptionCategory string
-
-// HTTP method to use when calling the HTTP endpoint.
-type AttackDescriptionStatusMethod string
 
 // Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type AttackDescriptionTimeControl string
@@ -164,13 +154,27 @@ type AttackParameter struct {
 // What kind of value this parameter is capturing. The type selection influences the `config` passed as part of the `PrepareRequest`. It also results in improved user-interface elements.
 type AttackParameterType string
 
-// A successful response with attack state
-type AttackState struct {
+// Any kind of attack specific state that will be passed to the next endpoints.
+type AttackState = map[string]interface{}
+
+// AttackStateAndMessages defines model for AttackStateAndMessages.
+type AttackStateAndMessages struct {
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 
 	// Any kind of attack specific state that will be passed to the next endpoints.
-	State map[string]interface{} `json:"state"`
+	State AttackState `json:"state"`
+}
+
+// AttackStatus defines model for AttackStatus.
+type AttackStatus struct {
+	Completed bool `json:"completed"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State *AttackState `json:"state,omitempty"`
 }
 
 // HTTP endpoint which the Steadybit platform/agent could communicate with.
@@ -184,6 +188,12 @@ type DescribingEndpointReference struct {
 
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
+
+// KeyedMessages defines model for KeyedMessages.
+type KeyedMessages struct {
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+}
 
 // Log-message that will be passed to the agent log.
 type Message struct {
@@ -209,6 +219,21 @@ type MutatingEndpointReference struct {
 // HTTP method to use when calling the HTTP endpoint.
 type MutatingEndpointReferenceMethod string
 
+// MutatingEndpointReferenceWithCallInterval defines model for MutatingEndpointReferenceWithCallInterval.
+type MutatingEndpointReferenceWithCallInterval struct {
+	// At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`.
+	CallInterval *string `json:"callInterval,omitempty"`
+
+	// HTTP method to use when calling the HTTP endpoint.
+	Method MutatingEndpointReferenceWithCallIntervalMethod `json:"method"`
+
+	// Absolute path of the HTTP endpoint.
+	Path string `json:"path"`
+}
+
+// HTTP method to use when calling the HTTP endpoint.
+type MutatingEndpointReferenceWithCallIntervalMethod string
+
 // The target to attack as identified by a discovery.
 type Target struct {
 	// These attributes include detailed information about the target provided through the discovery. These attributes are typically used as additional parameters within the attack implementation.
@@ -218,6 +243,11 @@ type Target struct {
 
 // AttackListResponse defines model for AttackListResponse.
 type AttackListResponse struct {
+	union json.RawMessage
+}
+
+// AttackStatusResponse defines model for AttackStatusResponse.
+type AttackStatusResponse struct {
 	union json.RawMessage
 }
 
@@ -231,6 +261,22 @@ type PrepareAttackResponse struct {
 	union json.RawMessage
 }
 
+// StartAttackResponse defines model for StartAttackResponse.
+type StartAttackResponse struct {
+	union json.RawMessage
+}
+
+// StopAttackResponse defines model for StopAttackResponse.
+type StopAttackResponse struct {
+	union json.RawMessage
+}
+
+// AttackStatusRequestBody defines model for AttackStatusRequestBody.
+type AttackStatusRequestBody struct {
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State AttackState `json:"state"`
+}
+
 // PrepareAttackRequestBody defines model for PrepareAttackRequestBody.
 type PrepareAttackRequestBody struct {
 	// The attack configuration. This contains the end-user configuration done for the attack. Possible configuration parameters are defined through the attack description.
@@ -238,6 +284,18 @@ type PrepareAttackRequestBody struct {
 
 	// The target to attack as identified by a discovery.
 	Target Target `json:"target"`
+}
+
+// StartAttackRequestBody defines model for StartAttackRequestBody.
+type StartAttackRequestBody struct {
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State AttackState `json:"state"`
+}
+
+// StopAttackRequestBody defines model for StopAttackRequestBody.
+type StopAttackRequestBody struct {
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State AttackState `json:"state"`
 }
 
 func (t AttackListResponse) AsAttackList() (AttackList, error) {
@@ -270,6 +328,40 @@ func (t AttackListResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (t *AttackListResponse) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+func (t AttackStatusResponse) AsAttackStatus() (AttackStatus, error) {
+	var body AttackStatus
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *AttackStatusResponse) FromAttackStatus(v AttackStatus) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t AttackStatusResponse) AsAttackKitError() (AttackKitError, error) {
+	var body AttackKitError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *AttackStatusResponse) FromAttackKitError(v AttackKitError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t AttackStatusResponse) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AttackStatusResponse) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -308,13 +400,13 @@ func (t *DescribeAttackResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (t PrepareAttackResponse) AsAttackState() (AttackState, error) {
-	var body AttackState
+func (t PrepareAttackResponse) AsAttackStateAndMessages() (AttackStateAndMessages, error) {
+	var body AttackStateAndMessages
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *PrepareAttackResponse) FromAttackState(v AttackState) error {
+func (t *PrepareAttackResponse) FromAttackStateAndMessages(v AttackStateAndMessages) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -340,4 +432,75 @@ func (t PrepareAttackResponse) MarshalJSON() ([]byte, error) {
 func (t *PrepareAttackResponse) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
+}
+
+func (t StartAttackResponse) AsAttackStateAndMessages() (AttackStateAndMessages, error) {
+	var body AttackStateAndMessages
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *StartAttackResponse) FromAttackStateAndMessages(v AttackStateAndMessages) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t StartAttackResponse) AsAttackKitError() (AttackKitError, error) {
+	var body AttackKitError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *StartAttackResponse) FromAttackKitError(v AttackKitError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t StartAttackResponse) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *StartAttackResponse) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+func (t StopAttackResponse) AsKeyedMessages() (KeyedMessages, error) {
+	var body KeyedMessages
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *StopAttackResponse) FromKeyedMessages(v KeyedMessages) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t StopAttackResponse) AsAttackKitError() (AttackKitError, error) {
+	var body AttackKitError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *StopAttackResponse) FromAttackKitError(v AttackKitError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t StopAttackResponse) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *StopAttackResponse) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+func Ptr[T any](val T) *T {
+	return &val
 }
