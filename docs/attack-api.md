@@ -43,8 +43,9 @@ This endpoint needs to be [registered with Steadybit agents](./attack-registrati
 
 ### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `AttackListResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `IndexResponse`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackListResponse`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `AttackListResponse`
 
 ## Attack Description
 
@@ -106,8 +107,9 @@ Attack description is a somewhat evolved topic, and you can find much more detai
 
 ### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `DescribeAttackResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `DescribeAttackResponse`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `describeAttackResponse`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `DescribeAttackResponse`
 
 ### Versioning
 
@@ -181,8 +183,9 @@ as part of the start step).
 
 #### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `PrepareAttackRequestBody`, `PrepareAttackResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `prepareAttackRequest`, `prepareAttackResponse`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `PrepareAttackRequestBody`, `PrepareAttackResponse`
 
 ### Start
 
@@ -221,8 +224,10 @@ what the status endpoint is for).
 
 #### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `StartAttackRequestBody`, `StartAttackResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `startAttackRequest`, `startAttackResponse`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `StartAttackRequestBody`, `StartAttackResponse`
+
 
 ### Status
 
@@ -257,8 +262,9 @@ The status endpoint is continuously called until it responds with `completed=tru
 
 #### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `AttackStatusRequestBody`, `AttackStatusResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `attackStatusRequest`, `attackStatusResponse`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `AttackStatusRequestBody`, `AttackStatusResponse`
 
 ### Stop
 
@@ -285,5 +291,6 @@ failure.
 
 #### References
 
+- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `StopAttackRequestBody`, `StopAttackResponse`
 - [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StopRequest`
-- [JSON Schema](https://github.com/steadybit/attack-kit/tree/main/json-schema): `stopAttackRequest`
+- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `StopAttackRequestBody`, `StopAttackResponse`
