@@ -178,6 +178,7 @@ components:
           enum:
             - string
             - 'string[]'
+            - 'string_array'
             - password
             - integer
             - boolean

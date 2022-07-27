@@ -23,13 +23,14 @@ const (
 
 // Defines values for AttackParameterType.
 const (
-	Boolean    AttackParameterType = "boolean"
-	Duration   AttackParameterType = "duration"
-	Integer    AttackParameterType = "integer"
-	Password   AttackParameterType = "password"
-	Percentage AttackParameterType = "percentage"
-	String     AttackParameterType = "string"
-	String1    AttackParameterType = "string[]"
+	Boolean     AttackParameterType = "boolean"
+	Duration    AttackParameterType = "duration"
+	Integer     AttackParameterType = "integer"
+	Password    AttackParameterType = "password"
+	Percentage  AttackParameterType = "percentage"
+	String      AttackParameterType = "string"
+	String1     AttackParameterType = "string[]"
+	StringArray AttackParameterType = "string_array"
 )
 
 // Defines values for DescribingEndpointReferenceMethod.

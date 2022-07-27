@@ -172,7 +172,7 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
-## `string[]` or `string_array` or `stringarray`
+## `string[]` or `string_array`
 
 You can use the `string[]` type for multiple textual inputs.
 
