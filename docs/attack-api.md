@@ -57,7 +57,7 @@ Attack descriptions expose information about the presentation, configuration and
 - Which configuration options should be presented to end-users within the user interface?
 - Can the attack be stopped, or is this an instantaneous event, e.g., host reboots?
 
-Attack description is a somewhat evolved topic, and you can find much more detailed information within our separate attack description document.
+Attack description is a somewhat evolved topic. For more information on attack parameters, please refer to our [parameter types](./parameter-types.md) documentation.
 
 ### Example
 
