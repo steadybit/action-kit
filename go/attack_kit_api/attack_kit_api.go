@@ -142,6 +142,9 @@ type AttackParameter struct {
 	// The key under which the attack parameter is stored. This key can then be found within the prepare request's config field.
 	Name string `json:"name"`
 
+	// Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
+	Options *[]ParameterOption `json:"options,omitempty"`
+
 	// You can define this fields to order the parameters in the user interface. The lower the value, the higher the position.
 	Order *int `json:"order,omitempty"`
 
@@ -234,6 +237,15 @@ type MutatingEndpointReferenceWithCallInterval struct {
 
 // HTTP method to use when calling the HTTP endpoint.
 type MutatingEndpointReferenceWithCallIntervalMethod string
+
+// ParameterOption defines model for ParameterOption.
+type ParameterOption struct {
+	// A human-readable label describing this option.
+	Label string `json:"label"`
+
+	// The technical value which will be passed to the attack as part of the `config` object.
+	Value string `json:"value"`
+}
 
 // The target to attack as identified by a discovery.
 type Target struct {

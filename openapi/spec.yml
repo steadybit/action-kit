@@ -158,6 +158,17 @@ components:
         - parameters
         - prepare
         - start
+    ParameterOption:
+      properties:
+        label:
+          type: string
+          description: A human-readable label describing this option.
+        value:
+          type: string
+          description: The technical value which will be passed to the attack as part of the `config` object.
+      required:
+        - label
+        - value
     AttackParameter:
       properties:
         label:
@@ -206,6 +217,12 @@ components:
           description: >-
             A default value for this parameter. This value will be used if the
             user does not specify a value for this parameter.
+        options:
+          type: array
+          description: Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
+          items:
+            $ref: '#/components/schemas/ParameterOption'
+          uniqueItems: true
       required:
         - label
         - name
