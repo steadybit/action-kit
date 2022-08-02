@@ -195,6 +195,7 @@ components:
             - boolean
             - percentage
             - duration
+            - file
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It
@@ -222,6 +223,12 @@ components:
           description: Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
           items:
             $ref: '#/components/schemas/ParameterOption'
+          uniqueItems: true
+        acceptedFileTypes:
+          type: array
+          description: "Unique file type specifiers describing what type of files are accepted for parameters of type 'file'."
+          items:
+            type: string
           uniqueItems: true
       required:
         - label

@@ -6,6 +6,8 @@ Attacks' support parameters for configuration purposes. For example, you may wan
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
 
+<img src="img/parameters/boolean.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a boolean parameter looks like. Depicting a textual label and a toggle component." />
+
 ### Example
 
 #### Parameter Definition
@@ -39,6 +41,8 @@ Either `true` or `false` values. With optional support for `null` when `required
 ## `duration`
 
 A time duration. Renders appropriate UI controls that facilitate time inputs—exposed as `number`s representing milliseconds to extensions.
+
+<img src="img/parameters/duration.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a duration parameter looks like. Depicting a textual label and an input for a numeric value followed by a time unit selector." />
 
 ### Example
 
@@ -74,6 +78,8 @@ A time duration. Renders appropriate UI controls that facilitate time inputs—e
 
 Any integer number.
 
+<img src="img/parameters/integer.png" width="512" alt="Screenshot showing what the Steadybit user interface element for an integer parameter looks like. Depicting a textual label and an input for a numeric value enclosed by plus/minus buttons." />
+
 ### Example
 
 #### Parameter Definition
@@ -107,6 +113,8 @@ Any integer number.
 ## `percentage`
 
 `percentage` is a variation of the `integer` parameter that renders more appropriate user interface controls. A value of 0% is represented as the number `0`. 100% is represented as the number `100`.
+
+<img src="img/parameters/percentage.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a percentage parameter looks like. Depicting a textual label and an input for a numeric value." />
 
 ### Example
 
@@ -144,6 +152,8 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 
 **Note:** It is the responsibility of an extension to decide what to do when receiving an empty string.
 
+<img src="img/parameters/string.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string parameter looks like. Depicting a textual label and a text input." />
+
 ### Example
 
 #### Parameter Definition
@@ -166,7 +176,7 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
-##### Without a Empty String
+##### With an Empty String
 
 ```json
 {
@@ -182,9 +192,13 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
-## `string[]` or `string_array`
+## `string_array`
 
-You can use the `string[]` type for multiple textual inputs.
+You can use the `string_array` type for multiple textual inputs.
+
+<img src="img/parameters/string.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string[] / string_array parameter looks like. Depicting a textual label and a text input." />
+
+<img src="img/parameters/string_array_open.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string[] / string_array parameter looks like when interacting with the input field. Depicting an overlay showing selectable options." />
 
 ### Example
 
@@ -247,3 +261,42 @@ You can use the `string[]` type for multiple textual inputs.
 ## `password`
 
 The `password` parameter behaves like the `string` parameter type, except for the visual presentation in the Steadybit user interface.
+
+<img src="img/parameters/password.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a password parameter looks like. Depicting a textual label and a password input." />
+
+## `file`
+
+Files can be uploaded and passed to attacks through a parameter of the `file` type. Uploaded files are delivered to attacks in base64 encoding. Through the optional `acceptedFileTypes` option you can restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers) may be selected by users.
+
+<img src="img/parameters/file.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a file parameter looks like. Depicting a textual label and a drop area for files." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "schematics",
+  "label": "Space Ship Schematics",
+  "type": "file",
+  "acceptedFileTypes": [".svg", ".dwg"]
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Attacks
+
+##### With a Value
+```json
+{
+  "schematics": "WW91IGFyZSBxdWl0ZSBjdXJpb3VzISBIZXJlLCBoYXZlIGEgY29va2llISBBbHNvLCBjaGVjayBvdXQgaHR0cHM6Ly9zdGFyd2Fycy5mYW5kb20uY29tL3dpa2kvRGVhdGhfU3Rhcl9wbGFucyE="
+}
+```
+
+
+##### Without a Value
+
+```json
+{
+  "schematics": null
+}
+```

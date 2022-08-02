@@ -25,6 +25,7 @@ const (
 const (
 	Boolean     AttackParameterType = "boolean"
 	Duration    AttackParameterType = "duration"
+	File        AttackParameterType = "file"
 	Integer     AttackParameterType = "integer"
 	Password    AttackParameterType = "password"
 	Percentage  AttackParameterType = "percentage"
@@ -127,6 +128,9 @@ type AttackList struct {
 
 // AttackParameter defines model for AttackParameter.
 type AttackParameter struct {
+	// Unique file type specifiers describing what type of files are accepted for parameters of type 'file'.
+	AcceptedFileTypes *[]string `json:"acceptedFileTypes,omitempty"`
+
 	// Whether this parameter should be placed under the expandable advanced section within the user interface.
 	Advanced *bool `json:"advanced,omitempty"`
 

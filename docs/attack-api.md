@@ -8,7 +8,7 @@ Attacks are implemented with the help of AttackKit and the attack API through an
 implementing the attack API to describe which attacks are supported and how to execute these. The following diagram illustrates who is issuing calls and in what
 phases.
 
-![UML sequence diagram showing in what order the APIs are called](attack-flow.svg)
+![UML sequence diagram showing in what order the APIs are called](img/attack-flow.svg)
 
 As can be seen above, the attack provider is called by the Steadybit agent in two phases:
 

@@ -44,7 +44,7 @@ export interface AttackParameter {
 	label: string;
 	name: string;
 	description?: string;
-	type: 'string' | 'string[]' | 'string_array' | 'password' | 'integer' | 'boolean' | 'percentage' | 'duration';
+	type: 'string' | 'string[]' | 'string_array' | 'password' | 'integer' | 'boolean' | 'percentage' | 'duration' | 'file';
 	required?: boolean;
 	// whether this parameter should be placed under the expandable advanced section within the user interface
 	advanced?: boolean;
