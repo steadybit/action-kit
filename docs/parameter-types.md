@@ -142,6 +142,8 @@ Any integer number.
 
 Strings are the most fundamental parameter type. They represent arbitrary character sequences just like you would expect.
 
+**Note:** It is the responsibility of an extension to decide what to do when receiving an empty string.
+
 ### Example
 
 #### Parameter Definition
@@ -164,11 +166,19 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
+##### Without a Empty String
+
+```json
+{
+  "fullName": ""
+}
+```
+
 ##### Without a Value
 
 ```json
 {
-  "fullName": null
+  "fullName": "Jane Doe"
 }
 ```
 
