@@ -27,6 +27,7 @@ const (
 	Duration    AttackParameterType = "duration"
 	File        AttackParameterType = "file"
 	Integer     AttackParameterType = "integer"
+	KeyValue    AttackParameterType = "key_value"
 	Password    AttackParameterType = "password"
 	Percentage  AttackParameterType = "percentage"
 	String      AttackParameterType = "string"

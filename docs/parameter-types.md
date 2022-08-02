@@ -300,3 +300,43 @@ Files can be uploaded and passed to attacks through a parameter of the `file` ty
   "schematics": null
 }
 ```
+
+## `key_value`
+
+For key/value pairs, e.g., tags, labels and environment variables, we support a `key_value` parameter type.
+
+<img src="img/parameters/key_value.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a key_value parameter looks like. Depicting multiple key/value input fields." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "env",
+  "label": "Environment",
+  "type": "key_value",
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Attacks
+
+##### With a Value
+```json
+{
+  "env": [
+    {
+      "key": "Dagobah",
+      "value": "humid"
+    }
+  ]
+}
+```
+
+
+##### Without a Value
+
+```json
+{
+  "env": []
+}

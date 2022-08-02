@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+ - Support `key_value` attack parameters.
+
 ## 0.4.0
 
  - Support `file` attack parameters.
