@@ -2,6 +2,18 @@
 
 Attacks' support parameters for configuration purposes. For example, you may want to use a parameter of type `duration` to configure how long an attack is supposed to take. This document explains what the supported parameter types are and how they work.
 
+Supported parameter types:
+
+  * [`boolean`](#boolean)
+  * [`duration`](#duration)
+  * [`integer`](#integer)
+  * [`percentage`](#percentage)
+  * [`string`](#string)
+  * [`string_array`](#string_array)
+  * [`password`](#password)
+  * [`file`](#file)
+  * [`key_value`](#key_value)
+
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
