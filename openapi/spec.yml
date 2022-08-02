@@ -53,10 +53,6 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Message'
-    KeyedMessages:
-      properties:
-        messages:
-          $ref: '#/components/schemas/Messages'
     Message:
       title: Message
       description: Log-message that will be passed to the agent log.
@@ -73,6 +69,28 @@ components:
           default: info
       required:
         - message
+    Artifacts:
+      title: Artifacts
+      type: array
+      items:
+        $ref: '#/components/schemas/Artifact'
+    Artifact:
+      title: Artifact
+      description: Attacks may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
+      type: object
+      properties:
+        label:
+          type: string
+          description: Human-readable label for the artifact. We recommend to include file extensions within the label for a better user-experience when downloading these artifacts, e.g., load_test_result.tar.gz.
+          maxLength: 256
+        data:
+          type: string
+          description: base64 encoded data
+          # 5 MiB * 133% (to account for inefficienty of base64 encoding)
+          maxLength: 6973030
+      required:
+        - label
+        - data
     AttackDescription:
       title: Attack Description
       description: >-
@@ -111,10 +129,6 @@ components:
             doing.
         category:
           type: string
-          enum:
-            - resource
-            - network
-            - state
           description: Used for categorization of the attack within user interfaces.
         targetType:
           type: string
@@ -152,8 +166,6 @@ components:
         - label
         - version
         - description
-        - category
-        - targetType
         - timeControl
         - parameters
         - prepare
@@ -260,17 +272,27 @@ components:
         Any kind of attack specific state that will be passed to the next
         endpoints.
       type: object
-    AttackStateAndMessages:
-      title: Attack State and Messages
+    PrepareResult:
       type: object
       properties:
         state:
           $ref: '#/components/schemas/AttackState'
         messages:
           $ref: '#/components/schemas/Messages'
+        artifacts:
+          $ref: '#/components/schemas/Artifacts'
       required:
         - state
-    AttackStatus:
+    StartResult:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/AttackState'
+        messages:
+          $ref: '#/components/schemas/Messages'
+        artifacts:
+          $ref: '#/components/schemas/Artifacts'
+    StatusResult:
       properties:
         completed:
           type: boolean
@@ -278,8 +300,16 @@ components:
           $ref: '#/components/schemas/AttackState'
         messages:
           $ref: '#/components/schemas/Messages'
+        artifacts:
+          $ref: '#/components/schemas/Artifacts'
       required:
         - completed
+    StopResult:
+      properties:
+        messages:
+          $ref: '#/components/schemas/Messages'
+        artifacts:
+          $ref: '#/components/schemas/Artifacts'
     DescribingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.
@@ -409,7 +439,7 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/AttackStateAndMessages'
+              - $ref: '#/components/schemas/PrepareResult'
               - $ref: '#/components/schemas/AttackKitError'
     StartAttackResponse:
       title: Start Attack Response
@@ -418,7 +448,7 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/AttackStateAndMessages'
+              - $ref: '#/components/schemas/StartResult'
               - $ref: '#/components/schemas/AttackKitError'
     AttackStatusResponse:
       title: Attack Status Response
@@ -427,7 +457,7 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/AttackStatus'
+              - $ref: '#/components/schemas/StatusResult'
               - $ref: '#/components/schemas/AttackKitError'
     StopAttackResponse:
       title: Stop Attack Response
@@ -436,5 +466,5 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/KeyedMessages'
+              - $ref: '#/components/schemas/StopResult'
               - $ref: '#/components/schemas/AttackKitError'

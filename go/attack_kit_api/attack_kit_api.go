@@ -7,13 +7,6 @@ import (
 	"encoding/json"
 )
 
-// Defines values for AttackDescriptionCategory.
-const (
-	Network  AttackDescriptionCategory = "network"
-	Resource AttackDescriptionCategory = "resource"
-	State    AttackDescriptionCategory = "state"
-)
-
 // Defines values for AttackDescriptionTimeControl.
 const (
 	EXTERNAL      AttackDescriptionTimeControl = "EXTERNAL"
@@ -61,10 +54,22 @@ const (
 	MutatingEndpointReferenceWithCallIntervalMethodPUT    MutatingEndpointReferenceWithCallIntervalMethod = "PUT"
 )
 
+// Attacks may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
+type Artifact struct {
+	// base64 encoded data
+	Data string `json:"data"`
+
+	// Human-readable label for the artifact. We recommend to include file extensions within the label for a better user-experience when downloading these artifacts, e.g., load_test_result.tar.gz.
+	Label string `json:"label"`
+}
+
+// Artifacts defines model for Artifacts.
+type Artifacts = []Artifact
+
 // Provides details about a possible attack, e.g., what configuration options it has, how to present it to end-users and how to trigger the attack.
 type AttackDescription struct {
 	// Used for categorization of the attack within user interfaces.
-	Category AttackDescriptionCategory `json:"category"`
+	Category *string `json:"category,omitempty"`
 
 	// Description for end-users to help them understand what the attack is doing.
 	Description string `json:"description"`
@@ -92,7 +97,7 @@ type AttackDescription struct {
 	Stop *MutatingEndpointReference `json:"stop,omitempty"`
 
 	// What target type this attack should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.
-	TargetType string `json:"targetType"`
+	TargetType *string `json:"targetType,omitempty"`
 
 	// Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 	TimeControl AttackDescriptionTimeControl `json:"timeControl"`
@@ -100,9 +105,6 @@ type AttackDescription struct {
 	// The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. We do recommend usage of semver strings.
 	Version string `json:"version"`
 }
-
-// Used for categorization of the attack within user interfaces.
-type AttackDescriptionCategory string
 
 // Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type AttackDescriptionTimeControl string
@@ -166,26 +168,6 @@ type AttackParameterType string
 // Any kind of attack specific state that will be passed to the next endpoints.
 type AttackState = map[string]interface{}
 
-// AttackStateAndMessages defines model for AttackStateAndMessages.
-type AttackStateAndMessages struct {
-	// Log-messages that will be passed to the agent log.
-	Messages *Messages `json:"messages,omitempty"`
-
-	// Any kind of attack specific state that will be passed to the next endpoints.
-	State AttackState `json:"state"`
-}
-
-// AttackStatus defines model for AttackStatus.
-type AttackStatus struct {
-	Completed bool `json:"completed"`
-
-	// Log-messages that will be passed to the agent log.
-	Messages *Messages `json:"messages,omitempty"`
-
-	// Any kind of attack specific state that will be passed to the next endpoints.
-	State *AttackState `json:"state,omitempty"`
-}
-
 // HTTP endpoint which the Steadybit platform/agent could communicate with.
 type DescribingEndpointReference struct {
 	// HTTP method to use when calling the HTTP endpoint.
@@ -197,12 +179,6 @@ type DescribingEndpointReference struct {
 
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
-
-// KeyedMessages defines model for KeyedMessages.
-type KeyedMessages struct {
-	// Log-messages that will be passed to the agent log.
-	Messages *Messages `json:"messages,omitempty"`
-}
 
 // Log-message that will be passed to the agent log.
 type Message struct {
@@ -250,6 +226,48 @@ type ParameterOption struct {
 
 	// The technical value which will be passed to the attack as part of the `config` object.
 	Value string `json:"value"`
+}
+
+// PrepareResult defines model for PrepareResult.
+type PrepareResult struct {
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State AttackState `json:"state"`
+}
+
+// StartResult defines model for StartResult.
+type StartResult struct {
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State *AttackState `json:"state,omitempty"`
+}
+
+// StatusResult defines model for StatusResult.
+type StatusResult struct {
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+	Completed bool       `json:"completed"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+
+	// Any kind of attack specific state that will be passed to the next endpoints.
+	State *AttackState `json:"state,omitempty"`
+}
+
+// StopResult defines model for StopResult.
+type StopResult struct {
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
 }
 
 // The target to attack as identified by a discovery.
@@ -350,13 +368,13 @@ func (t *AttackListResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (t AttackStatusResponse) AsAttackStatus() (AttackStatus, error) {
-	var body AttackStatus
+func (t AttackStatusResponse) AsStatusResult() (StatusResult, error) {
+	var body StatusResult
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *AttackStatusResponse) FromAttackStatus(v AttackStatus) error {
+func (t *AttackStatusResponse) FromStatusResult(v StatusResult) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -418,13 +436,13 @@ func (t *DescribeAttackResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (t PrepareAttackResponse) AsAttackStateAndMessages() (AttackStateAndMessages, error) {
-	var body AttackStateAndMessages
+func (t PrepareAttackResponse) AsPrepareResult() (PrepareResult, error) {
+	var body PrepareResult
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *PrepareAttackResponse) FromAttackStateAndMessages(v AttackStateAndMessages) error {
+func (t *PrepareAttackResponse) FromPrepareResult(v PrepareResult) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -452,13 +470,13 @@ func (t *PrepareAttackResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (t StartAttackResponse) AsAttackStateAndMessages() (AttackStateAndMessages, error) {
-	var body AttackStateAndMessages
+func (t StartAttackResponse) AsStartResult() (StartResult, error) {
+	var body StartResult
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *StartAttackResponse) FromAttackStateAndMessages(v AttackStateAndMessages) error {
+func (t *StartAttackResponse) FromStartResult(v StartResult) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -486,13 +504,13 @@ func (t *StartAttackResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func (t StopAttackResponse) AsKeyedMessages() (KeyedMessages, error) {
-	var body KeyedMessages
+func (t StopAttackResponse) AsStopResult() (StopResult, error) {
+	var body StopResult
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *StopAttackResponse) FromKeyedMessages(v KeyedMessages) error {
+func (t *StopAttackResponse) FromStopResult(v StopResult) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
