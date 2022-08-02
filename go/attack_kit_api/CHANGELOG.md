@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+ - Support `file` attack parameters.
+
 ## 0.3.0
 
  - Support `options` for attack parameters.
