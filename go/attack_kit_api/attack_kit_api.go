@@ -7,6 +7,14 @@ import (
 	"encoding/json"
 )
 
+// Defines values for AttackDescriptionKind.
+const (
+	ATTACK   AttackDescriptionKind = "ATTACK"
+	CHECK    AttackDescriptionKind = "CHECK"
+	LOADTEST AttackDescriptionKind = "LOAD_TEST"
+	OTHER    AttackDescriptionKind = "OTHER"
+)
+
 // Defines values for AttackDescriptionTimeControl.
 const (
 	EXTERNAL      AttackDescriptionTimeControl = "EXTERNAL"
@@ -80,6 +88,9 @@ type AttackDescription struct {
 	// A technical ID that is used to uniquely identify this type of attack. You will typically want to use something like `org.example.attacks.my-fancy-attack`.
 	Id string `json:"id"`
 
+	// Describes what kind of attack this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
+	Kind AttackDescriptionKind `json:"kind"`
+
 	// A human-readable label for the attack.
 	Label      string            `json:"label"`
 	Parameters []AttackParameter `json:"parameters"`
@@ -105,6 +116,9 @@ type AttackDescription struct {
 	// The version of the attack. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same attack version. We do recommend usage of semver strings.
 	Version string `json:"version"`
 }
+
+// Describes what kind of attack this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
+type AttackDescriptionKind string
 
 // Attacks can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those attacks having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type AttackDescriptionTimeControl string
@@ -319,7 +333,7 @@ type PrepareAttackRequestBody struct {
 	Config map[string]interface{} `json:"config"`
 
 	// The target to attack as identified by a discovery.
-	Target Target `json:"target"`
+	Target *Target `json:"target,omitempty"`
 }
 
 // StartAttackRequestBody defines model for StartAttackRequestBody.

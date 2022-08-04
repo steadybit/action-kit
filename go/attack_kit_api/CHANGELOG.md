@@ -5,6 +5,8 @@
  - **Breaking:** This version contains breaking changes in the AttackKit API.
    - Attack description `category` is now optional and no longer an enumeration.
    - Attack's `targetType` is now optional.
+   - `target` is now optional within prepare request bodies.
+   - new required configuration value `kind` in preparation for action, checks load test support.
    - Several types were renamed to make it easier to under when to use them.
  - Added the ability to upload artifacts to Steadybit as part of the `prepare`,
    `start`, `status` and `stop` endpoints.

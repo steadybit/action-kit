@@ -127,6 +127,16 @@ components:
           description: >-
             Description for end-users to help them understand what the attack is
             doing.
+        kind:
+          type: string
+          enum:
+            - ATTACK
+            - CHECK
+            - LOAD_TEST
+            - OTHER
+          description: >-
+            Describes what kind of attack this is. This is used to help users understand
+            and classify the various runnable actions that are part of an experiment.
         category:
           type: string
           description: Used for categorization of the attack within user interfaces.
@@ -166,6 +176,7 @@ components:
         - label
         - version
         - description
+        - kind
         - timeControl
         - parameters
         - prepare
@@ -376,7 +387,6 @@ components:
                 $ref: '#/components/schemas/Target'
             required:
               - config
-              - target
     StartAttackRequestBody:
       title: Start Attack Request
       description: The HTTP request payload passed to the start attack endpoints.
