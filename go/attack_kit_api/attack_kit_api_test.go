@@ -20,10 +20,10 @@ func markAsUsed(t *testing.T, v any) {
 func TestPrepareAttackRequestBody(t *testing.T) {
 	v := PrepareAttackRequestBody{
 		Config: make(map[string]interface{}),
-		Target: Target{
+		Target: Ptr(Target{
 			Name:       "gateway",
 			Attributes: make(map[string][]string),
-		},
+		}),
 	}
 	markAsUsed(t, v)
 }
