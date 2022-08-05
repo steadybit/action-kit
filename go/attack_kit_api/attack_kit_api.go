@@ -551,6 +551,3 @@ func (t *StopAttackResponse) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
-func Ptr[T any](val T) *T {
-	return &val
-}

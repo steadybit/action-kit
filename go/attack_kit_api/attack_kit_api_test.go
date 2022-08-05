@@ -61,6 +61,10 @@ func TestAttackList(t *testing.T) {
 	markAsUsed(t, v)
 }
 
+func Ptr[T any](val T) *T {
+	return &val
+}
+
 func TestAttackDescription(t *testing.T) {
 	v := AttackDescription{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",

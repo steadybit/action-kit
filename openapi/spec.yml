@@ -86,7 +86,7 @@ components:
         data:
           type: string
           description: base64 encoded data
-          # 5 MiB * 133% (to account for inefficienty of base64 encoding)
+          # 5 MiB * 133% (to account for inefficiency of base64 encoding)
           maxLength: 6973030
       required:
         - label
