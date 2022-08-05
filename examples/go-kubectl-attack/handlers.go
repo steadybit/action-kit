@@ -7,16 +7,18 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/attack-kit/go/attack_kit_api"
+	"github.com/steadybit/extension-kit"
+	"github.com/steadybit/extension-kit/exthttp"
+	"github.com/steadybit/extension-kit/extutil"
 	"net/http"
 	"os/exec"
 	"strings"
 )
 
-func getAttackList(w http.ResponseWriter, _ *http.Request, _ []byte) {
-	w.Header().Set("Content-Type", "application/json")
-
-	attackList := attack_kit_api.AttackList{
+func getAttackList() attack_kit_api.AttackList {
+	return attack_kit_api.AttackList{
 		Attacks: []attack_kit_api.DescribingEndpointReference{
 			{
 				"GET",
@@ -24,13 +26,10 @@ func getAttackList(w http.ResponseWriter, _ *http.Request, _ []byte) {
 			},
 		},
 	}
-
-	json.NewEncoder(w).Encode(attackList)
 }
 
-func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []byte) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(attack_kit_api.AttackDescription{
+func getRolloutRestartDescription() attack_kit_api.AttackDescription {
+	return attack_kit_api.AttackDescription{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
 		Label:       "Rollout Restart Deployment",
 		Description: "Execute a rollout restart for a Kubernetes deployment",
@@ -65,20 +64,14 @@ func getRolloutRestartDescription(w http.ResponseWriter, _ *http.Request, _ []by
 			Method: "POST",
 			Path:   "/attacks/rollout-restart/stop",
 		}),
-	})
+	}
 }
 
 func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var prepareAttackRequest attack_kit_api.PrepareAttackRequestBody
 	err := json.Unmarshal(body, &prepareAttackRequest)
 	if err != nil {
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(attack_kit_api.AttackKitError{
-			Title:  "Failed to read request body",
-			Detail: attack_kit_api.Ptr(err.Error()),
-		})
+		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
 		return
 	}
 
@@ -97,26 +90,20 @@ func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) 
 	state["Namespace"] = prepareAttackRequest.Target.Attributes["k8s.namespace"][0]
 	state["Deployment"] = prepareAttackRequest.Target.Attributes["k8s.deployment"][0]
 	state["Wait"] = wait
-	json.NewEncoder(w).Encode(attack_kit_api.PrepareResult{
+	exthttp.WriteBody(w, attack_kit_api.PrepareResult{
 		State: state,
 	})
 }
 
 func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var startAttackRequest attack_kit_api.StartAttackRequestBody
 	err := json.Unmarshal(body, &startAttackRequest)
 	if err != nil {
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(attack_kit_api.AttackKitError{
-			Title:  "Failed to read request body",
-			Detail: attack_kit_api.Ptr(err.Error()),
-		})
+		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
 		return
 	}
 
-	InfoLogger.Printf("Starting rollout restart attack for %s\n", startAttackRequest)
+	log.Info().Msgf("Starting rollout restart attack for %s\n", startAttackRequest)
 
 	cmd := exec.Command("kubectl",
 		"rollout",
@@ -126,39 +113,28 @@ func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
 		fmt.Sprintf("deployment/%s", startAttackRequest.State["Deployment"].(string)))
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
-		ErrorLogger.Printf("Failed to execute rollout restart %s: %s", cmdErr, cmdOut)
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(attack_kit_api.AttackKitError{
-			Title:  fmt.Sprintf("Failed to execute rollout restart %s: %s", cmdErr, cmdOut),
-			Detail: attack_kit_api.Ptr(cmdErr.Error()),
-		})
+		log.Err(cmdErr).Msgf("Failed to execute rollout restart: %s", cmdOut)
+		exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Failed to execute rollout restart: %s", cmdOut), cmdErr))
 		return
 	}
 
-	json.NewEncoder(w).Encode(attack_kit_api.StartResult{
-		State: attack_kit_api.Ptr(startAttackRequest.State),
+	exthttp.WriteBody(w, attack_kit_api.StartResult{
+		State: extutil.Ptr(startAttackRequest.State),
 	})
 }
 
 func rolloutRestartStatus(w http.ResponseWriter, _ *http.Request, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var attackStatusRequest attack_kit_api.AttackStatusRequestBody
 	err := json.Unmarshal(body, &attackStatusRequest)
 	if err != nil {
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(attack_kit_api.AttackKitError{
-			Title:  "Failed to read request body",
-			Detail: attack_kit_api.Ptr(err.Error()),
-		})
+		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
 		return
 	}
 
-	InfoLogger.Printf("Checking rollout restart attack status for %s\n", attackStatusRequest)
+	log.Info().Msgf("Checking rollout restart attack status for %s\n", attackStatusRequest)
 
 	if !attackStatusRequest.State["Wait"].(bool) {
-		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(attack_kit_api.StatusResult{
+		exthttp.WriteBody(w, attack_kit_api.StatusResult{
 			Completed: true,
 		})
 		return
@@ -173,17 +149,13 @@ func rolloutRestartStatus(w http.ResponseWriter, _ *http.Request, body []byte) {
 		fmt.Sprintf("deployment/%s", attackStatusRequest.State["Deployment"].(string)))
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(attack_kit_api.AttackKitError{
-			Title:  fmt.Sprintf("Failed to check rollout status %s: %s", cmdErr, cmdOut),
-			Detail: attack_kit_api.Ptr(cmdErr.Error()),
-		})
+		exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Failed to check rollout status: %s", cmdOut), cmdErr))
 		return
 	}
 
 	cmdOutStr := string(cmdOut)
 	completed := !strings.Contains(strings.ToLower(cmdOutStr), "waiting")
-	json.NewEncoder(w).Encode(attack_kit_api.StatusResult{
+	exthttp.WriteBody(w, attack_kit_api.StatusResult{
 		Completed: completed,
 	})
 }
