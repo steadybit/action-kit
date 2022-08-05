@@ -337,6 +337,12 @@ components:
       required:
         - path
         - method
+    MutatingHttpMethod:
+      type: string
+      enum:
+        - POST
+        - PUT
+        - DELETE
     MutatingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.
@@ -346,12 +352,8 @@ components:
           description: Absolute path of the HTTP endpoint.
           pattern: ^/.*$
         method:
-          type: string
-          enum:
-            - POST
-            - PUT
-            - DELETE
           description: HTTP method to use when calling the HTTP endpoint.
+          $ref: '#/components/schemas/MutatingHttpMethod'
       required:
         - path
         - method

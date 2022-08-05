@@ -48,18 +48,11 @@ const (
 	Info  MessageLevel = "info"
 )
 
-// Defines values for MutatingEndpointReferenceMethod.
+// Defines values for MutatingHttpMethod.
 const (
-	MutatingEndpointReferenceMethodDELETE MutatingEndpointReferenceMethod = "DELETE"
-	MutatingEndpointReferenceMethodPOST   MutatingEndpointReferenceMethod = "POST"
-	MutatingEndpointReferenceMethodPUT    MutatingEndpointReferenceMethod = "PUT"
-)
-
-// Defines values for MutatingEndpointReferenceWithCallIntervalMethod.
-const (
-	MutatingEndpointReferenceWithCallIntervalMethodDELETE MutatingEndpointReferenceWithCallIntervalMethod = "DELETE"
-	MutatingEndpointReferenceWithCallIntervalMethodPOST   MutatingEndpointReferenceWithCallIntervalMethod = "POST"
-	MutatingEndpointReferenceWithCallIntervalMethodPUT    MutatingEndpointReferenceWithCallIntervalMethod = "PUT"
+	DELETE MutatingHttpMethod = "DELETE"
+	POST   MutatingHttpMethod = "POST"
+	PUT    MutatingHttpMethod = "PUT"
 )
 
 // Attacks may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
@@ -208,30 +201,24 @@ type Messages = []Message
 
 // HTTP endpoint which the Steadybit platform/agent could communicate with.
 type MutatingEndpointReference struct {
-	// HTTP method to use when calling the HTTP endpoint.
-	Method MutatingEndpointReferenceMethod `json:"method"`
+	Method MutatingHttpMethod `json:"method"`
 
 	// Absolute path of the HTTP endpoint.
 	Path string `json:"path"`
 }
-
-// HTTP method to use when calling the HTTP endpoint.
-type MutatingEndpointReferenceMethod string
 
 // MutatingEndpointReferenceWithCallInterval defines model for MutatingEndpointReferenceWithCallInterval.
 type MutatingEndpointReferenceWithCallInterval struct {
 	// At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`.
-	CallInterval *string `json:"callInterval,omitempty"`
-
-	// HTTP method to use when calling the HTTP endpoint.
-	Method MutatingEndpointReferenceWithCallIntervalMethod `json:"method"`
+	CallInterval *string            `json:"callInterval,omitempty"`
+	Method       MutatingHttpMethod `json:"method"`
 
 	// Absolute path of the HTTP endpoint.
 	Path string `json:"path"`
 }
 
-// HTTP method to use when calling the HTTP endpoint.
-type MutatingEndpointReferenceWithCallIntervalMethod string
+// MutatingHttpMethod defines model for MutatingHttpMethod.
+type MutatingHttpMethod string
 
 // ParameterOption defines model for ParameterOption.
 type ParameterOption struct {
