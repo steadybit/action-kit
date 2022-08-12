@@ -53,7 +53,7 @@ func TestAttackList(t *testing.T) {
 	v := AttackList{
 		Attacks: []DescribingEndpointReference{
 			{
-				"GET",
+				Get,
 				"/attacks/rollout-restart",
 			},
 		},
@@ -74,7 +74,8 @@ func TestAttackDescription(t *testing.T) {
 		Version:     "1.1.0",
 		Category:    Ptr("state"),
 		TargetType:  Ptr("kubernetes-deployment"),
-		TimeControl: "INTERNAL",
+		Kind:        Attack,
+		TimeControl: Internal,
 		Parameters: []AttackParameter{
 			{
 				Label:        "Wait for rollout completion",
@@ -85,19 +86,19 @@ func TestAttackDescription(t *testing.T) {
 			},
 		},
 		Prepare: MutatingEndpointReference{
-			"POST",
+			Post,
 			"/attacks/rollout-restart/prepare",
 		},
 		Start: MutatingEndpointReference{
-			"POST",
+			Post,
 			"/attacks/rollout-restart/start",
 		},
 		Status: Ptr(MutatingEndpointReferenceWithCallInterval{
-			Method: "POST",
+			Method: Post,
 			Path:   "/attacks/rollout-restart/status",
 		}),
 		Stop: Ptr(MutatingEndpointReference{
-			"POST",
+			Post,
 			"/attacks/rollout-restart/stop",
 		}),
 	}
@@ -118,6 +119,10 @@ func TestPrepareResult(t *testing.T) {
 			},
 			{
 				Level:   Ptr(Info),
+				Message: "test",
+			},
+			{
+				Level:   Ptr(Warn),
 				Message: "test",
 			},
 		}),

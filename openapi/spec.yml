@@ -65,6 +65,7 @@ components:
           enum:
             - debug
             - info
+            - warn
             - error
           default: info
       required:
@@ -130,10 +131,10 @@ components:
         kind:
           type: string
           enum:
-            - ATTACK
-            - CHECK
-            - LOAD_TEST
-            - OTHER
+            - attack
+            - check
+            - load_test
+            - other
           description: >-
             Describes what kind of attack this is. This is used to help users understand
             and classify the various runnable actions that are part of an experiment.
@@ -148,9 +149,9 @@ components:
         timeControl:
           type: string
           enum:
-            - INSTANTANEOUS
-            - INTERNAL
-            - EXTERNAL
+            - instantaneous
+            - internal
+            - external
           description: >-
             Attacks can either be an instantaneous event, e.g., the restart of a
             host, or an activity spanning over an unspecified duration. For
@@ -333,16 +334,16 @@ components:
           description: HTTP method to use when calling the HTTP endpoint.
           type: string
           enum:
-            - GET
+            - get
       required:
         - path
         - method
     MutatingHttpMethod:
       type: string
       enum:
-        - POST
-        - PUT
-        - DELETE
+        - post
+        - put
+        - delete
     MutatingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.

@@ -9,17 +9,17 @@ import (
 
 // Defines values for AttackDescriptionKind.
 const (
-	ATTACK   AttackDescriptionKind = "ATTACK"
-	CHECK    AttackDescriptionKind = "CHECK"
-	LOADTEST AttackDescriptionKind = "LOAD_TEST"
-	OTHER    AttackDescriptionKind = "OTHER"
+	Attack   AttackDescriptionKind = "attack"
+	Check    AttackDescriptionKind = "check"
+	LoadTest AttackDescriptionKind = "load_test"
+	Other    AttackDescriptionKind = "other"
 )
 
 // Defines values for AttackDescriptionTimeControl.
 const (
-	EXTERNAL      AttackDescriptionTimeControl = "EXTERNAL"
-	INSTANTANEOUS AttackDescriptionTimeControl = "INSTANTANEOUS"
-	INTERNAL      AttackDescriptionTimeControl = "INTERNAL"
+	External      AttackDescriptionTimeControl = "external"
+	Instantaneous AttackDescriptionTimeControl = "instantaneous"
+	Internal      AttackDescriptionTimeControl = "internal"
 )
 
 // Defines values for AttackParameterType.
@@ -38,7 +38,7 @@ const (
 
 // Defines values for DescribingEndpointReferenceMethod.
 const (
-	GET DescribingEndpointReferenceMethod = "GET"
+	Get DescribingEndpointReferenceMethod = "get"
 )
 
 // Defines values for MessageLevel.
@@ -46,13 +46,14 @@ const (
 	Debug MessageLevel = "debug"
 	Error MessageLevel = "error"
 	Info  MessageLevel = "info"
+	Warn  MessageLevel = "warn"
 )
 
 // Defines values for MutatingHttpMethod.
 const (
-	DELETE MutatingHttpMethod = "DELETE"
-	POST   MutatingHttpMethod = "POST"
-	PUT    MutatingHttpMethod = "PUT"
+	Delete MutatingHttpMethod = "delete"
+	Post   MutatingHttpMethod = "post"
+	Put    MutatingHttpMethod = "put"
 )
 
 // Attacks may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.

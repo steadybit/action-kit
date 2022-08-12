@@ -10,8 +10,10 @@
    - Several types were renamed to make it easier to under when to use them.
    - `attack_kit_api.Ptr` was removed from this module to avoid requirement for Go `>1.18`.
    - Enum names for HTTP methods were changed to avoid context specific prefixes.
+   - Aligned all enum values to  lower case (but upper case is accepted as well).
  - Added the ability to upload artifacts to Steadybit as part of the `prepare`,
    `start`, `status` and `stop` endpoints.
+ - Added `warn` level for `Message`.
 
 ## 0.5.0
 
