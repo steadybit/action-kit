@@ -8,6 +8,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./typescript/action_kit_api
     steps:
       - uses: actions/checkout@v2
       - name: Setup Node.js
