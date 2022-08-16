@@ -9,7 +9,7 @@ The types are generated automatically from the ActionKit [OpenAPI specification]
 Add the following to your `go.mod` file:
 
 ```
-go get github.com/steadybit/action-kit/go/action_kit_api@v0.1.0
+go get github.com/steadybit/action-kit/go/action_kit_api
 ```
 
 ## Usage
@@ -19,8 +19,8 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_api"
 )
 
-attackList := attack_kit_api.AttackList{
-    Attacks: []attack_kit_api.DescribingEndpointReference{
+actionList := action_kit_api.ActionList{
+    Actions: []action_kit_api.DescribingEndpointReference{
         {
             "GET",
             "/actions/rollout-restart",

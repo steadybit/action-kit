@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-package attack_kit_api
+package action_kit_api
 
 import (
 	"testing"
@@ -17,8 +17,8 @@ func markAsUsed(t *testing.T, v any) {
 	}
 }
 
-func TestPrepareAttackRequestBody(t *testing.T) {
-	v := PrepareAttackRequestBody{
+func TestPrepareActionRequestBody(t *testing.T) {
+	v := PrepareActionRequestBody{
 		Config: make(map[string]interface{}),
 		Target: Ptr(Target{
 			Name:       "gateway",
@@ -28,30 +28,30 @@ func TestPrepareAttackRequestBody(t *testing.T) {
 	markAsUsed(t, v)
 }
 
-func TestStartAttackRequestBody(t *testing.T) {
-	v := StartAttackRequestBody{
+func TestStartActionRequestBody(t *testing.T) {
+	v := StartActionRequestBody{
 		State: make(map[string]interface{}),
 	}
 	markAsUsed(t, v)
 }
 
-func TestAttackStatusRequestBody(t *testing.T) {
-	v := AttackStatusRequestBody{
+func TestActionStatusRequestBody(t *testing.T) {
+	v := ActionStatusRequestBody{
 		State: make(map[string]interface{}),
 	}
 	markAsUsed(t, v)
 }
 
-func TestStopAttackRequestBody(t *testing.T) {
-	v := StopAttackRequestBody{
+func TestStopActionRequestBody(t *testing.T) {
+	v := StopActionRequestBody{
 		State: make(map[string]interface{}),
 	}
 	markAsUsed(t, v)
 }
 
-func TestAttackList(t *testing.T) {
-	v := AttackList{
-		Attacks: []DescribingEndpointReference{
+func TestActionList(t *testing.T) {
+	v := ActionList{
+		Actions: []DescribingEndpointReference{
 			{
 				Get,
 				"/actions/rollout-restart",
@@ -65,8 +65,8 @@ func Ptr[T any](val T) *T {
 	return &val
 }
 
-func TestAttackDescription(t *testing.T) {
-	v := AttackDescription{
+func TestActionDescription(t *testing.T) {
+	v := ActionDescription{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
 		Label:       "Rollout Restart Deployment",
 		Description: "Execute a rollout restart for a Kubernetes deployment",
@@ -76,7 +76,7 @@ func TestAttackDescription(t *testing.T) {
 		TargetType:  Ptr("kubernetes-deployment"),
 		Kind:        Attack,
 		TimeControl: Internal,
-		Parameters: []AttackParameter{
+		Parameters: []ActionParameter{
 			{
 				Label:        "Wait for rollout completion",
 				Name:         "wait",

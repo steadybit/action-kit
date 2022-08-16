@@ -11,18 +11,18 @@ produces:
   - application/json
 components:
   schemas:
-    AttackList:
-      title: Attack List
-      description: Lists all attacks that the platform/agent could execute.
+    ActionList:
+      title: Action List
+      description: Lists all actions that the platform/agent could execute.
       type: object
       properties:
-        attacks:
+        actions:
           type: array
           items:
             $ref: '#/components/schemas/DescribingEndpointReference'
           uniqueItems: true
       required:
-        - attacks
+        - actions
     ActionKitError:
       title: Error
       description: >-
@@ -77,7 +77,7 @@ components:
         $ref: '#/components/schemas/Artifact'
     Artifact:
       title: Artifact
-      description: Attacks may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
+      description: Actions may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
       type: object
       properties:
         label:
@@ -92,41 +92,41 @@ components:
       required:
         - label
         - data
-    AttackDescription:
-      title: Attack Description
+    ActionDescription:
+      title: Action Description
       description: >-
-        Provides details about a possible attack, e.g., what configuration
+        Provides details about a possible action, e.g., what configuration
         options it has, how to present it to end-users and how to trigger the
-        attack.
+        action.
       type: object
       properties:
         id:
           type: string
           description: >-
             A technical ID that is used to uniquely identify this type of
-            attack. You will typically want to use something like
-            `org.example.attacks.my-fancy-attack`.
+            action. You will typically want to use something like
+            `org.example.my-fancy-attack`.
         label:
           type: string
-          description: A human-readable label for the attack.
+          description: A human-readable label for the action.
         icon:
           type: string
           description: >-
-            An icon that is used to identify your attack in the ui. Needs to be
+            An icon that is used to identify your action in the ui. Needs to be
             a data-uri containing an image.
           maxLength: 1000000
           pattern: '^data:.*$'
         version:
           type: string
           description: >-
-            The version of the attack. Remember to increase the value everytime
+            The version of the action. Remember to increase the value everytime
             you update the definitions. The platform will ignore any definition
-            changes with the same attack version. We do recommend usage of
+            changes with the same action version. We do recommend usage of
             semver strings.
         description:
           type: string
           description: >-
-            Description for end-users to help them understand what the attack is
+            Description for end-users to help them understand what the action is
             doing.
         kind:
           type: string
@@ -136,15 +136,15 @@ components:
             - load_test
             - other
           description: >-
-            Describes what kind of attack this is. This is used to help users understand
+            Describes what kind of action this is. This is used to help users understand
             and classify the various runnable actions that are part of an experiment.
         category:
           type: string
-          description: Used for categorization of the attack within user interfaces.
+          description: Used for categorization of the action within user interfaces.
         targetType:
           type: string
           description: >-
-            What target type this attack should be offered for. Matches the `id`
+            What target type this action should be offered for. Matches the `id`
             field within `DescribeTargetTypeResponse` within DiscoveryKit.
         timeControl:
           type: string
@@ -153,16 +153,16 @@ components:
             - internal
             - external
           description: >-
-            Attacks can either be an instantaneous event, e.g., the restart of a
+            Actions can either be an instantaneous event, e.g., the restart of a
             host, or an activity spanning over an unspecified duration. For
-            those attacks having a duration, we differentiate between
+            those actions having a duration, we differentiate between
             internally, e.g., waiting for a deployment to finish, and
             externally, e.g., waiting for a user-specified time to pass,
             controlled durations.
         parameters:
           type: array
           items:
-            $ref: '#/components/schemas/actionParameter'
+            $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
         prepare:
           $ref: '#/components/schemas/MutatingEndpointReference'
@@ -189,24 +189,24 @@ components:
           description: A human-readable label describing this option.
         value:
           type: string
-          description: The technical value which will be passed to the attack as part of the `config` object.
+          description: The technical value which will be passed to the action as part of the `config` object.
       required:
         - label
         - value
-    AttackParameter:
+    ActionParameter:
       properties:
         label:
           type: string
-          description: A human-readable label for the attack parameter.
+          description: A human-readable label for the action parameter.
         name:
           type: string
           description: >-
-            The key under which the attack parameter is stored. This key can
+            The key under which the action parameter is stored. This key can
             then be found within the prepare request's config field.
         description:
           type: string
           description: >-
-            Description for end-users to help them understand the attack
+            Description for end-users to help them understand the action
             parameter.
         type:
           type: string
@@ -261,7 +261,7 @@ components:
         - type
     Target:
       type: object
-      description: The target to attack as identified by a discovery.
+      description: The target on which to act on as identified by a discovery.
       properties:
         name:
           type: string
@@ -270,7 +270,7 @@ components:
           description: >-
             These attributes include detailed information about the target
             provided through the discovery. These attributes are typically used
-            as additional parameters within the attack implementation.
+            as additional parameters within the action implementation.
           additionalProperties:
             type: array
             items:
@@ -278,17 +278,17 @@ components:
       required:
         - name
         - attributes
-    AttackState:
-      title: Attack State
+    ActionState:
+      title: Action State
       description: >-
-        Any kind of attack specific state that will be passed to the next
+        Any kind of action specific state that will be passed to the next
         endpoints.
       type: object
     PrepareResult:
       type: object
       properties:
         state:
-          $ref: '#/components/schemas/actionState'
+          $ref: '#/components/schemas/ActionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -299,7 +299,7 @@ components:
       type: object
       properties:
         state:
-          $ref: '#/components/schemas/actionState'
+          $ref: '#/components/schemas/ActionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -309,7 +309,7 @@ components:
         completed:
           type: boolean
         state:
-          $ref: '#/components/schemas/actionState'
+          $ref: '#/components/schemas/ActionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -372,9 +372,9 @@ components:
                 At what frequency should the state endpoint be called? Takes
                 durations in the format of `100ms` or `10s`.
   requestBodies:
-    PrepareAttackRequestBody:
-      title: Prepare Attack Request
-      description: The HTTP request payload passed to the attack prepare endpoints.
+    PrepareActionRequestBody:
+      title: Prepare Action Request
+      description: The HTTP request payload passed to the action prepare endpoints.
       content:
         application/json:
           schema:
@@ -383,98 +383,98 @@ components:
               config:
                 type: object
                 description: >-
-                  The attack configuration. This contains the end-user
-                  configuration done for the attack. Possible configuration
-                  parameters are defined through the attack description.
+                  The action configuration. This contains the end-user
+                  configuration done for the action. Possible configuration
+                  parameters are defined through the action description.
               target:
                 $ref: '#/components/schemas/Target'
             required:
               - config
-    StartAttackRequestBody:
-      title: Start Attack Request
-      description: The HTTP request payload passed to the start attack endpoints.
+    StartActionRequestBody:
+      title: Start Action Request
+      description: The HTTP request payload passed to the start action endpoints.
       content:
         application/json:
           schema:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/actionState'
+                $ref: '#/components/schemas/ActionState'
             required:
               - state
-    AttackStatusRequestBody:
-      title: Attack Status Request
-      description: The HTTP request payload passed to the attack status endpoints.
+    ActionStatusRequestBody:
+      title: Action Status Request
+      description: The HTTP request payload passed to the action status endpoints.
       content:
         application/json:
           schema:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/actionState'
+                $ref: '#/components/schemas/ActionState'
             required:
               - state
-    StopAttackRequestBody:
-      title: Stop Attack Request
-      description: The HTTP request payload passed to the stop attack endpoints.
+    StopActionRequestBody:
+      title: Stop Action Request
+      description: The HTTP request payload passed to the stop action endpoints.
       content:
         application/json:
           schema:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/actionState'
+                $ref: '#/components/schemas/ActionState'
             required:
               - state
   responses:
-    AttackListResponse:
-      title: Attack List Response
-      description: Response for the attack list endpoint
+    ActionListResponse:
+      title: Action List Response
+      description: Response for the action list endpoint
       content:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/actionList'
+              - $ref: '#/components/schemas/ActionList'
               - $ref: '#/components/schemas/ActionKitError'
-    DescribeAttackResponse:
-      title: Describe Attack Response
-      description: Response for the describe attack endpoint
+    DescribeActionResponse:
+      title: Describe Action Response
+      description: Response for the describe action endpoint
       content:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/actionDescription'
+              - $ref: '#/components/schemas/ActionDescription'
               - $ref: '#/components/schemas/ActionKitError'
-    PrepareAttackResponse:
-      title: Prepare Attack Response
-      description: Response for the attack preparation endpoint
+    PrepareActionResponse:
+      title: Prepare Action Response
+      description: Response for the action preparation endpoint
       content:
         application/json:
           schema:
             anyOf:
               - $ref: '#/components/schemas/PrepareResult'
               - $ref: '#/components/schemas/ActionKitError'
-    StartAttackResponse:
-      title: Start Attack Response
-      description: Response for the start attack endpoint
+    StartActionResponse:
+      title: Start Action Response
+      description: Response for the start action endpoint
       content:
         application/json:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StartResult'
               - $ref: '#/components/schemas/ActionKitError'
-    AttackStatusResponse:
-      title: Attack Status Response
-      description: Response for the start attack endpoint
+    ActionStatusResponse:
+      title: Action Status Response
+      description: Response for the start action endpoint
       content:
         application/json:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StatusResult'
               - $ref: '#/components/schemas/ActionKitError'
-    StopAttackResponse:
-      title: Stop Attack Response
-      description: Response for the stop attack endpoint
+    StopActionResponse:
+      title: Stop Action Response
+      description: Response for the stop action endpoint
       content:
         application/json:
           schema:

@@ -1,4 +1,4 @@
-package: attack_kit_api
+package: action_kit_api
 generate:
   models: true
 output-options:
