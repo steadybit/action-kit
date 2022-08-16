@@ -12,5 +12,5 @@ npm install --save-dev @steadybit/action-kit-api
 ## Usage
 
 ```typescript
-import { ActionList } from '@steadybit/@steadybit/action-kit-api';
+import { ActionList } from '@steadybit/action-kit-api';
 ```
