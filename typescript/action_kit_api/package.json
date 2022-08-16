@@ -1,12 +1,12 @@
 {
   "name": "@steadybit/action-kit-api",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "TypeScript type definitions for Steadybit's action API.",
   "scripts": {
     "lint": "eslint index.d.ts",
     "prettier": "prettier --write index.d.ts",
     "build": "openapi-typescript ../../openapi/spec.yml --output schemas.d.ts --prettier-config .prettierrc",
-	"test": "tsc --noEmit --strict index.test.ts"
+    "test": "tsc --noEmit --strict index.test.ts"
   },
   "types": "index.d.ts",
   "repository": {
