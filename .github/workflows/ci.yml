@@ -34,7 +34,29 @@ jobs:
       name: "Ensure that Go API changes (as a consequence of OpenAPI spec changes) are checked in"
     - run: go get
     - run: go test
-  
+
+  typescript-action-kit-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./typescript/action_kit_api
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # increased fetch depth to support git diff
+          fetch-depth: 2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.13.1'
+          cache: 'npm'
+      - run: 'npm i'
+      - run: 'npm run build'
+      - run: git diff --exit-code
+        name: "Ensure that Go API changes (as a consequence of OpenAPI spec changes) are checked in"
+      - run: 'npm run lint'
+      - run: 'npm run test'
+
   example-go-kubectl-action:
     runs-on: ubuntu-latest
     permissions:

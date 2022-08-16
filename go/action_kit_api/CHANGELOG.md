@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
+ - Initial release
+
+### Differences to the deprecated AttackKit API v0.5.0
  - **Breaking:** This version contains breaking changes in the ActionKit API.
    - Attack description `category` is now optional and no longer an enumeration.
    - Attack's `targetType` is now optional.
@@ -14,23 +17,3 @@
  - Added the ability to upload artifacts to Steadybit as part of the `prepare`,
    `start`, `status` and `stop` endpoints.
  - Added `warn` level for `Message`.
-
-## 0.5.0
-
- - Support `key_value` attack parameters.
-
-## 0.4.0
-
- - Support `file` attack parameters.
-
-## 0.3.0
-
- - Support `options` for attack parameters.
-
-## 0.2.0
-
- - Support `string_array` as an alias for the `string[]` parameter type.
-
-## 0.1.0
-
- - Initial release
