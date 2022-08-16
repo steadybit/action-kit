@@ -1,19 +1,19 @@
 {
-  "name": "example-nodejs-logging-attack",
+  "name": "example-nodejs-logging",
   "version": "1.0.0",
-  "description": "Example showcasing an implementation of an attack",
+  "description": "Example showcasing an implementation of an action that logs all activity to stdout",
   "main": "src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "docker:build": "docker build -t example-nodejs-logging-attack .",
-    "docker:start": "docker run -it --rm --init example-nodejs-logging-attack",
+    "docker:build": "docker build -t example-nodejs-logging .",
+    "docker:start": "docker run -it --rm --init example-nodejs-logging",
     "lint": "eslint --ext js,ts,tsx src",
     "prettier": "prettier --write src"
   },
   "author": "Steadybit GmbH",
   "license": "MIT",
   "devDependencies": {
-    "@steadybit/action-api": "^0.4.0",
+    "@steadybit/action-kit-api": "^1.0.0",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
     "@types/node": "^17.0.40",

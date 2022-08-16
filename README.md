@@ -4,7 +4,7 @@
 
 The Steadybit ActionKit enables the extension of Steadybit with new action capabilities that you can use within experiments. For example, ActionKit can be used to author open/closed source attacks to attack AWS, Azure, and Google Cloud services that Steadybit cannot natively attack. You can also use this to author custom checks and load test extensions.
 
-At this moment, ActionKit can be considered an **open-alpha**. The contracts and APIs *may* change. If you want to learn more, [reach out to us](https://www.steadybit.com/contact).
+At this moment, ActionKit can be considered an **open-beta**. The contracts and APIs *may* change. If you want to learn more, [reach out to us](https://www.steadybit.com/contact).
 
 ## Getting Started
 

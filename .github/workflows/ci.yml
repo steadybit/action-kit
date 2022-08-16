@@ -95,7 +95,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
 
-  example-nodejs-logging-attack:
+  example-nodejs-logging:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -123,12 +123,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/steadybit/example-nodejs-logging-attack
+          images: ${{ env.REGISTRY }}/steadybit/example-nodejs-logging
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: examples/nodejs-logging-attack
+          context: examples/nodejs-logging
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

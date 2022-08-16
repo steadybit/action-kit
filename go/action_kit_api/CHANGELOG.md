@@ -6,6 +6,7 @@
 
 ### Differences to the deprecated AttackKit API v0.5.0
  - **Breaking:** This version contains breaking changes in the ActionKit API.
+   - Various APIs were renamed from `*Attack*` to `*Action*` 
    - Attack description `category` is now optional and no longer an enumeration.
    - Attack's `targetType` is now optional.
    - `target` is now optional within prepare request bodies.
