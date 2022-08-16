@@ -52,7 +52,7 @@ jobs:
       - run: 'npm i'
       - run: 'npm run build'
       - run: git diff --exit-code
-        name: "Ensure that Go API changes (as a consequence of OpenAPI spec changes) are checked in"
+        name: "Ensure that TypeScript API changes (as a consequence of OpenAPI spec changes) are checked in"
       - run: 'npm run lint'
       - run: 'npm run test'
 
