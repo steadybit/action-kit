@@ -14,7 +14,7 @@ import (
 func main() {
 	extlogging.InitZeroLog()
 
-	exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(getAttackList))
+	exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(getActionList))
 	exthttp.RegisterHttpHandler("/actions/rollout-restart", exthttp.GetterAsHandler(getRolloutRestartDescription))
 	exthttp.RegisterHttpHandler("/actions/rollout-restart/prepare", prepareRolloutRestart)
 	exthttp.RegisterHttpHandler("/actions/rollout-restart/start", startRolloutRestart)
@@ -22,7 +22,7 @@ func main() {
 	exthttp.RegisterHttpHandler("/actions/rollout-restart/stop", stopRolloutRestart)
 
 	port := 8083
-	log.Info().Msgf("Starting go-kubectl-attack server on port %d. Get started via /actions", port)
+	log.Info().Msgf("Starting go-kubectl server on port %d. Get started via /actions", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
 		log.Err(err).Msg("Failed to start server")

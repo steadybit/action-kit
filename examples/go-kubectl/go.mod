@@ -1,4 +1,4 @@
-module go-kubectl-attack
+module go-kubectl
 
 go 1.18
 

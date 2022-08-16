@@ -13,7 +13,7 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o /go-kubectl-attack
+RUN go build -o /go-kubectl
 
 ##
 ## Runtime
@@ -29,8 +29,8 @@ RUN apt-get update && \
   apt-get update && \
   apt-get install -y kubectl
 
-COPY --from=build /go-kubectl-attack /go-kubectl-attack
+COPY --from=build /go-kubectl /go-kubectl
 
 EXPOSE 8083
 
-ENTRYPOINT ["/go-kubectl-attack"]
+ENTRYPOINT ["/go-kubectl"]
