@@ -35,7 +35,7 @@ jobs:
     - run: go get
     - run: go test
   
-  example-go-kubectl-attack:
+  example-go-kubectl-action:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,12 +63,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/steadybit/example-go-kubectl-attack
+          images: ${{ env.REGISTRY }}/steadybit/example-go-kubectl-action
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: examples/go-kubectl-attack
+          context: examples/go-kubectl-action
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
