@@ -1,27 +1,27 @@
-# Attack API
+# Action API
 
-This document explains the attack API, control flow and the contracts behind it. It starts with a high-level overview and then explains every API in detail.
+This document explains the action API, control flow and the contracts behind it. It starts with a high-level overview and then explains every API in detail.
 
 ## Overview
 
-Attacks are implemented with the help of ActionKit and the attack API through an implementation of an attack provider. Attack providers are HTTP servers
-implementing the attack API to describe which attacks are supported and how to execute these. The following diagram illustrates who is issuing calls and in what
+Actions are implemented with the help of ActionKit and the action API through an implementation of an extension. Extensions are HTTP servers
+implementing the action API to describe which actions are supported and how to execute these. The following diagram illustrates who is issuing calls and in what
 phases.
 
 ![UML sequence diagram showing in what order the APIs are called](img/action-flow.svg)
 
-As can be seen above, the attack provider is called by the Steadybit agent in two phases:
+As can be seen above, the extension is called by the Steadybit agent in two phases:
 
-- In the attack registration phase, Steadybit learns about the supported attacks. Once this phase is completed, attacks will be usable within Steadybit, e.g.,
+- In the action registration phase, Steadybit learns about the supported actions. Once this phase is completed, actions will be usable within Steadybit, e.g.,
   within the experiment editor.
-- The attack execution phase occurs whenever an attack is executed, e.g., as part of an experiment.
+- The action execution phase occurs whenever an action is executed, e.g., as part of an experiment.
 
-The following section explain the various API endpoints, their responsibilities and structures in more detail.
+The following sections explain the various API endpoints, their responsibilities and structures in more detail.
 
-## Attack List
+## Action List
 
-As the name implies, the attack list returns a list of supported attacks. Or, more specifically, HTTP endpoints that the agent should call to learn more about
-the attacks.
+As the name implies, the action list returns a list of supported actions. Or, more specifically, HTTP endpoints that the agent should call to learn more about
+the actions.
 
 This endpoint needs to be [registered with Steadybit agents](./action-registration.md).
 
@@ -32,7 +32,7 @@ This endpoint needs to be [registered with Steadybit agents](./action-registrati
 
 // Response: 200
 {
-  "attacks": [
+  "actions": [
     {
       "method": "GET",
       "path": "/actions/rollout-restart"
@@ -43,21 +43,21 @@ This endpoint needs to be [registered with Steadybit agents](./action-registrati
 
 ### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `AttackListResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `IndexResponse`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `AttackListResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionListResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionListResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionListResponse`
 
-## Attack Description
+## Action Description
 
-An attack description is required for each attack. The HTTP endpoint serving the description is discovered through the attack list endpoint.
+An action description is required for each action. The HTTP endpoint serving the description is discovered through the action list endpoint.
 
-Attack descriptions expose information about the presentation, configuration and behavior of attacks. For example:
+Action descriptions expose information about the presentation, configuration and behavior of actions. For example:
 
-- What should the attack be called?
+- What should the action be called?
 - Which configuration options should be presented to end-users within the user interface?
-- Can the attack be stopped, or is this an instantaneous event, e.g., host reboots?
+- Can the action be stopped, or is this an instantaneous event, e.g., host reboots?
 
-Attack description is a somewhat evolved topic. For more information on attack parameters, please refer to our [parameter types](./parameter-types.md) documentation.
+Action description is a somewhat evolved topic. For more information on action parameters, please refer to our [parameter types](./parameter-types.md) documentation.
 
 ### Example
 
@@ -66,7 +66,7 @@ Attack description is a somewhat evolved topic. For more information on attack p
 
 // Response: 200
 {
-  "id": "com.steadybit.example.attacks.kubernetes.rollout-restart",
+  "id": "com.steadybit.example.actions.kubernetes.rollout-restart",
   "label": "Kubernetes Rollout Restart Deployment",
   "description": "Execute a rollout restart for a Kubernetes deployment",
   "version": "1.0.0",
@@ -107,39 +107,39 @@ Attack description is a somewhat evolved topic. For more information on attack p
 
 ### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `DescribeAttackResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `DescribeAttackResponse`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `DescribeAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `DescribeActionResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `DescribeActionResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `DescribeActionResponse`
 
 ### Versioning
 
-Attacks are versioned strictly, and Steadybit will ignore definition changes for the same version. Remember to update the version every time you update the
-attack description.
+Actions are versioned strictly, and Steadybit will ignore definition changes for the same version. Remember to update the version every time you update the
+action description.
 
 ### Time Control
 
-Time control informs Steadybit about behavioral aspects of the attack. At this moment, there are three options:
+Time control informs Steadybit about behavioral aspects of the action. At this moment, there are three options:
 
 - Instantaneous that cannot be undone, e.g., killing processes or shutting down servers: `"timeControl": "INSTANTANEOUS"`
-- Attacks spanning a configurable amount of time that are stoppable, e.g., causing CPU/memory stress, network configuration changes: `"timeControl": "EXTERNAL"`
-  . Note that these attacks require a parameter named `duration` with type `duration`.
-- Attacks spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
+- Actions spanning a configurable amount of time that are stoppable, e.g., causing CPU/memory stress, network configuration changes: `"timeControl": "EXTERNAL"`
+  . Note that these actions require a parameter named `duration` with type `duration`.
+- Actions spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
 
-## Attack Execution
+## Action Execution
 
-Attack execution is divided into three steps:
+Action execution is divided into three steps:
 
 - preparation
 - start
 - status
 - stop
 
-HTTP endpoints represent each step. Steadybit learns about these endpoints through the attack description documented in the previous sections. The following
+HTTP endpoints represent each step. Steadybit learns about these endpoints through the action description documented in the previous sections. The following
 sub-sections explain the responsibilities of each of the endpoints in detail.
 
 ### Preparation
 
-The preparation (or short `prepare`) step receives the attack's configuration options (representing the parameters defined in the attack description) and a
+The preparation (or short `prepare`) step receives the action's configuration options (representing the parameters defined in the action description) and a
 selected target. The HTTP endpoint must respond with an HTTP status code `200` and a JSON response body containing a state object.
 
 The state object is later used in HTTP requests to the start and stop endpoints. So you will want to include all the execution relevant information within the
@@ -183,18 +183,18 @@ as part of the start step).
 
 #### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `PrepareAttackRequestBody`, `PrepareAttackResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `PrepareAttackRequestBody`, `PrepareAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `PrepareActionRequestBody`, `PrepareActionResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `PrepareActionRequestBody`, `PrepareActionResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `PrepareActionRequestBody`, `PrepareActionResponse`
 
 ### Start
 
-The actual attack happens within the start step, i.e., this is where you will typically modify the system, kill processes or reboot servers.
+The actual action happens within the start step, i.e., this is where you will typically modify the system, kill processes or reboot servers.
 
 The start step receives the prepare step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure. A JSON
 response body containing a state object may be returned. This state object is later passed to the stop step.
 
-This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the start endpoint. For example,
+This endpoint must respond within a few seconds. It is not permitted to block until the action execution is completed within the start endpoint. For example,
 you can trigger a deployment change within the start endpoint, but the start endpoint may not block until the deployment change is fully rolled out (this is
 what the status endpoint is for).
 
@@ -224,20 +224,20 @@ what the status endpoint is for).
 
 #### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StartAttackRequestBody`, `StartAttackResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StartAttackRequestBody`, `StartAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StartActionRequestBody`, `StartActionResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StartActionRequestBody`, `StartActionResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StartActionRequestBody`, `StartActionResponse`
 
 
 ### Status
 
-The status step exists to observe the status of the attack execution. For example, when triggering a deployment change you would use the status endpoint to
+The status step exists to observe the status of the action execution. For example, when triggering a deployment change you would use the status endpoint to
 inspect whether the deployment change was processed.
 
 The status step receives the prepare, start or previous state step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success
 or `500` on failure.
 
-This endpoint must respond within a few seconds. It is not permitted to block until the attack execution is completed within the status endpoint. For example,
+This endpoint must respond within a few seconds. It is not permitted to block until the action execution is completed within the status endpoint. For example,
 you can inspect a deployment change's state within the status endpoint, but the status endpoint may not block until the deployment change is fully rolled out.
 The status endpoint is continuously called until it responds with `completed=true`.
 
@@ -262,13 +262,13 @@ The status endpoint is continuously called until it responds with `completed=tru
 
 #### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `AttackStatusRequestBody`, `AttackStatusResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `AttackStatusRequestBody`, `AttackStatusResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionStatusRequestBody`, `ActionStatusResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionStatusRequestBody`, `ActionStatusResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionStatusRequestBody`, `ActionStatusResponse`
 
 ### Stop
 
-The stop step exists to revert system modifications, stop CPU/memory stress or any other attacks.
+The stop step exists to revert system modifications, stop CPU/memory stress or any other actions.
 
 The stop step receives the prepare, status or start step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on
 failure.
@@ -291,6 +291,6 @@ failure.
 
 #### References
 
-- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StopAttackRequestBody`, `StopAttackResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StopRequest`
-- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StopAttackRequestBody`, `StopAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StopActionRequestBody`, `StopActionResponse`

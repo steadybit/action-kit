@@ -1,6 +1,7 @@
 # Parameter Types
 
-Attacks' support parameters for configuration purposes. For example, you may want to use a parameter of type `duration` to configure how long an attack is supposed to take. This document explains what the supported parameter types are and how they work.
+Actions support parameters for configuration purposes. For example, you may want to use a parameter of type `duration` to configure how long an action is
+supposed to take. This document explains what the supported parameter types are and how they work.
 
 Supported parameter types:
 
@@ -33,7 +34,7 @@ Either `true` or `false` values. With optional support for `null` when `required
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -69,7 +70,7 @@ A time duration. Renders appropriate UI controls that facilitate time inputs—e
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -105,7 +106,7 @@ Any integer number.
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -141,7 +142,7 @@ Any integer number.
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -179,7 +180,7 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -244,7 +245,7 @@ You can use the `string_array` type for multiple textual inputs.
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -278,7 +279,7 @@ The `password` parameter behaves like the `string` parameter type, except for th
 
 ## `file`
 
-Files can be uploaded and passed to attacks through a parameter of the `file` type. Uploaded files are delivered to attacks in base64 encoding. Through the optional `acceptedFileTypes` option you can restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers) may be selected by users.
+Files can be uploaded and passed to actions through a parameter of the `file` type. Uploaded files are delivered to actions in base64 encoding. Through the optional `acceptedFileTypes` option you can restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers) may be selected by users.
 
 <img src="img/parameters/file.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a file parameter looks like. Depicting a textual label and a drop area for files." />
 
@@ -295,7 +296,7 @@ Files can be uploaded and passed to attacks through a parameter of the `file` ty
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json
@@ -331,7 +332,7 @@ For key/value pairs, e.g., tags, labels and environment variables, we support a 
 }
 ```
 
-#### Configuration Value Received in `prepare` Call of Attacks
+#### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
 ```json

@@ -2,11 +2,11 @@
 
 ## ActionKit
 
-The combination of the attack APIs, contracts, documentation and any other material related to the extension of Steadybit with new attacks.
+The combination of the action APIs, contracts, documentation and any other material related to the extension of Steadybit with new actions.
 
-## Attack Provider
+## Extension
 
-An attack provider is an HTTP server implementing the attack API. In doing so, it extends Steadybit with new attacks that can be used within experiments.
+An extension is an HTTP server implementing the action API. In doing so, it extends Steadybit with new actions that can be used within experiments.
 
 ## Steadybit Platform
 
