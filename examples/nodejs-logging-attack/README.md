@@ -25,7 +25,7 @@ kubectl apply -f kubernetes.yml
 ```
 
 Once deployed in your Kubernetes cluster the example is reachable
-through `http://example-nodejs-logging-attack.example-nodejs-logging-attack.svc.cluster.local:8084/attacks`. Steadybit agents can be configured to support this
+through `http://example-nodejs-logging-attack.example-nodejs-logging-attack.svc.cluster.local:8084/actions`. Steadybit agents can be configured to support this
 attack provider through the environment variable `STEADYBIT_AGENT_ATTACKS_EXTENSIONS_0_URL`.
 
 ## Starting the example using Docker

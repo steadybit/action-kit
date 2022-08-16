@@ -1,6 +1,6 @@
 # Attack Example: Kubernetes attacks via kubectl
 
-This attack example showcases how to leverage Go and AttackKit to expose arbitrary kubectl commands as attacks – in this case, `kubectl rollout restart`!
+This attack example showcases how to leverage Go and ActionKit to expose arbitrary kubectl commands as attacks – in this case, `kubectl rollout restart`!
 
 The attack example exposes several HTTP endpoints that translate the incoming HTTP requests into executed kubectl commands. The attack is deployed within
 Kubernetes as a container that contains the kubectl CLI. Interacting with the kubectl CLI is often more approachable than direct interaction with the Kubernetes
@@ -17,7 +17,7 @@ kubectl apply -f kubernetes.yml
 ```
 
 Once deployed in your Kubernetes cluster the example is reachable
-through `http://example-go-kubectl-attack.example-go-kubectl-attack.svc.cluster.local:8083/attacks`. Steadybit agents can be configured to support this attack
+through `http://example-go-kubectl-attack.example-go-kubectl-attack.svc.cluster.local:8083/actions`. Steadybit agents can be configured to support this attack
 provider through the environment variable `STEADYBIT_AGENT_ATTACKS_EXTENSIONS_0_URL`.
 
 ## Starting the example from source

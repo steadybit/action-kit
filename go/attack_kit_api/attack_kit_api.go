@@ -118,7 +118,7 @@ type AttackDescriptionKind string
 type AttackDescriptionTimeControl string
 
 // RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
-type AttackKitError struct {
+type ActionKitError struct {
 	// A human-readable explanation specific to this occurrence of the problem.
 	Detail *string `json:"detail,omitempty"`
 
@@ -348,13 +348,13 @@ func (t *AttackListResponse) FromAttackList(v AttackList) error {
 	return err
 }
 
-func (t AttackListResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t AttackListResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *AttackListResponse) FromAttackKitError(v AttackKitError) error {
+func (t *AttackListResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -382,13 +382,13 @@ func (t *AttackStatusResponse) FromStatusResult(v StatusResult) error {
 	return err
 }
 
-func (t AttackStatusResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t AttackStatusResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *AttackStatusResponse) FromAttackKitError(v AttackKitError) error {
+func (t *AttackStatusResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -416,13 +416,13 @@ func (t *DescribeAttackResponse) FromAttackDescription(v AttackDescription) erro
 	return err
 }
 
-func (t DescribeAttackResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t DescribeAttackResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *DescribeAttackResponse) FromAttackKitError(v AttackKitError) error {
+func (t *DescribeAttackResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -450,13 +450,13 @@ func (t *PrepareAttackResponse) FromPrepareResult(v PrepareResult) error {
 	return err
 }
 
-func (t PrepareAttackResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t PrepareAttackResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *PrepareAttackResponse) FromAttackKitError(v AttackKitError) error {
+func (t *PrepareAttackResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -484,13 +484,13 @@ func (t *StartAttackResponse) FromStartResult(v StartResult) error {
 	return err
 }
 
-func (t StartAttackResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t StartAttackResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *StartAttackResponse) FromAttackKitError(v AttackKitError) error {
+func (t *StartAttackResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -518,13 +518,13 @@ func (t *StopAttackResponse) FromStopResult(v StopResult) error {
 	return err
 }
 
-func (t StopAttackResponse) AsAttackKitError() (AttackKitError, error) {
-	var body AttackKitError
+func (t StopAttackResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-func (t *StopAttackResponse) FromAttackKitError(v AttackKitError) error {
+func (t *StopAttackResponse) FromActionKitError(v ActionKitError) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err

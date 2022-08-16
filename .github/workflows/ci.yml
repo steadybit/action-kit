@@ -15,11 +15,11 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  go-attack-kit-api:
+  go-action-kit-api:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./go/attack_kit_api
+        working-directory: ./go/action_kit_api
     steps:
     - uses: actions/checkout@v3
       with:

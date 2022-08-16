@@ -54,7 +54,7 @@ func TestAttackList(t *testing.T) {
 		Attacks: []DescribingEndpointReference{
 			{
 				Get,
-				"/attacks/rollout-restart",
+				"/actions/rollout-restart",
 			},
 		},
 	}
@@ -87,19 +87,19 @@ func TestAttackDescription(t *testing.T) {
 		},
 		Prepare: MutatingEndpointReference{
 			Post,
-			"/attacks/rollout-restart/prepare",
+			"/actions/rollout-restart/prepare",
 		},
 		Start: MutatingEndpointReference{
 			Post,
-			"/attacks/rollout-restart/start",
+			"/actions/rollout-restart/start",
 		},
 		Status: Ptr(MutatingEndpointReferenceWithCallInterval{
 			Method: Post,
-			Path:   "/attacks/rollout-restart/status",
+			Path:   "/actions/rollout-restart/status",
 		}),
 		Stop: Ptr(MutatingEndpointReference{
 			Post,
-			"/attacks/rollout-restart/stop",
+			"/actions/rollout-restart/stop",
 		}),
 	}
 	markAsUsed(t, v)
@@ -217,8 +217,8 @@ func TestStopResult(t *testing.T) {
 	markAsUsed(t, v)
 }
 
-func TestAttackKitError(t *testing.T) {
-	v := AttackKitError{
+func TestActionKitError(t *testing.T) {
+	v := ActionKitError{
 		Detail:   Ptr("d"),
 		Instance: Ptr("i"),
 		Title:    "t",

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
- - **Breaking:** This version contains breaking changes in the AttackKit API.
+ - **Breaking:** This version contains breaking changes in the ActionKit API.
    - Attack description `category` is now optional and no longer an enumeration.
    - Attack's `targetType` is now optional.
    - `target` is now optional within prepare request bodies.

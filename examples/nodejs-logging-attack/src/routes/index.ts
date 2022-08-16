@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Steadybit GmbH
 
-import { IndexResponse } from '@steadybit/attack-api';
+import { IndexResponse } from '@steadybit/action-api';
 import express from 'express';
 
 export const router = express.Router();
 
-router.get('/attacks', (_, res) => {
+router.get('/actions', (_, res) => {
 	const response: IndexResponse = {
 		attacks: [
 			{
-				path: '/attacks/logging',
+				path: '/actions/logging',
 			},
 		],
 	};

@@ -1,6 +1,6 @@
 # Examples
 
-We offer several examples that you may find helpful to understand and get started with AttackKit:
+We offer several examples that you may find helpful to understand and get started with ActionKit:
 
 - [Node.js-based logger](/examples/nodejs-logging-attack): This example implements an attack that does nothing besides logging the interaction with the attack
   provider to stdout. This example is handy for understanding the attack API call flow and request and response structures.

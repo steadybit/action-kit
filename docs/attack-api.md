@@ -4,11 +4,11 @@ This document explains the attack API, control flow and the contracts behind it.
 
 ## Overview
 
-Attacks are implemented with the help of AttackKit and the attack API through an implementation of an attack provider. Attack providers are HTTP servers
+Attacks are implemented with the help of ActionKit and the attack API through an implementation of an attack provider. Attack providers are HTTP servers
 implementing the attack API to describe which attacks are supported and how to execute these. The following diagram illustrates who is issuing calls and in what
 phases.
 
-![UML sequence diagram showing in what order the APIs are called](img/attack-flow.svg)
+![UML sequence diagram showing in what order the APIs are called](img/action-flow.svg)
 
 As can be seen above, the attack provider is called by the Steadybit agent in two phases:
 
@@ -23,19 +23,19 @@ The following section explain the various API endpoints, their responsibilities 
 As the name implies, the attack list returns a list of supported attacks. Or, more specifically, HTTP endpoints that the agent should call to learn more about
 the attacks.
 
-This endpoint needs to be [registered with Steadybit agents](./attack-registration.md).
+This endpoint needs to be [registered with Steadybit agents](./action-registration.md).
 
 ### Example
 
 ```json
-// Request: GET /attacks
+// Request: GET /actions
 
 // Response: 200
 {
   "attacks": [
     {
       "method": "GET",
-      "path": "/attacks/rollout-restart"
+      "path": "/actions/rollout-restart"
     }
   ]
 }
@@ -43,9 +43,9 @@ This endpoint needs to be [registered with Steadybit agents](./attack-registrati
 
 ### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `AttackListResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `IndexResponse`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `AttackListResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `AttackListResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `IndexResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `AttackListResponse`
 
 ## Attack Description
 
@@ -62,7 +62,7 @@ Attack description is a somewhat evolved topic. For more information on attack p
 ### Example
 
 ```json
-// Request: GET /attacks/rollout-restart
+// Request: GET /actions/rollout-restart
 
 // Response: 200
 {
@@ -88,28 +88,28 @@ Attack description is a somewhat evolved topic. For more information on attack p
   ],
   "prepare": {
     "method": "POST",
-    "path": "/attacks/rollout-restart/prepare"
+    "path": "/actions/rollout-restart/prepare"
   },
   "start": {
     "method": "POST",
-    "path": "/attacks/rollout-restart/start"
+    "path": "/actions/rollout-restart/start"
   },
   "status": {
     "method": "POST",
-    "path": "/attacks/rollout-restart/status"
+    "path": "/actions/rollout-restart/status"
   },
   "stop": {
     "method": "POST",
-    "path": "/attacks/rollout-restart/stop"
+    "path": "/actions/rollout-restart/stop"
   }
 }
 ```
 
 ### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `DescribeAttackResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `DescribeAttackResponse`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `DescribeAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `DescribeAttackResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `DescribeAttackResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `DescribeAttackResponse`
 
 ### Versioning
 
@@ -149,7 +149,7 @@ as part of the start step).
 #### Example
 
 ```json
-// Request: POST /attacks/rollout-restart/prepare
+// Request: POST /actions/rollout-restart/prepare
 {
   "config": {
     "wait": true
@@ -183,9 +183,9 @@ as part of the start step).
 
 #### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `PrepareAttackRequestBody`, `PrepareAttackResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `PrepareAttackRequestBody`, `PrepareAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `PrepareAttackRequestBody`, `PrepareAttackResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `PrepareRequest`, `PrepareResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `PrepareAttackRequestBody`, `PrepareAttackResponse`
 
 ### Start
 
@@ -201,7 +201,7 @@ what the status endpoint is for).
 #### Example
 
 ```json
-// Request: POST /attacks/rollout-restart/start
+// Request: POST /actions/rollout-restart/start
 {
   "state": {
     "Cluster": "demo-dev",
@@ -224,9 +224,9 @@ what the status endpoint is for).
 
 #### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `StartAttackRequestBody`, `StartAttackResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `StartAttackRequestBody`, `StartAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StartAttackRequestBody`, `StartAttackResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StartRequest`, `StartResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StartAttackRequestBody`, `StartAttackResponse`
 
 
 ### Status
@@ -244,7 +244,7 @@ The status endpoint is continuously called until it responds with `completed=tru
 #### Example
 
 ```json
-// Request: POST /attacks/rollout-restart/status
+// Request: POST /actions/rollout-restart/status
 {
   "state": {
     "Cluster": "demo-dev",
@@ -262,9 +262,9 @@ The status endpoint is continuously called until it responds with `completed=tru
 
 #### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `AttackStatusRequestBody`, `AttackStatusResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `AttackStatusRequestBody`, `AttackStatusResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `AttackStatusRequestBody`, `AttackStatusResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StatusRequest`, `StatusResponse`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `AttackStatusRequestBody`, `AttackStatusResponse`
 
 ### Stop
 
@@ -276,7 +276,7 @@ failure.
 #### Example
 
 ```json
-// Request: POST /attacks/rollout-restart/stop
+// Request: POST /actions/rollout-restart/stop
 {
   "state": {
     "Cluster": "demo-dev",
@@ -291,6 +291,6 @@ failure.
 
 #### References
 
-- [Go API](https://github.com/steadybit/attack-kit/tree/main/go/attack_kit_api): `StopAttackRequestBody`, `StopAttackResponse`
-- [TypeScript API](https://github.com/steadybit/attack-kit/tree/main/typescript-api): `StopRequest`
-- [OpenAPI Schema](https://github.com/steadybit/attack-kit/tree/main/openapi): `StopAttackRequestBody`, `StopAttackResponse`
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StopAttackRequestBody`, `StopAttackResponse`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript-api): `StopRequest`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StopAttackRequestBody`, `StopAttackResponse`

@@ -7,12 +7,12 @@ import {
 	StartResponse,
 	StatusResponse,
 	StopResponse,
-} from '@steadybit/attack-api';
+} from '@steadybit/action-api';
 import express from 'express';
 
 export const router = express.Router();
 
-router.get('/attacks/logging', (_, res) => {
+router.get('/actions/logging', (_, res) => {
 	const response: DescribeAttackResponse = {
 		id: 'logging-attack',
 		label: 'Logging Attack',
@@ -50,22 +50,22 @@ router.get('/attacks/logging', (_, res) => {
 		],
 
 		prepare: {
-			path: '/attacks/logging/prepare',
+			path: '/actions/logging/prepare',
 		},
 		start: {
-			path: '/attacks/logging/start',
+			path: '/actions/logging/start',
 		},
 		status: {
-			path: '/attacks/logging/status',
+			path: '/actions/logging/status',
 		},
 		stop: {
-			path: '/attacks/logging/stop',
+			path: '/actions/logging/stop',
 		},
 	};
 	res.json(response);
 });
 
-router.post('/attacks/logging/prepare', (req, res) => {
+router.post('/actions/logging/prepare', (req, res) => {
 	console.log('Got prepare request:', JSON.stringify(req.body));
 
 	const response: PrepareResponse = {
@@ -78,7 +78,7 @@ router.post('/attacks/logging/prepare', (req, res) => {
 	res.json(response);
 });
 
-router.post('/attacks/logging/start', (req, res) => {
+router.post('/actions/logging/start', (req, res) => {
 	console.log('Got start request:', JSON.stringify(req.body));
 
 	const response: StartResponse = {
@@ -91,7 +91,7 @@ router.post('/attacks/logging/start', (req, res) => {
 	res.json(response);
 });
 
-router.post('/attacks/logging/status', (req, res) => {
+router.post('/actions/logging/status', (req, res) => {
 	console.log('Got status request:', JSON.stringify(req.body));
 
 	const response: StatusResponse = {
@@ -105,7 +105,7 @@ router.post('/attacks/logging/status', (req, res) => {
 	res.json(response);
 });
 
-router.post('/attacks/logging/stop', (req, res) => {
+router.post('/actions/logging/stop', (req, res) => {
 	console.log('Got stop request:', JSON.stringify(req.body));
 	const response: StopResponse = {
 		messages: [{ message: 'Stopped the attack!' }],

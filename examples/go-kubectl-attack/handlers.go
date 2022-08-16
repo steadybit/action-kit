@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/attack-kit/go/attack_kit_api"
+	"github.com/steadybit/action-kit/go/action_kit_api"
 	"github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extutil"
@@ -22,7 +22,7 @@ func getAttackList() attack_kit_api.AttackList {
 		Attacks: []attack_kit_api.DescribingEndpointReference{
 			{
 				"GET",
-				"/attacks/rollout-restart",
+				"/actions/rollout-restart",
 			},
 		},
 	}
@@ -50,19 +50,19 @@ func getRolloutRestartDescription() attack_kit_api.AttackDescription {
 		},
 		Prepare: attack_kit_api.MutatingEndpointReference{
 			Method: "POST",
-			Path:   "/attacks/rollout-restart/prepare",
+			Path:   "/actions/rollout-restart/prepare",
 		},
 		Start: attack_kit_api.MutatingEndpointReference{
 			Method: "POST",
-			Path:   "/attacks/rollout-restart/start",
+			Path:   "/actions/rollout-restart/start",
 		},
 		Status: extutil.Ptr(attack_kit_api.MutatingEndpointReferenceWithCallInterval{
 			Method: "POST",
-			Path:   "/attacks/rollout-restart/status",
+			Path:   "/actions/rollout-restart/status",
 		}),
 		Stop: extutil.Ptr(attack_kit_api.MutatingEndpointReference{
 			Method: "POST",
-			Path:   "/attacks/rollout-restart/stop",
+			Path:   "/actions/rollout-restart/stop",
 		}),
 	}
 }

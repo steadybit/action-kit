@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Steadybit AttackKit API
+  title: Steadybit ActionKit API
   version: 1.0.0
   license:
     name: MIT
@@ -23,7 +23,7 @@ components:
           uniqueItems: true
       required:
         - attacks
-    AttackKitError:
+    ActionKitError:
       title: Error
       description: >-
         RFC 7807 Problem Details for HTTP APIs compliant response body for error
@@ -162,7 +162,7 @@ components:
         parameters:
           type: array
           items:
-            $ref: '#/components/schemas/AttackParameter'
+            $ref: '#/components/schemas/actionParameter'
           uniqueItems: true
         prepare:
           $ref: '#/components/schemas/MutatingEndpointReference'
@@ -288,7 +288,7 @@ components:
       type: object
       properties:
         state:
-          $ref: '#/components/schemas/AttackState'
+          $ref: '#/components/schemas/actionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -299,7 +299,7 @@ components:
       type: object
       properties:
         state:
-          $ref: '#/components/schemas/AttackState'
+          $ref: '#/components/schemas/actionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -309,7 +309,7 @@ components:
         completed:
           type: boolean
         state:
-          $ref: '#/components/schemas/AttackState'
+          $ref: '#/components/schemas/actionState'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -399,7 +399,7 @@ components:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/AttackState'
+                $ref: '#/components/schemas/actionState'
             required:
               - state
     AttackStatusRequestBody:
@@ -411,7 +411,7 @@ components:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/AttackState'
+                $ref: '#/components/schemas/actionState'
             required:
               - state
     StopAttackRequestBody:
@@ -423,7 +423,7 @@ components:
             type: object
             properties:
               state:
-                $ref: '#/components/schemas/AttackState'
+                $ref: '#/components/schemas/actionState'
             required:
               - state
   responses:
@@ -434,8 +434,8 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/AttackList'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/actionList'
+              - $ref: '#/components/schemas/ActionKitError'
     DescribeAttackResponse:
       title: Describe Attack Response
       description: Response for the describe attack endpoint
@@ -443,8 +443,8 @@ components:
         application/json:
           schema:
             anyOf:
-              - $ref: '#/components/schemas/AttackDescription'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/actionDescription'
+              - $ref: '#/components/schemas/ActionKitError'
     PrepareAttackResponse:
       title: Prepare Attack Response
       description: Response for the attack preparation endpoint
@@ -453,7 +453,7 @@ components:
           schema:
             anyOf:
               - $ref: '#/components/schemas/PrepareResult'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/ActionKitError'
     StartAttackResponse:
       title: Start Attack Response
       description: Response for the start attack endpoint
@@ -462,7 +462,7 @@ components:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StartResult'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/ActionKitError'
     AttackStatusResponse:
       title: Attack Status Response
       description: Response for the start attack endpoint
@@ -471,7 +471,7 @@ components:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StatusResult'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/ActionKitError'
     StopAttackResponse:
       title: Stop Attack Response
       description: Response for the stop attack endpoint
@@ -480,4 +480,4 @@ components:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StopResult'
-              - $ref: '#/components/schemas/AttackKitError'
+              - $ref: '#/components/schemas/ActionKitError'

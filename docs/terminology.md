@@ -1,6 +1,6 @@
 # Terminology
 
-## AttackKit
+## ActionKit
 
 The combination of the attack APIs, contracts, documentation and any other material related to the extension of Steadybit with new attacks.
 

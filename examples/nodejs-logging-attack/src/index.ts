@@ -18,5 +18,5 @@ app.use(loggingAttackRouter);
 app.listen(port, () => {
 	console.log(`Attack implementation listening on ${port}.`);
 	console.log();
-	console.log(`Attack list can be accessed via GET http://127.0.0.1:${port}/attacks`);
+	console.log(`Attack list can be accessed via GET http://127.0.0.1:${port}/actions`);
 });
