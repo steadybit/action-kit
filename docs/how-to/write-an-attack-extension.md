@@ -100,6 +100,8 @@ https://github.com/steadybit/action-kit/blob/cc141d7c81acdf4b15ef32c61659d4f1bd0
 
 The above is an excerpt from the Go kubectl example attack. It leverages the `kubectl` CLI to implement an attack. Using existing CLI tools is a fairly common pattern that makes it easy to realize an attack quickly.
 
+Next, we have an excerpt from the AWS EC2 instance state change attack. This attack uses the AWS SDK to trigger system state changes.
+
 ```go
 	// Source: https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L159-L162
 	in := ec2.TerminateInstancesInput{
@@ -108,7 +110,7 @@ The above is an excerpt from the Go kubectl example attack. It leverages the `ku
 	_, err = client.TerminateInstances(ctx, &in)
 ```
 
-Next, we have an excerpt from the AWS EC2 instance state change attack. This attack uses the AWS SDK to trigger system state changes.
+Like the above, the Kong request termination attack leverages the Kong API client to the configuration of a plugin created through the prepare endpoint.
 
 ```go
 	// Source: https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L230-L233
@@ -118,4 +120,21 @@ Next, we have an excerpt from the AWS EC2 instance state change attack. This att
 	})
 ```
 
-Like the above, the Kong request termination attack leverages the Kong API client to the configuration of a plugin created through the prepare endpoint.
+### Status
+
+The status endpoint is typically used with attacks that leverage an `internal` time control to implement a polling "are you done yet?"-check. Remember how each endpoint needs to respond within 15 seconds? Operations taking longer than these 15 seconds benefit from the status endpoint. Like before, let us look at an example!
+
+https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2d17a3/examples/go-kubectl/handlers.go#L136-L160
+
+The excerpt above shows code from the Go kubectl example attack. This attack supports the execution of `kubectl rollout restart...`, i.e., a simulated rollout of a Kubernetes deployment. The attack supports two modes:
+
+1. Just triggering the simulated rollout.
+2. Triggering and waiting for completion of the simulated rollout.
+
+For the first mode, the status endpoint is not necessary. However, for mode two, the status endpoint is necessary. Rollouts routinely take longer than 15 seconds, so waiting must happen outside the start endpoint.
+
+Notice how the attack first checks whether its parameters instructed it to wait for rollout completion. If waiting isn't configured, it will immediately respond with `completed: true` in the JSON response body. When configured to wait, it will check the rollout status via the `kubectl` CLI and then respond according to the CLI's output.
+
+The status endpoint is called until it responds with `completed: true` or until the experiment is canceled.
+
+### Stop
