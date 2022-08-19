@@ -13,6 +13,7 @@ The article assumes that you have read the [overview documentation](../action-ap
     * [Start](#start)
     * [Status](#status)
     * [Stop](#stop)
+  * [Extension Registration](#extension-registration)
 <!-- TOC -->
 
 ## Necessary Boilerplate

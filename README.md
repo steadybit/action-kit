@@ -16,6 +16,7 @@ At this moment, ActionKit can be considered an **open-beta**. The contracts and 
 We recommend that you read the following documentation to get started with ActionKit.
 
  - [Action API](/docs/action-api.md)
+ - [How-To Write An Attack Extension](/docs/how-to/write-an-attack-extension.md) 
  - [Action Registration](/docs/action-registration.md)
  - [Terminology](/docs/terminology.md)
  - [Examples](/docs/examples.md)
