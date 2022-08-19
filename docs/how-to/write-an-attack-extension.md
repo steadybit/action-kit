@@ -54,10 +54,38 @@ Actions only need to define prepare and start endpoints. The status and stop end
 ### Prepare
 In addition to what the action API docs mention, attacks will typically want to prepare the attack execution even further by generating IDs, creating entities in target systems and more. That was pretty abstract. Let us look into examples!
 
-https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L94-L107
+```go
+	// Source: https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L94-L107
+	instanceId := request.Target.Attributes["aws-ec2.instance.id"]
+	if instanceId == nil || len(instanceId) == 0 {
+		return nil, extutil.Ptr(extension_kit.ToError("Target is missing the 'aws-ec2.instance.id' tag.", nil))
+	}
+
+	action := request.Config["action"]
+	if action == nil {
+		return nil, extutil.Ptr(extension_kit.ToError("Missing attack action parameter.", nil))
+	}
+
+	return extutil.Ptr(InstanceStateChangeState{
+		InstanceId: instanceId[0],
+		Action:     action.(string),
+	}), nil
+```
 
 The most fundamental preparation activity is the extraction of attack parameters and target attributes into the action state. This extraction is necessary because start, status and stop only receive the action state. It also helps to keep the other endpoints' implementations more straightforward. Within the excerpt above from the AWS EC2 instance state change attack, we extract the `aws-ec2.instance.id` target attribute and the `action` parameter for later use.
 
-https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L172-L181
+```go
+	// Source: https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L172-L181
+	plugin, err := instance.CreatePlugin(&kong.Plugin{
+		Name:    utils.String("request-termination"),
+		Enabled: utils.Bool(false),
+		Tags: utils.Strings([]string{
+			"created-by=steadybit",
+		}),
+		Service:  service,
+		Consumer: consumer,
+		Config:   config,
+	})
+```
 
-Some attacks go even further, as the excerpt above shows. The Kong request termination attack already inserts a piece of configuration into the attacked system. However, note that the configuration is marked as disabled. The attack will only switch the configuration from disabled to enabled within the start endpoint. Such patterns can be applied where possible for comprehensive preparation incorporating, among others, a validation that system modification is possible, i.e., that the attack extension is allowed to modify the system state.
+Some attacks go even further, as the excerpt above shows. The Kong request termination attack already inserts a piece of configuration into the attacked system. However, note that the configuration is marked as *disabled*. The attack will only switch the configuration from disabled to enabled within the start endpoint. Such patterns can be applied where possible for comprehensive preparation incorporating, among others, a validation that system modification is possible, i.e., that the attack extension is allowed to modify the system state.
