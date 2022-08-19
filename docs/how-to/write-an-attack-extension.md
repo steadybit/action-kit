@@ -51,6 +51,8 @@ We assume you have read the more general action API documentation on the [action
 
 Actions only need to define prepare and start endpoints. The status and stop endpoints are optional. Let's look into the detail for each of those endpoints for attack use cases.
 
+Note that all endpoints are supposed to respond in a maximum of 15s. You can initiate long-running processes within the endpoints, but you should not synchronously wait for them to complete. For example, you should not trigger a redeployment within an attack and wait synchronously for it to come back up. You can use the status endpoint to implement a polling approach if you need to watch the status.
+
 ### Prepare
 In addition to what the action API docs mention, attacks will typically want to prepare the attack execution even further by generating IDs, creating entities in target systems and more. That was pretty abstract. Let us look into examples!
 
@@ -89,3 +91,31 @@ The most fundamental preparation activity is the extraction of attack parameters
 ```
 
 Some attacks go even further, as the excerpt above shows. The Kong request termination attack already inserts a piece of configuration into the attacked system. However, note that the configuration is marked as *disabled*. The attack will only switch the configuration from disabled to enabled within the start endpoint. Such patterns can be applied where possible for comprehensive preparation incorporating, among others, a validation that system modification is possible, i.e., that the attack extension is allowed to modify the system state.
+
+### Start
+
+This is where the magic happens! Although quite often, this magic is just glue code. Within the start endpoint, you can finally start to break stuff. Execute shell scripts, trigger downstream HTTP calls, use API clients and whatever else you need to realize the attack. Again, let us look at some open-source attack implementations to see some patterns.
+
+https://github.com/steadybit/action-kit/blob/cc141d7c81acdf4b15ef32c61659d4f1bd062445/examples/go-kubectl/handlers.go#L108-L119
+
+The above is an excerpt from the Go kubectl example attack. It leverages the `kubectl` CLI to implement an attack. Using existing CLI tools is a fairly common pattern that makes it easy to realize an attack quickly.
+
+```go
+	// Source: https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L159-L162
+	in := ec2.TerminateInstancesInput{
+		InstanceIds: instanceIds,
+	}
+	_, err = client.TerminateInstances(ctx, &in)
+```
+
+Next, we have an excerpt from the AWS EC2 instance state change attack. This attack uses the AWS SDK to trigger system state changes.
+
+```go
+	// Source: https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L230-L233
+	_, err := instance.UpdatePlugin(&kong.Plugin{
+		ID:      &pluginId,
+		Enabled: utils.Bool(true),
+	})
+```
+
+Like the above, the Kong request termination attack leverages the Kong API client to the configuration of a plugin created through the prepare endpoint.
