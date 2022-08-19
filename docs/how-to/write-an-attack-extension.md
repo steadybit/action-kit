@@ -44,3 +44,20 @@ There are no special parameter contracts for attacks. So within this area, you w
 https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2d17a3/examples/go-kubectl/handlers.go#L51-L66
 
 The last part of the action description is the list of endpoints to call when preparing, starting, checking and stopping the attack. The following sections will explain each endpoint's responsibility in more detail. For now, understand that you can define arbitrary HTTP endpoint paths.
+
+## Action Execution
+
+We assume you have read the more general action API documentation on the [action execution phases](../action-api.md#action-execution). If you haven't done so, now would be a good time to read these sections, as we won't repeat this content.
+
+Actions only need to define prepare and start endpoints. The status and stop endpoints are optional. Let's look into the detail for each of those endpoints for attack use cases.
+
+### Prepare
+In addition to what the action API docs mention, attacks will typically want to prepare the attack execution even further by generating IDs, creating entities in target systems and more. That was pretty abstract. Let us look into examples!
+
+https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L94-L107
+
+The most fundamental preparation activity is the extraction of attack parameters and target attributes into the action state. This extraction is necessary because start, status and stop only receive the action state. It also helps to keep the other endpoints' implementations more straightforward. Within the excerpt above from the AWS EC2 instance state change attack, we extract the `aws-ec2.instance.id` target attribute and the `action` parameter for later use.
+
+https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L172-L181
+
+Some attacks go even further, as the excerpt above shows. The Kong request termination attack already inserts a piece of configuration into the attacked system. However, note that the configuration is marked as disabled. The attack will only switch the configuration from disabled to enabled within the start endpoint. Such patterns can be applied where possible for comprehensive preparation incorporating, among others, a validation that system modification is possible, i.e., that the attack extension is allowed to modify the system state.
