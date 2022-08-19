@@ -4,6 +4,17 @@ This how-to article will teach you how to write an extension using ActionKit tha
 
 The article assumes that you have read the [overview documentation](../action-api.md#overview) for the Action API and possibly skimmed over the expected API endpoints. We are leveraging the Go programming language within the examples, but you can use every other language as long as you adhere to the expected API.
 
+<!-- TOC -->
+  * [Necessary Boilerplate](#necessary-boilerplate)
+  * [Action List](#action-list)
+  * [Action Description](#action-description)
+  * [Action Execution](#action-execution)
+    * [Prepare](#prepare)
+    * [Start](#start)
+    * [Status](#status)
+    * [Stop](#stop)
+<!-- TOC -->
+
 ## Necessary Boilerplate
 
 Every extension needs boilerplate code to start an HTTP server, initialize logging and register the HTTP handlers that comply with the expected API. The following excerpt shows how the go-kubectl example extension is doing this.
@@ -51,7 +62,7 @@ We assume you have read the more general action API documentation on the [action
 
 Actions only need to define prepare and start endpoints. The status and stop endpoints are optional. Let's look into the detail for each of those endpoints for attack use cases.
 
-Note that all endpoints are supposed to respond in a maximum of 15s. You can initiate long-running processes within the endpoints, but you should not synchronously wait for them to complete. For example, you should not trigger a redeployment within an attack and wait synchronously for it to come back up. You can use the status endpoint to implement a polling approach if you need to watch the status.
+Note that all endpoints are supposed to respond in a maximum of 15 seconds. You can initiate long-running processes within the endpoints, but you should not synchronously wait for them to complete. For example, you should not trigger a redeployment within an attack and wait synchronously for it to come back up. You can use the status endpoint to implement a polling approach if you need to watch the status.
 
 ### Prepare
 In addition to what the action API docs mention, attacks will typically want to prepare the attack execution even further by generating IDs, creating entities in target systems and more. That was pretty abstract. Let us look into examples!
@@ -138,3 +149,19 @@ Notice how the attack first checks whether its parameters instructed it to wait 
 The status endpoint is called until it responds with `completed: true` or until the experiment is canceled.
 
 ### Stop
+
+Stop is the final endpoint. It is optional. When it is defined, the implementation is expected to revert all system modifications. Meaning: There should not be any evidence that an attack was executed. Not every attack needs a stop implementation. For example, one cannot stop the reboot of an AWS EC2 instance.
+
+```go
+	// Source: https://github.com/steadybit/extension-kong/blob/2c2dfbbd98b69c12e033356ae10c95fc38c573e4/services/request_termination_attack.go#L267-L270
+	err := instance.DeletePlugin(&pluginId)
+	if err != nil {
+		return attack_kit_api.Ptr(utils.ToError(fmt.Sprintf("Failed to delete plugin within Kong for plugin ID '%s'", pluginId), err))
+	}
+```
+
+The above shows what the Kong request termination attack is doing to revert system modifications. The attack created a configuration within the Kong API gateway within the prepare method. As part of the stop endpoint, the attack deletes the configuration.
+
+## Extension Registration
+
+Congratulations, the extension is now completed! This leaves only one last step: Announcing the extension to the Steadybit agents. Read more on this topic within our separate [action registration document](../action-registration.md).
