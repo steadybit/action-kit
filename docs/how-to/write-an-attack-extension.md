@@ -42,3 +42,5 @@ https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2
 There are no special parameter contracts for attacks. So within this area, you will define them just like any other action. Also, refer to our [parameter types documentation](../parameter-types.md) to learn more about the supported parameter types.
 
 https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2d17a3/examples/go-kubectl/handlers.go#L51-L66
+
+The last part of the action description is the list of endpoints to call when preparing, starting, checking and stopping the attack. The following sections will explain each endpoint's responsibility in more detail. For now, understand that you can define arbitrary HTTP endpoint paths.
