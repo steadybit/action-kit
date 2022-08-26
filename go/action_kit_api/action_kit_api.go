@@ -217,7 +217,7 @@ type Metric struct {
 
 	// Timestamp describing at which moment the value was observed.
 	Timestamp time.Time `json:"timestamp"`
-	Value     float32   `json:"value"`
+	Value     float64   `json:"value"`
 }
 
 // Metrics defines model for Metrics.

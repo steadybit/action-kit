@@ -114,6 +114,7 @@ components:
             type: string
         value:
           type: number
+          x-go-type: float64
       required:
         - timestamp
         - metric
