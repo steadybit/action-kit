@@ -5,6 +5,7 @@ package action_kit_api
 
 import (
 	"testing"
+	"time"
 )
 
 // Note: These test cases only check that the code compiles as intended.
@@ -85,6 +86,21 @@ func TestActionDescription(t *testing.T) {
 				DefaultValue: Ptr("false"),
 			},
 		},
+		Metrics: Ptr(MetricsConfiguration{
+			Query: Ptr(MetricsQueryConfiguration{
+				Endpoint: MutatingEndpointReferenceWithCallInterval{
+					Method: Post,
+					Path:   "/actions/rollout-restart/metrics",
+				},
+				Parameters: []ActionParameter{
+					{
+						Label: "PromQL Query",
+						Name:  "query",
+						Type:  String,
+					},
+				},
+			}),
+		}),
 		Prepare: MutatingEndpointReference{
 			Post,
 			"/actions/rollout-restart/prepare",
@@ -132,6 +148,15 @@ func TestPrepareResult(t *testing.T) {
 				Data:  "SGVsbG8gV29ybGQ=",
 			},
 		}),
+		Metrics: Ptr([]Metric{
+			{
+				Timestamp: time.Now(),
+				Metric: map[string]string{
+					"__name__": "latency",
+				},
+				Value: 42,
+			},
+		}),
 	}
 	markAsUsed(t, v)
 }
@@ -157,6 +182,15 @@ func TestStartResult(t *testing.T) {
 			{
 				Label: "load_test_results.tar.gz",
 				Data:  "SGVsbG8gV29ybGQ=",
+			},
+		}),
+		Metrics: Ptr([]Metric{
+			{
+				Timestamp: time.Now(),
+				Metric: map[string]string{
+					"__name__": "latency",
+				},
+				Value: 42,
 			},
 		}),
 	}
@@ -187,6 +221,15 @@ func TestStatusResult(t *testing.T) {
 				Data:  "SGVsbG8gV29ybGQ=",
 			},
 		}),
+		Metrics: Ptr([]Metric{
+			{
+				Timestamp: time.Now(),
+				Metric: map[string]string{
+					"__name__": "latency",
+				},
+				Value: 42,
+			},
+		}),
 	}
 	markAsUsed(t, v)
 }
@@ -213,6 +256,15 @@ func TestStopResult(t *testing.T) {
 				Data:  "SGVsbG8gV29ybGQ=",
 			},
 		}),
+		Metrics: Ptr([]Metric{
+			{
+				Timestamp: time.Now(),
+				Metric: map[string]string{
+					"__name__": "latency",
+				},
+				Value: 42,
+			},
+		}),
 	}
 	markAsUsed(t, v)
 }
@@ -223,6 +275,41 @@ func TestActionKitError(t *testing.T) {
 		Instance: Ptr("i"),
 		Title:    "t",
 		Type:     Ptr("t"),
+	}
+	markAsUsed(t, v)
+}
+
+func TestQueryMetricsResult(t *testing.T) {
+	v := QueryMetricsResult{
+		Messages: Ptr([]Message{
+			{
+				Level:   Ptr(Debug),
+				Message: "test",
+			},
+			{
+				Level:   Ptr(Error),
+				Message: "test",
+			},
+			{
+				Level:   Ptr(Info),
+				Message: "test",
+			},
+		}),
+		Artifacts: Ptr([]Artifact{
+			{
+				Label: "load_test_results.tar.gz",
+				Data:  "SGVsbG8gV29ybGQ=",
+			},
+		}),
+		Metrics: Ptr([]Metric{
+			{
+				Timestamp: time.Now(),
+				Metric: map[string]string{
+					"__name__": "latency",
+				},
+				Value: 42,
+			},
+		}),
 	}
 	markAsUsed(t, v)
 }

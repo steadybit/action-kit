@@ -92,6 +92,57 @@ components:
       required:
         - label
         - data
+    Metric:
+      title: Metric
+      description: Metrics can be exposed by actions. These metrics can then be leveraged by end-users to inspect system behavior and to optionally abort experiment execution when certain metrics are observed, i.e., metrics can act as (steady state) checks.
+      type: object
+      properties:
+        timestamp:
+          type: string
+          description: Timestamp describing at which moment the value was observed.
+          format: date-time
+        name:
+          type: string
+          description: Metric name. You can alternatively encode the metric name as `__name__` within the metric property.
+        metric:
+          type: object
+          description: >-
+            Key/value pairs describing the metric. This type is modeled after Prometheus'
+            data model, i.e., metric labels. You may encode the metric name as `__name__`
+            similar to how Prometheus does it.
+          additionalProperties:
+            type: string
+        value:
+          type: number
+      required:
+        - timestamp
+        - metric
+        - value
+    Metrics:
+      title: Metrics
+      type: array
+      items:
+        $ref: '#/components/schemas/Metric'
+    MetricsConfiguration:
+      title: Metrics Configuration
+      type: object
+      properties:
+        query:
+          $ref: '#/components/schemas/MetricsQueryConfiguration'
+    MetricsQueryConfiguration:
+      title: Metrics Query Configuration
+      type: object
+      properties:
+        endpoint:
+          $ref: '#/components/schemas/MutatingEndpointReferenceWithCallInterval'
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionParameter'
+          uniqueItems: true
+      required:
+        - endpoint
+        - parameters
     ActionDescription:
       title: Action Description
       description: >-
@@ -164,6 +215,8 @@ components:
           items:
             $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
+        metrics:
+          $ref: '#/components/schemas/MetricsConfiguration'
         prepare:
           $ref: '#/components/schemas/MutatingEndpointReference'
         start:
@@ -293,6 +346,8 @@ components:
           $ref: '#/components/schemas/Messages'
         artifacts:
           $ref: '#/components/schemas/Artifacts'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
       required:
         - state
     StartResult:
@@ -304,6 +359,8 @@ components:
           $ref: '#/components/schemas/Messages'
         artifacts:
           $ref: '#/components/schemas/Artifacts'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
     StatusResult:
       properties:
         completed:
@@ -314,6 +371,8 @@ components:
           $ref: '#/components/schemas/Messages'
         artifacts:
           $ref: '#/components/schemas/Artifacts'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
       required:
         - completed
     StopResult:
@@ -322,6 +381,16 @@ components:
           $ref: '#/components/schemas/Messages'
         artifacts:
           $ref: '#/components/schemas/Artifacts'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
+    QueryMetricsResult:
+      properties:
+        messages:
+          $ref: '#/components/schemas/Messages'
+        artifacts:
+          $ref: '#/components/schemas/Artifacts'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
     DescribingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.
@@ -371,7 +440,40 @@ components:
               description: >-
                 At what frequency should the state endpoint be called? Takes
                 durations in the format of `100ms` or `10s`.
+    ExecutionId:
+      type: string
+      format: string
+      x-go-type: uuid.UUID
+      x-go-type-import:
+        name: uuid
+        path: github.com/google/uuid
   requestBodies:
+    QueryMetricsRequestBody:
+      title: Query Metrics Request
+      description: The HTTP request payload passed to the metric query endpoints. Multiple query executions happen for every action execution.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              executionId:
+                $ref: '#/components/schemas/ExecutionId'
+              timestamp:
+                type: string
+                format: date-time
+                description: For what timestamp the metric values should be retrieved.
+              config:
+                type: object
+                description: >-
+                  The metric query configuration. This contains the end-user
+                  configuration done for the action. Possible configuration
+                  parameters are defined through the action description.
+              target:
+                $ref: '#/components/schemas/Target'
+            required:
+              - executionId
+              - timestamp
+              - config
     PrepareActionRequestBody:
       title: Prepare Action Request
       description: The HTTP request payload passed to the action prepare endpoints.
@@ -380,6 +482,8 @@ components:
           schema:
             type: object
             properties:
+              executionId:
+                $ref: '#/components/schemas/ExecutionId'
               config:
                 type: object
                 description: >-
@@ -389,6 +493,7 @@ components:
               target:
                 $ref: '#/components/schemas/Target'
             required:
+              - executionId
               - config
     StartActionRequestBody:
       title: Start Action Request
@@ -480,4 +585,13 @@ components:
           schema:
             anyOf:
               - $ref: '#/components/schemas/StopResult'
+              - $ref: '#/components/schemas/ActionKitError'
+    QueryMetricsResponse:
+      title: Query MetricsResponse
+      description: Response for the metric query endpoint
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/QueryMetricsResult'
               - $ref: '#/components/schemas/ActionKitError'

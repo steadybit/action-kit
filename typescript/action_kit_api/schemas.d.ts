@@ -58,6 +58,33 @@ export interface components {
 			data: string;
 		};
 		/**
+		 * Metric
+		 * @description Metrics can be exposed by actions. These metrics can then be leveraged by end-users to inspect system behavior and to optionally abort experiment execution when certain metrics are observed, i.e., metrics can act as (steady state) checks.
+		 */
+		Metric: {
+			/**
+			 * Format: date-time
+			 * @description Timestamp describing at which moment the value was observed.
+			 */
+			timestamp: string;
+			/** @description Metric name. You can alternatively encode the metric name as `__name__` within the metric property. */
+			name?: string;
+			/** @description Key/value pairs describing the metric. This type is modeled after Prometheus' data model, i.e., metric labels. You may encode the metric name as `__name__` similar to how Prometheus does it. */
+			metric: { [key: string]: string };
+			value: number;
+		};
+		/** Metrics */
+		Metrics: components['schemas']['Metric'][];
+		/** Metrics Configuration */
+		MetricsConfiguration: {
+			query?: components['schemas']['MetricsQueryConfiguration'];
+		};
+		/** Metrics Query Configuration */
+		MetricsQueryConfiguration: {
+			endpoint: components['schemas']['MutatingEndpointReferenceWithCallInterval'];
+			parameters: components['schemas']['ActionParameter'][];
+		};
+		/**
 		 * Action Description
 		 * @description Provides details about a possible action, e.g., what configuration options it has, how to present it to end-users and how to trigger the action.
 		 */
@@ -87,6 +114,7 @@ export interface components {
 			 */
 			timeControl: 'instantaneous' | 'internal' | 'external';
 			parameters: components['schemas']['ActionParameter'][];
+			metrics?: components['schemas']['MetricsConfiguration'];
 			prepare: components['schemas']['MutatingEndpointReference'];
 			start: components['schemas']['MutatingEndpointReference'];
 			status?: components['schemas']['MutatingEndpointReferenceWithCallInterval'];
@@ -148,21 +176,30 @@ export interface components {
 			state: components['schemas']['ActionState'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
+			metrics?: components['schemas']['Metrics'];
 		};
 		StartResult: {
 			state?: components['schemas']['ActionState'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
+			metrics?: components['schemas']['Metrics'];
 		};
 		StatusResult: {
 			completed: boolean;
 			state?: components['schemas']['ActionState'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
+			metrics?: components['schemas']['Metrics'];
 		};
 		StopResult: {
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
+			metrics?: components['schemas']['Metrics'];
+		};
+		QueryMetricsResult: {
+			messages?: components['schemas']['Messages'];
+			artifacts?: components['schemas']['Artifacts'];
+			metrics?: components['schemas']['Metrics'];
 		};
 		/**
 		 * HTTP Endpoint Reference
@@ -197,6 +234,8 @@ export interface components {
 			/** @description At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`. */
 			callInterval?: string;
 		};
+		/** Format: string */
+		ExecutionId: string;
 	};
 	responses: {
 		/** Response for the action list endpoint */
@@ -241,12 +280,36 @@ export interface components {
 					Partial<components['schemas']['ActionKitError']>;
 			};
 		};
+		/** Response for the metric query endpoint */
+		QueryMetricsResponse: {
+			content: {
+				'application/json': Partial<components['schemas']['QueryMetricsResult']> &
+					Partial<components['schemas']['ActionKitError']>;
+			};
+		};
 	};
 	requestBodies: {
+		/** The HTTP request payload passed to the metric query endpoints. Multiple query executions happen for every action execution. */
+		QueryMetricsRequestBody: {
+			content: {
+				'application/json': {
+					executionId: components['schemas']['ExecutionId'];
+					/**
+					 * Format: date-time
+					 * @description For what timestamp the metric values should be retrieved.
+					 */
+					timestamp: string;
+					/** @description The metric query configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description. */
+					config: { [key: string]: unknown };
+					target?: components['schemas']['Target'];
+				};
+			};
+		};
 		/** The HTTP request payload passed to the action prepare endpoints. */
 		PrepareActionRequestBody: {
 			content: {
 				'application/json': {
+					executionId: components['schemas']['ExecutionId'];
 					/** @description The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description. */
 					config: { [key: string]: unknown };
 					target?: components['schemas']['Target'];
