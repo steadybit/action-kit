@@ -28,7 +28,7 @@ jobs:
     - uses: actions/setup-go@v3
       with:
         go-version: '^1.18.0'
-    - run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@2cf7fcf5b26d1a4362e7c300bd65c20f4f6c4298
+    - run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@fec990c8f823a7f5db876a133c087338afc0a9ce
     - run: ./build.sh
     - run: git diff --exit-code
       name: "Ensure that Go API changes (as a consequence of OpenAPI spec changes) are checked in"
