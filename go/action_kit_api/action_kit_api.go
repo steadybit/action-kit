@@ -5,6 +5,9 @@ package action_kit_api
 
 import (
 	"encoding/json"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 // Defines values for ActionDescriptionKind.
@@ -74,8 +77,9 @@ type ActionDescription struct {
 	Kind ActionDescriptionKind `json:"kind"`
 
 	// A human-readable label for the action.
-	Label      string            `json:"label"`
-	Parameters []ActionParameter `json:"parameters"`
+	Label      string                `json:"label"`
+	Metrics    *MetricsConfiguration `json:"metrics,omitempty"`
+	Parameters []ActionParameter     `json:"parameters"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
 	Prepare MutatingEndpointReference `json:"prepare"`
@@ -188,6 +192,9 @@ type DescribingEndpointReference struct {
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
 
+// ExecutionId defines model for ExecutionId.
+type ExecutionId uuid.UUID
+
 // Log-message that will be passed to the agent log.
 type Message struct {
 	Level   *MessageLevel `json:"level,omitempty"`
@@ -199,6 +206,34 @@ type MessageLevel string
 
 // Log-messages that will be passed to the agent log.
 type Messages = []Message
+
+// Metrics can be exposed by actions. These metrics can then be leveraged by end-users to inspect system behavior and to optionally abort experiment execution when certain metrics are observed, i.e., metrics can act as (steady state) checks.
+type Metric struct {
+	// Key/value pairs describing the metric. This type is modeled after Prometheus' data model, i.e., metric labels. You may encode the metric name as `__name__` similar to how Prometheus does it.
+	Metric map[string]string `json:"metric"`
+
+	// Metric name. You can alternatively encode the metric name as `__name__` within the metric property.
+	Name *string `json:"name,omitempty"`
+
+	// Timestamp describing at which moment the value was observed.
+	Timestamp time.Time `json:"timestamp"`
+	Value     float32   `json:"value"`
+}
+
+// Metrics defines model for Metrics.
+type Metrics = []Metric
+
+// MetricsConfiguration defines model for MetricsConfiguration.
+type MetricsConfiguration struct {
+	Query *MetricsQueryConfiguration `json:"query,omitempty"`
+}
+
+// MetricsQueryConfiguration defines model for MetricsQueryConfiguration.
+type MetricsQueryConfiguration struct {
+	// HTTP endpoint which the Steadybit platform/agent could communicate with.
+	Endpoint   MutatingEndpointReferenceWithCallInterval `json:"endpoint"`
+	Parameters []ActionParameter                         `json:"parameters"`
+}
 
 // HTTP endpoint which the Steadybit platform/agent could communicate with.
 type MutatingEndpointReference struct {
@@ -236,9 +271,19 @@ type PrepareResult struct {
 
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
+	Metrics  *Metrics  `json:"metrics,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
+}
+
+// QueryMetricsResult defines model for QueryMetricsResult.
+type QueryMetricsResult struct {
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+
+	// Log-messages that will be passed to the agent log.
+	Messages *Messages `json:"messages,omitempty"`
+	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
 
 // StartResult defines model for StartResult.
@@ -247,6 +292,7 @@ type StartResult struct {
 
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
+	Metrics  *Metrics  `json:"metrics,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
@@ -259,6 +305,7 @@ type StatusResult struct {
 
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
+	Metrics  *Metrics  `json:"metrics,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
@@ -270,6 +317,7 @@ type StopResult struct {
 
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
+	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
 
 // The target on which to act on as identified by a discovery.
@@ -299,6 +347,11 @@ type PrepareActionResponse struct {
 	union json.RawMessage
 }
 
+// QueryMetricsResponse defines model for QueryMetricsResponse.
+type QueryMetricsResponse struct {
+	union json.RawMessage
+}
+
 // StartActionResponse defines model for StartActionResponse.
 type StartActionResponse struct {
 	union json.RawMessage
@@ -318,10 +371,24 @@ type ActionStatusRequestBody struct {
 // PrepareActionRequestBody defines model for PrepareActionRequestBody.
 type PrepareActionRequestBody struct {
 	// The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
-	Config map[string]interface{} `json:"config"`
+	Config      map[string]interface{} `json:"config"`
+	ExecutionId ExecutionId            `json:"executionId"`
 
 	// The target on which to act on as identified by a discovery.
 	Target *Target `json:"target,omitempty"`
+}
+
+// QueryMetricsRequestBody defines model for QueryMetricsRequestBody.
+type QueryMetricsRequestBody struct {
+	// The metric query configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
+	Config      map[string]interface{} `json:"config"`
+	ExecutionId ExecutionId            `json:"executionId"`
+
+	// The target on which to act on as identified by a discovery.
+	Target *Target `json:"target,omitempty"`
+
+	// For what timestamp the metric values should be retrieved.
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // StartActionRequestBody defines model for StartActionRequestBody.
@@ -468,6 +535,40 @@ func (t PrepareActionResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (t *PrepareActionResponse) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+func (t QueryMetricsResponse) AsQueryMetricsResult() (QueryMetricsResult, error) {
+	var body QueryMetricsResult
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *QueryMetricsResponse) FromQueryMetricsResult(v QueryMetricsResult) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t QueryMetricsResponse) AsActionKitError() (ActionKitError, error) {
+	var body ActionKitError
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+func (t *QueryMetricsResponse) FromActionKitError(v ActionKitError) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+func (t QueryMetricsResponse) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *QueryMetricsResponse) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }

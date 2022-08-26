@@ -6,8 +6,8 @@ import {
 	PrepareActionRequestBody,
 	StartActionRequestBody,
 	StopActionRequestBody,
-	ActionDescription, PrepareResult, StartResult, StatusResult, StopResult, ActionKitError
-} from './index';
+	ActionDescription, PrepareResult, StartResult, StatusResult, StopResult, ActionKitError, QueryMetricsResult
+} from "./index";
 
 export const actionList: ActionList = {
 	actions: [
@@ -19,6 +19,7 @@ export const actionList: ActionList = {
 };
 
 export const prepareActionRequestBody: PrepareActionRequestBody = {
+	executionId: 'dsadsa',
 	config: {
 		'duration': 5000
 	},
@@ -61,6 +62,21 @@ export const actionDescription: ActionDescription = {
 			defaultValue: 'false'
 		}
 	],
+	metrics: {
+		query: {
+			endpoint: {
+				method: 'post',
+				path: '/actions/rollout-restart/prepare'
+			},
+			parameters: [
+				{
+					label: 'PromQL query',
+					name: 'query',
+					type: 'string',
+				}
+			]
+		}
+	},
 	prepare: {
 		method: 'post',
 		path: '/actions/rollout-restart/prepare'
@@ -106,6 +122,15 @@ export const prepareResult: PrepareResult = {
 			label: 'load_test_results.tar.gz',
 			data: 'SGVsbG8gV29ybGQ='
 		}
+	],
+	metrics: [
+		{
+			timestamp: '2018-11-13T20:20:39+00:00',
+			metric: {
+				__name__: 'latecy'
+			},
+			value: 42
+		}
 	]
 };
 
@@ -135,6 +160,15 @@ export const startResult: StartResult = {
 		{
 			label: 'load_test_results.tar.gz',
 			data: 'SGVsbG8gV29ybGQ='
+		}
+	],
+	metrics: [
+		{
+			timestamp: '2018-11-13T20:20:39+00:00',
+			metric: {
+				__name__: 'latecy'
+			},
+			value: 42
 		}
 	]
 };
@@ -167,6 +201,15 @@ export const statusResult: StatusResult = {
 			label: 'load_test_results.tar.gz',
 			data: 'SGVsbG8gV29ybGQ='
 		}
+	],
+	metrics: [
+		{
+			timestamp: '2018-11-13T20:20:39+00:00',
+			metric: {
+				__name__: 'latecy'
+			},
+			value: 42
+		}
 	]
 };
 
@@ -194,6 +237,15 @@ export const stopResult: StopResult = {
 			label: 'load_test_results.tar.gz',
 			data: 'SGVsbG8gV29ybGQ='
 		}
+	],
+	metrics: [
+		{
+			timestamp: '2018-11-13T20:20:39+00:00',
+			metric: {
+				__name__: 'latecy'
+			},
+			value: 42
+		}
 	]
 };
 
@@ -203,3 +255,39 @@ export const actionKitError: ActionKitError = {
 	title: 't',
 	type: 't'
 };
+
+export const queryMetricsResult: QueryMetricsResult = {
+	messages: [
+		{
+			level: 'debug',
+			message: 'test'
+		},
+		{
+			level: 'info',
+			message: 'test'
+		},
+		{
+			level: 'warn',
+			message: 'test'
+		},
+		{
+			level: 'error',
+			message: 'test'
+		}
+	],
+	artifacts: [
+		{
+			label: 'load_test_results.tar.gz',
+			data: 'SGVsbG8gV29ybGQ='
+		}
+	],
+	metrics: [
+		{
+			timestamp: '2018-11-13T20:20:39+00:00',
+			metric: {
+				__name__: 'latecy'
+			},
+			value: 42
+		}
+	]
+}
