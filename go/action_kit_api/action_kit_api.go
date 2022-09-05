@@ -192,9 +192,6 @@ type DescribingEndpointReference struct {
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
 
-// ExecutionId defines model for ExecutionId.
-type ExecutionId uuid.UUID
-
 // Log-message that will be passed to the agent log.
 type Message struct {
 	Level   *MessageLevel `json:"level,omitempty"`
@@ -372,7 +369,7 @@ type ActionStatusRequestBody struct {
 type PrepareActionRequestBody struct {
 	// The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
 	Config      map[string]interface{} `json:"config"`
-	ExecutionId ExecutionId            `json:"executionId"`
+	ExecutionId uuid.UUID              `json:"executionId"`
 
 	// The target on which to act on as identified by a discovery.
 	Target *Target `json:"target,omitempty"`
@@ -382,7 +379,7 @@ type PrepareActionRequestBody struct {
 type QueryMetricsRequestBody struct {
 	// The metric query configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
 	Config      map[string]interface{} `json:"config"`
-	ExecutionId ExecutionId            `json:"executionId"`
+	ExecutionId uuid.UUID              `json:"executionId"`
 
 	// The target on which to act on as identified by a discovery.
 	Target *Target `json:"target,omitempty"`
