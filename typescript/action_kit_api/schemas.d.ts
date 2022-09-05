@@ -234,8 +234,6 @@ export interface components {
 			/** @description At what frequency should the state endpoint be called? Takes durations in the format of `100ms` or `10s`. */
 			callInterval?: string;
 		};
-		/** Format: string */
-		ExecutionId: string;
 	};
 	responses: {
 		/** Response for the action list endpoint */
@@ -293,7 +291,8 @@ export interface components {
 		QueryMetricsRequestBody: {
 			content: {
 				'application/json': {
-					executionId: components['schemas']['ExecutionId'];
+					/** Format: string */
+					executionId: string;
 					/**
 					 * Format: date-time
 					 * @description For what timestamp the metric values should be retrieved.
@@ -309,7 +308,8 @@ export interface components {
 		PrepareActionRequestBody: {
 			content: {
 				'application/json': {
-					executionId: components['schemas']['ExecutionId'];
+					/** Format: string */
+					executionId: string;
 					/** @description The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description. */
 					config: { [key: string]: unknown };
 					target?: components['schemas']['Target'];

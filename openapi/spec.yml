@@ -441,13 +441,6 @@ components:
               description: >-
                 At what frequency should the state endpoint be called? Takes
                 durations in the format of `100ms` or `10s`.
-    ExecutionId:
-      type: string
-      format: string
-      x-go-type: uuid.UUID
-      x-go-type-import:
-        name: uuid
-        path: github.com/google/uuid
   requestBodies:
     QueryMetricsRequestBody:
       title: Query Metrics Request
@@ -458,7 +451,12 @@ components:
             type: object
             properties:
               executionId:
-                $ref: '#/components/schemas/ExecutionId'
+                type: string
+                format: string
+                x-go-type: uuid.UUID
+                x-go-type-import:
+                  name: uuid
+                  path: github.com/google/uuid
               timestamp:
                 type: string
                 format: date-time
@@ -484,7 +482,12 @@ components:
             type: object
             properties:
               executionId:
-                $ref: '#/components/schemas/ExecutionId'
+                type: string
+                format: string
+                x-go-type: uuid.UUID
+                x-go-type-import:
+                  name: uuid
+                  path: github.com/google/uuid
               config:
                 type: object
                 description: >-

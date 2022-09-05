@@ -4,6 +4,9 @@
 package action_kit_api
 
 import (
+	"encoding/json"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -312,4 +315,13 @@ func TestQueryMetricsResult(t *testing.T) {
 		}),
 	}
 	markAsUsed(t, v)
+}
+
+func TestUnmarshalMetricQuery(t *testing.T) {
+	id := uuid.MustParse("f47ac10b-58cc-0372-8567-0e02b2c3d479")
+	raw := "{\"executionId\":\"f47ac10b-58cc-0372-8567-0e02b2c3d479\",\"timestamp\":\"2022-09-05T08:54:53.489741Z\",\"config\":{\"query\":\"up\"},\"target\":{\"name\":\"local\",\"attributes\":{\"prometheus.instance.name\":[\"local\"],\"agent.hostname\":[\"work.local\"],\"steadybit.label\":[\"local\"],\"prometheus.instance.url\":[\"http://127.0.0.1:9091\"]}}}"
+	var parsed QueryMetricsRequestBody
+	err := json.Unmarshal([]byte(raw), &parsed)
+	require.Nil(t, err)
+	require.Equal(t, id, parsed.ExecutionId)
 }
