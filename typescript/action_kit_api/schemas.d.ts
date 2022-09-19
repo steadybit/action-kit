@@ -120,11 +120,19 @@ export interface components {
 			status?: components['schemas']['MutatingEndpointReferenceWithCallInterval'];
 			stop?: components['schemas']['MutatingEndpointReference'];
 		};
-		ParameterOption: {
+		ParameterOption: Partial<components['schemas']['ExplicitParameterOption']> &
+			Partial<components['schemas']['ParameterOptionsFromTargetAttribute']>;
+		/** @description You can use an explicit/fixed parameter option for a known / finite set of options that never change. */
+		ExplicitParameterOption: {
 			/** @description A human-readable label describing this option. */
 			label: string;
 			/** @description The technical value which will be passed to the action as part of the `config` object. */
 			value: string;
+		};
+		/** @description A meta option that represents all target attribute values for the key defined through the attribute field. */
+		ParameterOptionsFromTargetAttribute: {
+			/** @description Target attribute key from which the possible parameter options are gathered. */
+			attribute: string;
 		};
 		ActionParameter: {
 			/** @description A human-readable label for the action parameter. */

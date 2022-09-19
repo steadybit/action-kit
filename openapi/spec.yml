@@ -237,6 +237,11 @@ components:
         - prepare
         - start
     ParameterOption:
+      anyOf:
+        - $ref: '#/components/schemas/ExplicitParameterOption'
+        - $ref: '#/components/schemas/ParameterOptionsFromTargetAttribute'
+    ExplicitParameterOption:
+      description: You can use an explicit/fixed parameter option for a known / finite set of options that never change.
       properties:
         label:
           type: string
@@ -247,6 +252,14 @@ components:
       required:
         - label
         - value
+    ParameterOptionsFromTargetAttribute:
+      description: A meta option that represents all target attribute values for the key defined through the attribute field.
+      properties:
+        attribute:
+          type: string
+          description: Target attribute key from which the possible parameter options are gathered.
+      required:
+        - attribute
     ActionParameter:
       properties:
         label:

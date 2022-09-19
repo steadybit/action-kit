@@ -87,6 +87,15 @@ func TestActionDescription(t *testing.T) {
 				Type:         Boolean,
 				Advanced:     Ptr(true),
 				DefaultValue: Ptr("false"),
+				Options: Ptr([]ParameterOption{
+					ExplicitParameterOption{
+						Label: "Any",
+						Value: "*",
+					},
+					ParameterOptionsFromTargetAttribute{
+						Attribute: "k8s.namespace",
+					},
+				}),
 			},
 		},
 		Metrics: Ptr(MetricsConfiguration{

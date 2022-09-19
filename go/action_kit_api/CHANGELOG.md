@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.0
+
+- **Breaking:** The type `ParameterOption` was renamed to `ExplicitParameterOption`. The following code snippet shows an updated usage:
+
+```go
+Options: extutil.Ptr([]action_kit_api.ParameterOption{
+    action_kit_api.ExplicitParameterOption{
+        Label: "Any",
+        Value: "*",
+    },
+    action_kit_api.ParameterOptionsFromTargetAttribute{
+        Attribute: "k8s.namespace",
+    },
+}),
+```
+ 
+- Ability to auto-generate supported options through the `ParameterOption` type `ParameterOptionsFromTargetAttribute`.
+- Support for metric queries and responses.
+
 ## 1.0.0
 
  - Initial release
