@@ -207,11 +207,11 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 
 ## `string_array`
 
-You can use the `string_array` type for multiple textual inputs.
-
-<img src="img/parameters/string.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string[] / string_array parameter looks like. Depicting a textual label and a text input." />
+You can use the `string_array` type for multiple textual inputs. 
 
 <img src="img/parameters/string_array_open.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string[] / string_array parameter looks like when interacting with the input field. Depicting an overlay showing selectable options." />
+
+You may define options that users can select. Options are either explicit, i.e., fixed and known in advance (identifiable by the `label` and `value` properties). Or options based on target attributes' values (identifiable by the `attribute` property).
 
 ### Example
 
@@ -239,8 +239,12 @@ You can use the `string_array` type for multiple textual inputs.
     {
       "label": "Ataru",
       "value": "ataru"
+    },
+    
+    // or automatically created options from all known values for this target attribute key 
+    {
+      "attribute": "combat.form"
     }
-    // ...
   ]
 }
 ```
