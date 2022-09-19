@@ -59,7 +59,16 @@ export const actionDescription: ActionDescription = {
 			name: 'wait',
 			type: 'boolean',
 			advanced: true,
-			defaultValue: 'false'
+			defaultValue: 'false',
+			options: [
+				{
+					label: 'Any',
+					value: '*'
+				},
+				{
+					attribute: 'k8s.namespace'
+				}
+			]
 		}
 	],
 	metrics: {

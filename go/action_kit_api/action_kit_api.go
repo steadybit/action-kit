@@ -192,6 +192,15 @@ type DescribingEndpointReference struct {
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
 
+// You can use an explicit/fixed parameter option for a known / finite set of options that never change.
+type ExplicitParameterOption struct {
+	// A human-readable label describing this option.
+	Label string `json:"label"`
+
+	// The technical value which will be passed to the action as part of the `config` object.
+	Value string `json:"value"`
+}
+
 // Log-message that will be passed to the agent log.
 type Message struct {
 	Level   *MessageLevel `json:"level,omitempty"`
@@ -253,13 +262,10 @@ type MutatingEndpointReferenceWithCallInterval struct {
 // MutatingHttpMethod defines model for MutatingHttpMethod.
 type MutatingHttpMethod string
 
-// ParameterOption defines model for ParameterOption.
-type ParameterOption struct {
-	// A human-readable label describing this option.
-	Label string `json:"label"`
-
-	// The technical value which will be passed to the action as part of the `config` object.
-	Value string `json:"value"`
+// A meta option that represents all target attribute values for the key defined through the attribute field.
+type ParameterOptionsFromTargetAttribute struct {
+	// Target attribute key from which the possible parameter options are gathered.
+	Attribute string `json:"attribute"`
 }
 
 // PrepareResult defines model for PrepareResult.
@@ -637,3 +643,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
+
+type ParameterOption interface {}
