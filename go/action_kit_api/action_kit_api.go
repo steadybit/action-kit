@@ -25,6 +25,12 @@ const (
 	Internal      ActionDescriptionTimeControl = "internal"
 )
 
+// Defines values for ActionKitErrorStatus.
+const (
+	Errored ActionKitErrorStatus = "errored"
+	Failed  ActionKitErrorStatus = "failed"
+)
+
 // Defines values for ActionParameterType.
 const (
 	Boolean     ActionParameterType = "boolean"
@@ -109,7 +115,7 @@ type ActionDescriptionKind string
 // Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type ActionDescriptionTimeControl string
 
-// RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 type ActionKitError struct {
 	// A human-readable explanation specific to this occurrence of the problem.
 	Detail *string `json:"detail,omitempty"`
@@ -117,12 +123,18 @@ type ActionKitError struct {
 	// A URI reference that identifies the specific occurrence of the problem.
 	Instance *string `json:"instance,omitempty"`
 
+	// * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint. * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
+	Status *ActionKitErrorStatus `json:"status,omitempty"`
+
 	// A short, human-readable summary of the problem type.
 	Title string `json:"title"`
 
 	// A URI reference that identifies the problem type.
 	Type *string `json:"type,omitempty"`
 }
+
+// * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint. * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
+type ActionKitErrorStatus string
 
 // Lists all actions that the platform/agent could execute.
 type ActionList struct {
@@ -272,12 +284,12 @@ type ParameterOptionsFromTargetAttribute struct {
 type PrepareResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
+	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+	Error *ActionKitError `json:"error,omitempty"`
+
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
-
-	// The result of the action.
-	Result *Result `json:"result,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
@@ -292,19 +304,16 @@ type QueryMetricsResult struct {
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
 
-// The result of the action.
-type Result = string
-
 // StartResult defines model for StartResult.
 type StartResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
+	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+	Error *ActionKitError `json:"error,omitempty"`
+
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
-
-	// The result of the action.
-	Result *Result `json:"result,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
@@ -317,12 +326,12 @@ type StatusResult struct {
 	// the agent will continue to poll the status endpoint as long as completed is false
 	Completed bool `json:"completed"`
 
+	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+	Error *ActionKitError `json:"error,omitempty"`
+
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
-
-	// The result of the action.
-	Result *Result `json:"result,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
@@ -332,12 +341,12 @@ type StatusResult struct {
 type StopResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
+	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+	Error *ActionKitError `json:"error,omitempty"`
+
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
-
-	// The result of the action.
-	Result *Result `json:"result,omitempty"`
 }
 
 // The target on which to act on as identified by a discovery.
@@ -661,4 +670,4 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface {}
+type ParameterOption interface{}

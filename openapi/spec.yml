@@ -26,9 +26,17 @@ components:
     ActionKitError:
       title: Error
       description: >-
-        RFC 7807 Problem Details for HTTP APIs compliant response body for error
-        scenarios
+        An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
       properties:
+        status:
+          description: >-
+            * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint.
+            * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
+          enum:
+            - failed
+            - errored
+          type: string
+          default: errored
         type:
           type: string
           description: A URI reference that identifies the problem type.
@@ -351,35 +359,13 @@ components:
         Any kind of action specific state that will be passed to the next
         endpoints.
       type: object
-    Result:
-      title: Action Result
-      description: >-
-        The result of the action.
-      type: string
-      properties:
-        status:
-          type: string
-          description: >-
-            * completed - The action completed successful.
-            * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint. 
-            * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
-          enum:
-            - completed
-            - failed
-            - errored
-        reason:
-          description: >-
-            A human readable summary of the reason, why the action failed or errored.
-          type: string
-      required:
-        - status
     PrepareResult:
       type: object
       properties:
         state:
           $ref: '#/components/schemas/ActionState'
-        result:
-          $ref: '#/components/schemas/Result'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -393,8 +379,8 @@ components:
       properties:
         state:
           $ref: '#/components/schemas/ActionState'
-        result:
-          $ref: '#/components/schemas/Result'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -408,8 +394,8 @@ components:
           type: boolean
         state:
           $ref: '#/components/schemas/ActionState'
-        result:
-          $ref: '#/components/schemas/Result'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -420,8 +406,8 @@ components:
         - completed
     StopResult:
       properties:
-        result:
-          $ref: '#/components/schemas/Result'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
