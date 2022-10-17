@@ -180,26 +180,36 @@ export interface components {
 		 * @description Any kind of action specific state that will be passed to the next endpoints.
 		 */
 		ActionState: { [key: string]: unknown };
+		/**
+		 * Action Result
+		 * @description The result of the action.
+		 */
+		Result: string;
 		PrepareResult: {
 			state: components['schemas']['ActionState'];
+			result?: components['schemas']['Result'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StartResult: {
 			state?: components['schemas']['ActionState'];
+			result?: components['schemas']['Result'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StatusResult: {
+			/** @description the agent will continue to poll the status endpoint as long as completed is false */
 			completed: boolean;
 			state?: components['schemas']['ActionState'];
+			result?: components['schemas']['Result'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StopResult: {
+			result?: components['schemas']['Result'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
