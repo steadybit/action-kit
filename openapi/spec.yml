@@ -354,7 +354,7 @@ components:
     Result:
       title: Action Result
       description: >-
-        The result of the action after completion.
+        The result of the action.
       type: string
       properties:
         status:

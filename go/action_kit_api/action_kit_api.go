@@ -276,6 +276,9 @@ type PrepareResult struct {
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 
+	// The result of the action.
+	Result *Result `json:"result,omitempty"`
+
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
 }
@@ -289,6 +292,9 @@ type QueryMetricsResult struct {
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
 
+// The result of the action.
+type Result = string
+
 // StartResult defines model for StartResult.
 type StartResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
@@ -297,6 +303,9 @@ type StartResult struct {
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 
+	// The result of the action.
+	Result *Result `json:"result,omitempty"`
+
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
 }
@@ -304,11 +313,16 @@ type StartResult struct {
 // StatusResult defines model for StatusResult.
 type StatusResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
-	Completed bool       `json:"completed"`
+
+	// the agent will continue to poll the status endpoint as long as completed is false
+	Completed bool `json:"completed"`
 
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
+
+	// The result of the action.
+	Result *Result `json:"result,omitempty"`
 
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State *ActionState `json:"state,omitempty"`
@@ -321,6 +335,9 @@ type StopResult struct {
 	// Log-messages that will be passed to the agent log.
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
+
+	// The result of the action.
+	Result *Result `json:"result,omitempty"`
 }
 
 // The target on which to act on as identified by a discovery.
@@ -644,4 +661,4 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface {}
+type ParameterOption interface{}
