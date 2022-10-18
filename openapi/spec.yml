@@ -26,9 +26,17 @@ components:
     ActionKitError:
       title: Error
       description: >-
-        RFC 7807 Problem Details for HTTP APIs compliant response body for error
-        scenarios
+        An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
       properties:
+        status:
+          description: >-
+            * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint.
+            * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
+          enum:
+            - failed
+            - errored
+          type: string
+          default: errored
         type:
           type: string
           description: A URI reference that identifies the problem type.
@@ -356,6 +364,8 @@ components:
       properties:
         state:
           $ref: '#/components/schemas/ActionState'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -369,6 +379,8 @@ components:
       properties:
         state:
           $ref: '#/components/schemas/ActionState'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -378,9 +390,12 @@ components:
     StatusResult:
       properties:
         completed:
+          description: the agent will continue to poll the status endpoint as long as completed is false
           type: boolean
         state:
           $ref: '#/components/schemas/ActionState'
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:
@@ -391,6 +406,8 @@ components:
         - completed
     StopResult:
       properties:
+        error:
+          $ref: '#/components/schemas/ActionKitError'
         messages:
           $ref: '#/components/schemas/Messages'
         artifacts:

@@ -57,7 +57,8 @@ Action descriptions expose information about the presentation, configuration and
 - Which configuration options should be presented to end-users within the user interface?
 - Can the action be stopped, or is this an instantaneous event, e.g., host reboots?
 
-Action description is a somewhat evolved topic. For more information on action parameters, please refer to our [parameter types](./parameter-types.md) documentation.
+Action description is a somewhat evolved topic. For more information on action parameters, please refer to our [parameter types](./parameter-types.md)
+documentation.
 
 ### Example
 
@@ -140,7 +141,8 @@ sub-sections explain the responsibilities of each of the endpoints in detail.
 ### Preparation
 
 The preparation (or short `prepare`) step receives the action's configuration options (representing the parameters defined in the action description) and a
-selected target. The HTTP endpoint must respond with an HTTP status code `200` and a JSON response body containing a state object.
+selected target. The HTTP endpoint must respond with an HTTP status code `200` and a JSON response body containing a state object. Details about Error Handling
+can be found in [this chapter](#error-handling).
 
 The state object is later used in HTTP requests to the start and stop endpoints. So you will want to include all the execution relevant information within the
 state object, e.g., a subset of the target's attributes, the configuration options and the original state (in case you are going to do some system modification
@@ -191,8 +193,9 @@ as part of the start step).
 
 The actual action happens within the start step, i.e., this is where you will typically modify the system, kill processes or reboot servers.
 
-The start step receives the prepare step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on failure. A JSON
-response body containing a state object may be returned. This state object is later passed to the stop step.
+The start step receives the prepare step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success. Details about Error Handling
+can be found in [this chapter](#error-handling). A JSON response body containing a state object may be returned. This state object is later passed to the stop
+step.
 
 This endpoint must respond within a few seconds. It is not permitted to block until the action execution is completed within the start endpoint. For example,
 you can trigger a deployment change within the start endpoint, but the start endpoint may not block until the deployment change is fully rolled out (this is
@@ -228,14 +231,13 @@ what the status endpoint is for).
 - [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StartActionRequestBody`, `StartActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StartActionRequestBody`, `StartActionResponse`
 
-
 ### Status
 
 The status step exists to observe the status of the action execution. For example, when triggering a deployment change you would use the status endpoint to
 inspect whether the deployment change was processed.
 
-The status step receives the prepare, start or previous state step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success
-or `500` on failure.
+The status step receives the prepare, start or previous state step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success.
+Details about Error Handling can be found in [this chapter](#error-handling).
 
 This endpoint must respond within a few seconds. It is not permitted to block until the action execution is completed within the status endpoint. For example,
 you can inspect a deployment change's state within the status endpoint, but the status endpoint may not block until the deployment change is fully rolled out.
@@ -270,8 +272,8 @@ The status endpoint is continuously called until it responds with `completed=tru
 
 The stop step exists to revert system modifications, stop CPU/memory stress or any other actions.
 
-The stop step receives the prepare, status or start step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success or `500` on
-failure.
+The stop step receives the prepare, status or start step's state object. The HTTP endpoint must respond with an HTTP status code `200` on success. Details about
+Error Handling can be found in [this chapter](#error-handling).
 
 #### Example
 
@@ -294,3 +296,26 @@ failure.
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
 - [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StopActionRequestBody`, `StopActionResponse`
+
+### Error handling
+
+The `prepare`, `start`, `status` and `stop` endpoints share the same mechanisms for error handling.
+
+The agent will stop the experiment execution, if the extension:
+
+- returns a HTTP status code which is not `200`
+- returns a body of type `ActionKitError`
+- returns its specific response type and an attribute `error` containing `ActionKitError`
+
+The attribute `status` in `ActionKitError` defines, how Steadybit will show the error.
+
+- `failed` - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this
+  status is returned by the status endpoint.
+- `errored` - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is
+  returned by the status endpoint.
+
+#### References
+
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionKitError`
+- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionKitError`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionKitError`

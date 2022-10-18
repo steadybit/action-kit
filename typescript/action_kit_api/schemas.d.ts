@@ -16,9 +16,15 @@ export interface components {
 		};
 		/**
 		 * Error
-		 * @description RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
+		 * @description An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 		 */
 		ActionKitError: {
+			/**
+			 * @description * failed - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this status is returned by the status endpoint. * errored - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is returned by the status endpoint.
+			 * @default errored
+			 * @enum {string}
+			 */
+			status?: 'failed' | 'errored';
 			/** @description A URI reference that identifies the problem type. */
 			type?: string;
 			/** @description A short, human-readable summary of the problem type. */
@@ -182,24 +188,29 @@ export interface components {
 		ActionState: { [key: string]: unknown };
 		PrepareResult: {
 			state: components['schemas']['ActionState'];
+			error?: components['schemas']['ActionKitError'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StartResult: {
 			state?: components['schemas']['ActionState'];
+			error?: components['schemas']['ActionKitError'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StatusResult: {
+			/** @description the agent will continue to poll the status endpoint as long as completed is false */
 			completed: boolean;
 			state?: components['schemas']['ActionState'];
+			error?: components['schemas']['ActionKitError'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
 		};
 		StopResult: {
+			error?: components['schemas']['ActionKitError'];
 			messages?: components['schemas']['Messages'];
 			artifacts?: components['schemas']['Artifacts'];
 			metrics?: components['schemas']['Metrics'];
