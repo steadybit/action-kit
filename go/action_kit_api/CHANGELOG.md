@@ -11,13 +11,13 @@
 
 ```go
 Options: extutil.Ptr([]action_kit_api.ParameterOption{
-action_kit_api.ExplicitParameterOption{
-Label: "Any",
-Value: "*",
-},
-action_kit_api.ParameterOptionsFromTargetAttribute{
-Attribute: "k8s.namespace",
-},
+  action_kit_api.ExplicitParameterOption{
+    Label: "Any",
+    Value: "*",
+  },
+  action_kit_api.ParameterOptionsFromTargetAttribute{
+    Attribute: "k8s.namespace",
+  },
 }),
 ```
 
