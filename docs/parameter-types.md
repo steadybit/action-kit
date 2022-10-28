@@ -55,6 +55,8 @@ Either `true` or `false` values. With optional support for `null` when `required
 
 A time duration. Renders appropriate UI controls that facilitate time inputs—exposed as `number`s representing milliseconds to extensions.
 
+**Note:** Make sure to name the field `duration` should you desire that the experiment editor uses a duration field to visualize the expected length of an action.
+
 <img src="img/parameters/duration.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a duration parameter looks like. Depicting a textual label and an input for a numeric value followed by a time unit selector." />
 
 ### Example
