@@ -97,7 +97,8 @@ type ActionDescription struct {
 	Status *MutatingEndpointReferenceWithCallInterval `json:"status,omitempty"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
-	Stop *MutatingEndpointReference `json:"stop,omitempty"`
+	Stop                     *MutatingEndpointReference `json:"stop,omitempty"`
+	TargetSelectionTemplates *TargetSelectionTemplates  `json:"targetSelectionTemplates,omitempty"`
 
 	// What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.
 	TargetType *string `json:"targetType,omitempty"`
@@ -355,6 +356,24 @@ type Target struct {
 	Attributes map[string][]string `json:"attributes"`
 	Name       string              `json:"name"`
 }
+
+// Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
+type TargetSelectionTemplate struct {
+	// Longer target selection template description. For example, to explain the template's purpose.
+	Description *string `json:"description,omitempty"`
+
+	// Human-readable short label.
+	Label string `json:"label"`
+
+	// The target selection query is defined using Steadybit's query language. For example:
+	//   aws.account="" AND aws.zone.id=""
+	// For more information about the query language, please inspect Steadybit's documentation:
+	//   https://docs.steadybit.com/use-steadybit/query-language
+	Query string `json:"query"`
+}
+
+// TargetSelectionTemplates defines model for TargetSelectionTemplates.
+type TargetSelectionTemplates = []TargetSelectionTemplate
 
 // ActionListResponse defines model for ActionListResponse.
 type ActionListResponse struct {

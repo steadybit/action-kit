@@ -78,6 +78,13 @@ func TestActionDescription(t *testing.T) {
 		Version:     "1.1.0",
 		Category:    Ptr("state"),
 		TargetType:  Ptr("kubernetes-deployment"),
+		TargetSelectionTemplates: Ptr([]TargetSelectionTemplate{
+			{
+				Label:       "Lab",
+				Description: Ptr("desc"),
+				Query:       "aws.account=\"\" AND aws.zone.id=\"\"",
+			},
+		}),
 		Kind:        Attack,
 		TimeControl: Internal,
 		Parameters: []ActionParameter{

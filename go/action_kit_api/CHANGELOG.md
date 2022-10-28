@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- added support for target selection templates
+
 ## 2.0.1
 
 - Improved error-handling of extensions. Extensions are now able end with `failed` or `errored`. Extensions can also return an error within any response without

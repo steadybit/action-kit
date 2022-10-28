@@ -78,6 +78,35 @@ components:
           default: info
       required:
         - message
+    TargetSelectionTemplates:
+      title: TargetSelectionTemplates
+      type: array
+      items:
+        $ref: '#/components/schemas/TargetSelectionTemplate'
+    TargetSelectionTemplate:
+      title: TargetSelectionTemplate
+      description: Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
+      type: object
+      properties:
+        label:
+          type: string
+          description: Human-readable short label.
+          maxLength: 128
+        description:
+          type: string
+          description: Longer target selection template description. For example, to explain the template's purpose.
+          maxLength: 1024
+        query:
+          type: string
+          description: |
+            The target selection query is defined using Steadybit's query language. For example:
+              aws.account="" AND aws.zone.id=""
+            For more information about the query language, please inspect Steadybit's documentation:
+              https://docs.steadybit.com/use-steadybit/query-language
+          maxLength: 1024
+      required:
+        - label
+        - query
     Artifacts:
       title: Artifacts
       type: array
@@ -206,6 +235,8 @@ components:
           description: >-
             What target type this action should be offered for. Matches the `id`
             field within `DescribeTargetTypeResponse` within DiscoveryKit.
+        targetSelectionTemplates:
+          $ref: '#/components/schemas/TargetSelectionTemplates'
         timeControl:
           type: string
           enum:

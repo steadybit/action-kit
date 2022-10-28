@@ -51,6 +51,25 @@ export interface components {
 			 */
 			level?: 'debug' | 'info' | 'warn' | 'error';
 		};
+		/** TargetSelectionTemplates */
+		TargetSelectionTemplates: components['schemas']['TargetSelectionTemplate'][];
+		/**
+		 * TargetSelectionTemplate
+		 * @description Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
+		 */
+		TargetSelectionTemplate: {
+			/** @description Human-readable short label. */
+			label: string;
+			/** @description Longer target selection template description. For example, to explain the template's purpose. */
+			description?: string;
+			/**
+			 * @description The target selection query is defined using Steadybit's query language. For example:
+			 *   aws.account="" AND aws.zone.id=""
+			 * For more information about the query language, please inspect Steadybit's documentation:
+			 *   https://docs.steadybit.com/use-steadybit/query-language
+			 */
+			query: string;
+		};
 		/** Artifacts */
 		Artifacts: components['schemas']['Artifact'][];
 		/**
@@ -114,6 +133,7 @@ export interface components {
 			category?: string;
 			/** @description What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit. */
 			targetType?: string;
+			targetSelectionTemplates?: components['schemas']['TargetSelectionTemplates'];
 			/**
 			 * @description Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 			 * @enum {string}

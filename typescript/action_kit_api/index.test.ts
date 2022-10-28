@@ -51,6 +51,12 @@ export const actionDescription: ActionDescription = {
 	version: '1.1.0',
 	category: 'state',
 	targetType: 'kubernetes-deployment',
+	targetSelectionTemplates: [
+		{
+			label: 'lab',
+			query: 'a=""'
+		}
+	],
 	kind: 'attack',
 	timeControl: 'internal',
 	parameters: [
