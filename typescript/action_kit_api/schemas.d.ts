@@ -70,6 +70,47 @@ export interface components {
 			 */
 			query: string;
 		};
+		/** Widgets */
+		Widgets: components['schemas']['Widget'][];
+		/** Widget */
+		Widget: Partial<components['schemas']['StateOverTimeWidget']>;
+		/** StateOverTimeWidget */
+		StateOverTimeWidget: {
+			/** @enum {string} */
+			type: 'com.steadybit.widget.state_over_time';
+			title: string;
+			identity: components['schemas']['StateOverTimeWidgetIdentityConfig'];
+			label: components['schemas']['StateOverTimeWidgetLabelConfig'];
+			tooltip: components['schemas']['StateOverTimeWidgetTooltipConfig'];
+			url?: components['schemas']['StateOverTimeWidgetUrlConfig'];
+			state: components['schemas']['StateOverTimeWidgetStateConfig'];
+			value?: components['schemas']['StateOverTimeWidgetValueConfig'];
+		};
+		/** StateOverTimeWidgetIdentityConfig */
+		StateOverTimeWidgetIdentityConfig: {
+			from: string;
+		};
+		/** StateOverTimeWidgetLabelConfig */
+		StateOverTimeWidgetLabelConfig: {
+			from: string;
+		};
+		/** StateOverTimeWidgetTooltipConfig */
+		StateOverTimeWidgetTooltipConfig: {
+			from: string;
+		};
+		/** StateOverTimeWidgetUrlConfig */
+		StateOverTimeWidgetUrlConfig: {
+			from?: string;
+		};
+		/** StateOverTimeWidgetStateConfig */
+		StateOverTimeWidgetStateConfig: {
+			from: string;
+		};
+		/** StateOverTimeWidgetValueConfig */
+		StateOverTimeWidgetValueConfig: {
+			/** @description Set to true to hide the metric value within the widget. This is useful when only the translated state information is relevant. */
+			hide?: boolean;
+		};
 		/** Artifacts */
 		Artifacts: components['schemas']['Artifact'][];
 		/**
@@ -140,6 +181,7 @@ export interface components {
 			 */
 			timeControl: 'instantaneous' | 'internal' | 'external';
 			parameters: components['schemas']['ActionParameter'][];
+			widgets?: components['schemas']['Widgets'];
 			metrics?: components['schemas']['MetricsConfiguration'];
 			prepare: components['schemas']['MutatingEndpointReference'];
 			start: components['schemas']['MutatingEndpointReference'];

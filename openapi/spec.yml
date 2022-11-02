@@ -107,6 +107,89 @@ components:
       required:
         - label
         - query
+    Widgets:
+      title: Widgets
+      type: array
+      items:
+        $ref: '#/components/schemas/Widget'
+    Widget:
+      title: Widget
+      anyOf:
+        - $ref: '#/components/schemas/StateOverTimeWidget'
+    StateOverTimeWidget:
+      title: StateOverTimeWidget
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [com.steadybit.widget.state_over_time]
+        title:
+          type: string
+          maxLength: 128
+        identity:
+          $ref: '#/components/schemas/StateOverTimeWidgetIdentityConfig'
+        label:
+          $ref: '#/components/schemas/StateOverTimeWidgetLabelConfig'
+        tooltip:
+          $ref: '#/components/schemas/StateOverTimeWidgetTooltipConfig'
+        url:
+          $ref: '#/components/schemas/StateOverTimeWidgetUrlConfig'
+        state:
+          $ref: '#/components/schemas/StateOverTimeWidgetStateConfig'
+        value:
+          $ref: '#/components/schemas/StateOverTimeWidgetValueConfig'
+      required:
+        - type
+        - title
+        - identity
+        - label
+        - tooltip
+        - state
+    StateOverTimeWidgetIdentityConfig:
+      title: StateOverTimeWidgetIdentityConfig
+      type: object
+      properties:
+        from:
+          type: string
+      required:
+        - from
+    StateOverTimeWidgetLabelConfig:
+      title: StateOverTimeWidgetLabelConfig
+      type: object
+      properties:
+        from:
+          type: string
+      required:
+        - from
+    StateOverTimeWidgetTooltipConfig:
+      title: StateOverTimeWidgetTooltipConfig
+      type: object
+      properties:
+        from:
+          type: string
+      required:
+        - from
+    StateOverTimeWidgetUrlConfig:
+      title: StateOverTimeWidgetUrlConfig
+      type: object
+      properties:
+        from:
+          type: string
+    StateOverTimeWidgetStateConfig:
+      title: StateOverTimeWidgetStateConfig
+      type: object
+      properties:
+        from:
+          type: string
+      required:
+        - from
+    StateOverTimeWidgetValueConfig:
+      title: StateOverTimeWidgetValueConfig
+      type: object
+      properties:
+        hide:
+          type: boolean
+          description: Set to true to hide the metric value within the widget. This is useful when only the translated state information is relevant.
     Artifacts:
       title: Artifacts
       type: array
@@ -255,6 +338,8 @@ components:
           items:
             $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
+        widgets:
+          $ref: '#/components/schemas/Widgets'
         metrics:
           $ref: '#/components/schemas/MetricsConfiguration'
         prepare:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+- added support for execution view widget `state over time`
+
 ## 2.1.0
 
  - added support for target selection templates

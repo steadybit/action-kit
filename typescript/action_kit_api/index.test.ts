@@ -59,6 +59,27 @@ export const actionDescription: ActionDescription = {
 	],
 	kind: 'attack',
 	timeControl: 'internal',
+	widgets: [
+		{
+			type: 'com.steadybit.widget.state_over_time',
+			title: 'My fancy widget',
+			identity: {
+				from: 'id'
+			},
+			label: {
+				from: 'label'
+			},
+			tooltip: {
+				from: 'tooltip'
+			},
+			state: {
+				from: 'state'
+			},
+			value: {
+				hide: true
+			}
+		}
+	],
 	parameters: [
 		{
 			label: 'Wait for rollout completion',

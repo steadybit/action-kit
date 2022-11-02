@@ -65,6 +65,11 @@ const (
 	Put    MutatingHttpMethod = "put"
 )
 
+// Defines values for StateOverTimeWidgetType.
+const (
+	ComSteadybitWidgetStateOverTime StateOverTimeWidgetType = "com.steadybit.widget.state_over_time"
+)
+
 // Provides details about a possible action, e.g., what configuration options it has, how to present it to end-users and how to trigger the action.
 type ActionDescription struct {
 	// Used for categorization of the action within user interfaces.
@@ -107,7 +112,8 @@ type ActionDescription struct {
 	TimeControl ActionDescriptionTimeControl `json:"timeControl"`
 
 	// The version of the action. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same action version. We do recommend usage of semver strings.
-	Version string `json:"version"`
+	Version string   `json:"version"`
+	Widgets *Widgets `json:"widgets,omitempty"`
 }
 
 // Describes what kind of action this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
@@ -320,6 +326,52 @@ type StartResult struct {
 	State *ActionState `json:"state,omitempty"`
 }
 
+// StateOverTimeWidget defines model for StateOverTimeWidget.
+type StateOverTimeWidget struct {
+	Identity StateOverTimeWidgetIdentityConfig `json:"identity"`
+	Label    StateOverTimeWidgetLabelConfig    `json:"label"`
+	State    StateOverTimeWidgetStateConfig    `json:"state"`
+	Title    string                            `json:"title"`
+	Tooltip  StateOverTimeWidgetTooltipConfig  `json:"tooltip"`
+	Type     StateOverTimeWidgetType           `json:"type"`
+	Url      *StateOverTimeWidgetUrlConfig     `json:"url,omitempty"`
+	Value    *StateOverTimeWidgetValueConfig   `json:"value,omitempty"`
+}
+
+// StateOverTimeWidgetType defines model for StateOverTimeWidget.Type.
+type StateOverTimeWidgetType string
+
+// StateOverTimeWidgetIdentityConfig defines model for StateOverTimeWidgetIdentityConfig.
+type StateOverTimeWidgetIdentityConfig struct {
+	From string `json:"from"`
+}
+
+// StateOverTimeWidgetLabelConfig defines model for StateOverTimeWidgetLabelConfig.
+type StateOverTimeWidgetLabelConfig struct {
+	From string `json:"from"`
+}
+
+// StateOverTimeWidgetStateConfig defines model for StateOverTimeWidgetStateConfig.
+type StateOverTimeWidgetStateConfig struct {
+	From string `json:"from"`
+}
+
+// StateOverTimeWidgetTooltipConfig defines model for StateOverTimeWidgetTooltipConfig.
+type StateOverTimeWidgetTooltipConfig struct {
+	From string `json:"from"`
+}
+
+// StateOverTimeWidgetUrlConfig defines model for StateOverTimeWidgetUrlConfig.
+type StateOverTimeWidgetUrlConfig struct {
+	From *string `json:"from,omitempty"`
+}
+
+// StateOverTimeWidgetValueConfig defines model for StateOverTimeWidgetValueConfig.
+type StateOverTimeWidgetValueConfig struct {
+	// Set to true to hide the metric value within the widget. This is useful when only the translated state information is relevant.
+	Hide *bool `json:"hide,omitempty"`
+}
+
 // StatusResult defines model for StatusResult.
 type StatusResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
@@ -374,6 +426,9 @@ type TargetSelectionTemplate struct {
 
 // TargetSelectionTemplates defines model for TargetSelectionTemplates.
 type TargetSelectionTemplates = []TargetSelectionTemplate
+
+// Widgets defines model for Widgets.
+type Widgets = []Widget
 
 // ActionListResponse defines model for ActionListResponse.
 type ActionListResponse struct {
@@ -690,3 +745,4 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 }
 
 type ParameterOption interface {}
+type Widget interface {}

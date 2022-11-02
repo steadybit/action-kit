@@ -105,6 +105,30 @@ func TestActionDescription(t *testing.T) {
 				}),
 			},
 		},
+		Widgets: Ptr([]Widget{
+			StateOverTimeWidget{
+				Identity: StateOverTimeWidgetIdentityConfig{
+					From: "steadybit.id",
+				},
+				Label: StateOverTimeWidgetLabelConfig{
+					From: "steadybit.label",
+				},
+				State: StateOverTimeWidgetStateConfig{
+					From: "steadybit.state",
+				},
+				Tooltip: StateOverTimeWidgetTooltipConfig{
+					From: "steadybit.tooltip",
+				},
+				Type:  ComSteadybitWidgetStateOverTime,
+				Title: "My Fancy Widget",
+				Url: Ptr(StateOverTimeWidgetUrlConfig{
+					From: Ptr("steadybit.url"),
+				}),
+				Value: Ptr(StateOverTimeWidgetValueConfig{
+					Hide: Ptr(true),
+				}),
+			},
+		}),
 		Metrics: Ptr(MetricsConfiguration{
 			Query: Ptr(MetricsQueryConfiguration{
 				Endpoint: MutatingEndpointReferenceWithCallInterval{
