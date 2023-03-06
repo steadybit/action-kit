@@ -220,16 +220,23 @@ type ExplicitParameterOption struct {
 	Value string `json:"value"`
 }
 
-// Log-message that will be passed to the agent log.
+// LogWidget defines model for LogWidget.
+type LogWidget struct {
+	Title string `json:"title"`
+	Type  string `json:"type"`
+}
+
+// Log-message that will be passed to the platform (default agent log).
 type Message struct {
 	Level   *MessageLevel `json:"level,omitempty"`
 	Message string        `json:"message"`
+	Type    *string       `json:"type,omitempty"`
 }
 
 // MessageLevel defines model for Message.Level.
 type MessageLevel string
 
-// Log-messages that will be passed to the agent log.
+// Log-messages that will be passed to the platform (default agent log).
 type Messages = []Message
 
 // Metrics can be exposed by actions. These metrics can then be leveraged by end-users to inspect system behavior and to optionally abort experiment execution when certain metrics are observed, i.e., metrics can act as (steady state) checks.
@@ -294,7 +301,7 @@ type PrepareResult struct {
 	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 	Error *ActionKitError `json:"error,omitempty"`
 
-	// Log-messages that will be passed to the agent log.
+	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 
@@ -306,7 +313,7 @@ type PrepareResult struct {
 type QueryMetricsResult struct {
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
-	// Log-messages that will be passed to the agent log.
+	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
@@ -318,7 +325,7 @@ type StartResult struct {
 	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 	Error *ActionKitError `json:"error,omitempty"`
 
-	// Log-messages that will be passed to the agent log.
+	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 
@@ -382,7 +389,7 @@ type StatusResult struct {
 	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 	Error *ActionKitError `json:"error,omitempty"`
 
-	// Log-messages that will be passed to the agent log.
+	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 
@@ -397,7 +404,7 @@ type StopResult struct {
 	// An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 	Error *ActionKitError `json:"error,omitempty"`
 
-	// Log-messages that will be passed to the agent log.
+	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 }

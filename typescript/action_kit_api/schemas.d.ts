@@ -36,15 +36,17 @@ export interface components {
 		};
 		/**
 		 * Messages
-		 * @description Log-messages that will be passed to the agent log.
+		 * @description Log-messages that will be passed to the platform (default agent log).
 		 */
 		Messages: components['schemas']['Message'][];
 		/**
 		 * Message
-		 * @description Log-message that will be passed to the agent log.
+		 * @description Log-message that will be passed to the platform (default agent log).
 		 */
 		Message: {
 			message: string;
+			/** @default AGENT */
+			type?: string;
 			/**
 			 * @default info
 			 * @enum {string}
@@ -73,7 +75,12 @@ export interface components {
 		/** Widgets */
 		Widgets: components['schemas']['Widget'][];
 		/** Widget */
-		Widget: Partial<components['schemas']['StateOverTimeWidget']>;
+		Widget: Partial<components['schemas']['StateOverTimeWidget']> & Partial<components['schemas']['LogWidget']>;
+		/** LogWidget */
+		LogWidget: {
+			type: string;
+			title: string;
+		};
 		/** StateOverTimeWidget */
 		StateOverTimeWidget: {
 			/** @enum {string} */
