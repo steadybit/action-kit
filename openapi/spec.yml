@@ -120,18 +120,37 @@ components:
       anyOf:
         - $ref: '#/components/schemas/StateOverTimeWidget'
         - $ref: '#/components/schemas/LogWidget'
+        - $ref: '#/components/schemas/PredefinedWidget'
     LogWidget:
       title: LogWidget
       type: object
       properties:
         type:
           type: string
+          enum: [com.steadybit.widget.log]
         title:
+          type: string
+          maxLength: 128
+        logType:
           type: string
           maxLength: 128
       required:
         - type
+        - logType
         - title
+    PredefinedWidget:
+      title: PredefinedWidget
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [com.steadybit.widget.predefined]
+        predefinedWidgetId:
+          type: string
+          maxLength: 128
+      required:
+        - type
+        - predefinedWidgetId
     StateOverTimeWidget:
       title: StateOverTimeWidget
       type: object

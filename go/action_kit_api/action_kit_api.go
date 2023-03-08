@@ -50,6 +50,11 @@ const (
 	Get DescribingEndpointReferenceMethod = "get"
 )
 
+// Defines values for LogWidgetType.
+const (
+	ComSteadybitWidgetLog LogWidgetType = "com.steadybit.widget.log"
+)
+
 // Defines values for MessageLevel.
 const (
 	Debug MessageLevel = "debug"
@@ -63,6 +68,11 @@ const (
 	Delete MutatingHttpMethod = "delete"
 	Post   MutatingHttpMethod = "post"
 	Put    MutatingHttpMethod = "put"
+)
+
+// Defines values for PredefinedWidgetType.
+const (
+	ComSteadybitWidgetPredefined PredefinedWidgetType = "com.steadybit.widget.predefined"
 )
 
 // Defines values for StateOverTimeWidgetType.
@@ -222,9 +232,13 @@ type ExplicitParameterOption struct {
 
 // LogWidget defines model for LogWidget.
 type LogWidget struct {
-	Title string `json:"title"`
-	Type  string `json:"type"`
+	LogType string        `json:"logType"`
+	Title   string        `json:"title"`
+	Type    LogWidgetType `json:"type"`
 }
+
+// LogWidgetType defines model for LogWidget.Type.
+type LogWidgetType string
 
 // Log-message that will be passed to the platform (default agent log).
 type Message struct {
@@ -293,6 +307,15 @@ type ParameterOptionsFromTargetAttribute struct {
 	// Target attribute key from which the possible parameter options are gathered.
 	Attribute string `json:"attribute"`
 }
+
+// PredefinedWidget defines model for PredefinedWidget.
+type PredefinedWidget struct {
+	PredefinedWidgetId string               `json:"predefinedWidgetId"`
+	Type               PredefinedWidgetType `json:"type"`
+}
+
+// PredefinedWidgetType defines model for PredefinedWidget.Type.
+type PredefinedWidgetType string
 
 // PrepareResult defines model for PrepareResult.
 type PrepareResult struct {
