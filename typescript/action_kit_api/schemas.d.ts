@@ -75,11 +75,21 @@ export interface components {
 		/** Widgets */
 		Widgets: components['schemas']['Widget'][];
 		/** Widget */
-		Widget: Partial<components['schemas']['StateOverTimeWidget']> & Partial<components['schemas']['LogWidget']>;
+		Widget: Partial<components['schemas']['StateOverTimeWidget']> &
+			Partial<components['schemas']['LogWidget']> &
+			Partial<components['schemas']['PredefinedWidget']>;
 		/** LogWidget */
 		LogWidget: {
-			type: string;
+			/** @enum {string} */
+			type: 'com.steadybit.widget.log';
 			title: string;
+			logType: string;
+		};
+		/** PredefinedWidget */
+		PredefinedWidget: {
+			/** @enum {string} */
+			type: 'com.steadybit.widget.predefined';
+			predefinedWidgetId: string;
 		};
 		/** StateOverTimeWidget */
 		StateOverTimeWidget: {
