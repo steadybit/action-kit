@@ -62,6 +62,8 @@ export interface components {
        * @enum {string}
        */
       level?: "debug" | "info" | "warn" | "error";
+      /** Format: date-time */
+      timestamp?: string;
       fields?: components["schemas"]["MessageFields"];
     };
     /** TargetSelectionTemplates */

@@ -164,21 +164,20 @@ func TestActionDescription(t *testing.T) {
 	markAsUsed(t, v)
 }
 
-type MyMessageFields struct {
-	NameSpace  string `json:"nameSpace"`
-	Deployment string `json:"deployment"`
-}
-
 func TestPrepareResult(t *testing.T) {
+	fields := make(MessageFields)
+	fields["foo"] = "bar"
+	message := Message{
+		Level:     Ptr(Debug),
+		Message:   "test",
+		Type:      Ptr("INFO"),
+		Fields:    Ptr(fields),
+		Timestamp: Ptr(time.Now()),
+	}
 	v := PrepareResult{
 		State: make(map[string]interface{}),
 		Messages: Ptr([]Message{
-			{
-				Level:   Ptr(Debug),
-				Message: "test",
-				Type:    Ptr("INFO"),
-				Fields:  Ptr(make(MessageFields)),
-			},
+			message,
 			{
 				Level:   Ptr(Error),
 				Message: "test",

@@ -85,6 +85,9 @@ components:
             - warn
             - error
           default: info
+        timestamp:
+          type: string
+          format: date-time
         fields:
           $ref: '#/components/schemas/MessageFields'
       required:
