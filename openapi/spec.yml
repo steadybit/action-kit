@@ -61,6 +61,12 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Message'
+    MessageFields:
+      title: Message Fields
+      description: >-
+        Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
+      type: object
+      additionalProperties: true
     Message:
       title: Message
       description: Log-message that will be passed to the platform (default agent log).
@@ -79,6 +85,8 @@ components:
             - warn
             - error
           default: info
+        fields:
+          $ref: '#/components/schemas/MessageFields'
       required:
         - message
     TargetSelectionTemplates:

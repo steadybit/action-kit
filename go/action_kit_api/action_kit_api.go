@@ -242,13 +242,18 @@ type LogWidgetType string
 
 // Log-message that will be passed to the platform (default agent log).
 type Message struct {
-	Level   *MessageLevel `json:"level,omitempty"`
-	Message string        `json:"message"`
-	Type    *string       `json:"type,omitempty"`
+	// Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
+	Fields  *MessageFields `json:"fields,omitempty"`
+	Level   *MessageLevel  `json:"level,omitempty"`
+	Message string         `json:"message"`
+	Type    *string        `json:"type,omitempty"`
 }
 
 // MessageLevel defines model for Message.Level.
 type MessageLevel string
+
+// Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
+type MessageFields map[string]interface{}
 
 // Log-messages that will be passed to the platform (default agent log).
 type Messages = []Message

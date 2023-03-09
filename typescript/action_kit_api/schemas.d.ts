@@ -43,6 +43,13 @@ export interface components {
      */
     Messages: (components["schemas"]["Message"])[];
     /**
+     * Message Fields 
+     * @description Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
+     */
+    MessageFields: {
+      [key: string]: unknown | undefined;
+    };
+    /**
      * Message 
      * @description Log-message that will be passed to the platform (default agent log).
      */
@@ -55,6 +62,7 @@ export interface components {
        * @enum {string}
        */
       level?: "debug" | "info" | "warn" | "error";
+      fields?: components["schemas"]["MessageFields"];
     };
     /** TargetSelectionTemplates */
     TargetSelectionTemplates: (components["schemas"]["TargetSelectionTemplate"])[];

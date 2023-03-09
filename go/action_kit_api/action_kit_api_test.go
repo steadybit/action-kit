@@ -164,6 +164,11 @@ func TestActionDescription(t *testing.T) {
 	markAsUsed(t, v)
 }
 
+type MyMessageFields struct {
+	NameSpace  string `json:"nameSpace"`
+	Deployment string `json:"deployment"`
+}
+
 func TestPrepareResult(t *testing.T) {
 	v := PrepareResult{
 		State: make(map[string]interface{}),
@@ -171,6 +176,8 @@ func TestPrepareResult(t *testing.T) {
 			{
 				Level:   Ptr(Debug),
 				Message: "test",
+				Type:    Ptr("INFO"),
+				Fields:  Ptr(make(MessageFields)),
 			},
 			{
 				Level:   Ptr(Error),
