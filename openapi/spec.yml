@@ -57,17 +57,20 @@ components:
         - title
     Messages:
       title: Messages
-      description: Log-messages that will be passed to the agent log.
+      description: Log-messages that will be passed to the platform (default agent log).
       type: array
       items:
         $ref: '#/components/schemas/Message'
     Message:
       title: Message
-      description: Log-message that will be passed to the agent log.
+      description: Log-message that will be passed to the platform (default agent log).
       type: object
       properties:
         message:
           type: string
+        type:
+          type: string
+          default: 'AGENT'
         level:
           type: string
           enum:
@@ -116,6 +119,38 @@ components:
       title: Widget
       anyOf:
         - $ref: '#/components/schemas/StateOverTimeWidget'
+        - $ref: '#/components/schemas/LogWidget'
+        - $ref: '#/components/schemas/PredefinedWidget'
+    LogWidget:
+      title: LogWidget
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [com.steadybit.widget.log]
+        title:
+          type: string
+          maxLength: 128
+        logType:
+          type: string
+          maxLength: 128
+      required:
+        - type
+        - logType
+        - title
+    PredefinedWidget:
+      title: PredefinedWidget
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [com.steadybit.widget.predefined]
+        predefinedWidgetId:
+          type: string
+          maxLength: 128
+      required:
+        - type
+        - predefinedWidgetId
     StateOverTimeWidget:
       title: StateOverTimeWidget
       type: object
@@ -475,6 +510,7 @@ components:
         Any kind of action specific state that will be passed to the next
         endpoints.
       type: object
+      additionalProperties: true
     PrepareResult:
       type: object
       properties:
@@ -640,6 +676,7 @@ components:
                   The action configuration. This contains the end-user
                   configuration done for the action. Possible configuration
                   parameters are defined through the action description.
+                additionalProperties: true
               target:
                 $ref: '#/components/schemas/Target'
             required:

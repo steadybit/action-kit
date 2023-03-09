@@ -206,7 +206,7 @@ func TestPrepareResult(t *testing.T) {
 
 func TestStartResult(t *testing.T) {
 	v := StartResult{
-		State: Ptr(make(map[string]interface{})),
+		State: Ptr(make(ActionState)),
 		Messages: Ptr([]Message{
 			{
 				Level:   Ptr(Debug),
@@ -243,7 +243,7 @@ func TestStartResult(t *testing.T) {
 func TestStatusResult(t *testing.T) {
 	v := StatusResult{
 		Completed: true,
-		State:     Ptr(make(map[string]interface{})),
+		State:     Ptr(make(ActionState)),
 		Messages: Ptr([]Message{
 			{
 				Level:   Ptr(Debug),

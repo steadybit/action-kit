@@ -30,6 +30,12 @@ export type MutatingHttpMethod = components['schemas']['MutatingHttpMethod'];
 export type MutatingEndpointReference = components['schemas']['MutatingEndpointReference'];
 export type MutatingEndpointReferenceWithCallInterval =
 	components['schemas']['MutatingEndpointReferenceWithCallInterval'];
+export type StateOverTimeWidget =
+	components['schemas']['StateOverTimeWidget'];
+export type LogWidget =
+	components['schemas']['LogWidget'];
+export type PredefinedWidget =
+	components['schemas']['PredefinedWidget'];
 
 export type ActionListResponse = components['responses']['ActionListResponse']['content']['application/json'];
 export type DescribeActionResponse = components['responses']['DescribeActionResponse']['content']['application/json'];
@@ -39,12 +45,12 @@ export type ActionStatusResponse = components['responses']['ActionStatusResponse
 export type StopActionResponse = components['responses']['StopActionResponse']['content']['application/json'];
 export type QueryMetricsResponse = components['responses']['QueryMetricsResponse']['content']['application/json'];
 
-export type PrepareActionRequestBody =
-	components['requestBodies']['PrepareActionRequestBody']['content']['application/json'];
-export type StartActionRequestBody =
-	components['requestBodies']['StartActionRequestBody']['content']['application/json'];
-export type ActionStatusRequestBody =
-	components['requestBodies']['ActionStatusRequestBody']['content']['application/json'];
-export type StopActionRequestBody = components['requestBodies']['StopActionRequestBody']['content']['application/json'];
-export type QueryMetricsRequestBody =
-	components['requestBodies']['QueryMetricsRequestBody']['content']['application/json'];
+export type PrepareActionRequestBody = Required<
+	components['requestBodies']>['PrepareActionRequestBody']['content']['application/json'];
+export type StartActionRequestBody = Required<
+	components['requestBodies']>['StartActionRequestBody']['content']['application/json'];
+export type ActionStatusRequestBody = Required<
+	components['requestBodies']>['ActionStatusRequestBody']['content']['application/json'];
+export type StopActionRequestBody = Required<components['requestBodies']>['StopActionRequestBody']['content']['application/json'];
+export type QueryMetricsRequestBody = Required<
+	components['requestBodies']>['QueryMetricsRequestBody']['content']['application/json'];

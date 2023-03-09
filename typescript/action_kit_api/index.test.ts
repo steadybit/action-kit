@@ -6,8 +6,8 @@ import {
 	PrepareActionRequestBody,
 	StartActionRequestBody,
 	StopActionRequestBody,
-	ActionDescription, PrepareResult, StartResult, StatusResult, StopResult, ActionKitError, QueryMetricsResult
-} from "./index";
+	ActionDescription, PrepareResult, StartResult, StatusResult, StopResult, ActionKitError, QueryMetricsResult, StateOverTimeWidget, StopActionResponse
+} from './index';
 
 export const actionList: ActionList = {
 	actions: [
@@ -43,6 +43,29 @@ export const stopActionRequestBody: StopActionRequestBody = {
 	}
 };
 
+export const stopActionResponse: StopActionResponse = {
+	title: 'Action stopped'
+};
+
+const widget: StateOverTimeWidget = {
+	type: 'com.steadybit.widget.state_over_time',
+	title: 'My fancy widget',
+	identity: {
+		from: 'id'
+	},
+	label: {
+		from: 'label'
+	},
+	tooltip: {
+		from: 'tooltip'
+	},
+	state: {
+		from: 'state'
+	},
+	value: {
+		hide: true
+	}
+};
 export const actionDescription: ActionDescription = {
 	id: 'com.steadybit.example.attacks.kubernetes.rollout-restart',
 	label: 'Rollout Restart Deployment',
@@ -60,25 +83,7 @@ export const actionDescription: ActionDescription = {
 	kind: 'attack',
 	timeControl: 'internal',
 	widgets: [
-		{
-			type: 'com.steadybit.widget.state_over_time',
-			title: 'My fancy widget',
-			identity: {
-				from: 'id'
-			},
-			label: {
-				from: 'label'
-			},
-			tooltip: {
-				from: 'tooltip'
-			},
-			state: {
-				from: 'state'
-			},
-			value: {
-				hide: true
-			}
-		}
+		widget
 	],
 	parameters: [
 		{
