@@ -510,6 +510,7 @@ components:
         Any kind of action specific state that will be passed to the next
         endpoints.
       type: object
+      additionalProperties: true
     PrepareResult:
       type: object
       properties:
@@ -675,6 +676,7 @@ components:
                   The action configuration. This contains the end-user
                   configuration done for the action. Possible configuration
                   parameters are defined through the action description.
+                additionalProperties: true
               target:
                 $ref: '#/components/schemas/Target'
             required:

@@ -195,7 +195,7 @@ type ActionParameter struct {
 type ActionParameterType string
 
 // Any kind of action specific state that will be passed to the next endpoints.
-type ActionState = map[string]interface{}
+type ActionState map[string]interface{}
 
 // Actions may choose to provide artifacts (arbitrary files) that are later accessible by users when inspecting experiment execution details. This comes in handy to expose load test reports and similar data.
 type Artifact struct {
