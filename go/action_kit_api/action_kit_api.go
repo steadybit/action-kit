@@ -254,7 +254,7 @@ type Message struct {
 type MessageLevel string
 
 // Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
-type MessageFields map[string]interface{}
+type MessageFields map[string]string
 
 // Log-messages that will be passed to the platform (default agent log).
 type Messages = []Message

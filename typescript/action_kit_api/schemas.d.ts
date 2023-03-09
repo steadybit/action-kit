@@ -47,7 +47,7 @@ export interface components {
      * @description Any kind of action specific fields that will be rendered in the platform tooltip of LogWidget
      */
     MessageFields: {
-      [key: string]: unknown | undefined;
+      [key: string]: string | undefined;
     };
     /**
      * Message 
