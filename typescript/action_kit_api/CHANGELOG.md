@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.0
+
+- added support for execution view widget `log`
+- added support for predefined widgets in the platform
+
 ## 2.2.0
 
 - added support for execution view widget `state over time`
