@@ -5,6 +5,7 @@ To enhance the user experience, ActionKit also supports the extension of the exp
 Supported widgets types:
 
 * [State Over Time](#state-over-time)
+* [Log Widget](#log-widget)
 
 ## State Over Time
 
@@ -16,6 +17,7 @@ The state over time widget requires two components to function:
 
 - Metrics containing information about the status at any one time.
 - Static configuration describes how to filter, aggregate and label the metrics for user presentation.
+
 
 ### Configuration
 
@@ -85,4 +87,56 @@ You can provide data points for this widget through metrics. You can define metr
   ]
 }
 ```
+
+
+## Log Widget
+
+This widget helps visualize the output of a log stream. For example, to show the output of a Kubernetes events. The screenshot below depicts how the [Kubernetes extension](https://github.com/steadybit/extension-kubernetes) uses this widget type to visualize the output of a Kubernetes events.
+![Kubernetes Events](KubernetesEventsLog.png)
+
+
+
+### Configuration
+
+The widget configuration describes from which events fields Steadybit should retrieve information. More specifically:
+
+- LogType that describes the log stream. e.g. "KUBERNETES_EVENTS". Must be the same as the one used in the action messages send (Message.Type).
+- Title of the log stream. e.g. "Kubernetes Events"
+- Type which is set to "com.steadybit.widget.log" / ComSteadybitWidgetLog constant.
+
+
+The following snippet is an example depicting the Kubernetes extension's configuration.
+
+```go
+return action_kit_api.ActionDescription{
+	...
+    Widgets: extutil.Ptr([]action_kit_api.Widget{
+        action_kit_api.LogWidget{
+            Type:    action_kit_api.ComSteadybitWidgetLog,
+            Title:   "Kubernetes Events",
+            LogType: "KUBERNETES_EVENTS",
+            },
+        }),
+}
+```
+
+
+Each log that is displayed is a representation of a Message. Messages can be send to the platform during status and stop phase of the action. The message must in include the correct type as described above. The message can also include a payload of fields which is displayed in the log widget as tooltip.
+e.g.
+```go
+action_kit_api.Message{
+      Message:   "Pulling image 'steadybit/bestseller-fashion'",
+      Type:      extutil.Ptr("KUBERNETES_EVENTS"),
+      Level:     action_kit_api.Info,
+      Timestamp: extutil.Ptr(event.LastTimestamp.Time),
+      Fields: extutil.Ptr(action_kit_api.MessageFields{
+          "reason":       event.Reason,
+          "cluster-name": clusterName,
+          "namespace":    event.Namespace,
+          "object":       strings.ToLower(event.InvolvedObject.Kind) + "/" + event.InvolvedObject.Name,
+      }),
+  }
+```  
+
+![Tooltip](./img/widgets/tooltip.png)
 

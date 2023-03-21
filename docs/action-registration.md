@@ -1,7 +1,9 @@
 # Extension Registration
 
 Steadybit's agents need to be told where they can find extensions. Currently, this is done through environment variables for the Steadybit agent process,
-e.g., via `agent.env` with the [Steadybit agent helm chart](https://github.com/steadybit/helm-charts/tree/main/charts/steadybit-agent). The environment
+e.g., via `agent.env` or via automatic annotation discovery with the [Steadybit agent helm chart](https://github.com/steadybit/helm-charts/tree/main/charts/steadybit-agent). 
+
+The environment
 variables are:
 
 - `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_0_URL`: Required fully-qualified URL defining which HTTP URL should be requested to get
@@ -12,3 +14,19 @@ variables are:
 
 These environment variables can occur multiple times with different indices to register multiple extensions,
 e.g., `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_0_URL` and `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_1_URL`
+
+The annotation discovery mechanism is based on the following annotations on service level and will be automatically applied to the Steadybit Extension agent deployment via Helm Charts:
+e.g.:
+``` 
+   steadybit.com/extension-auto-discovery:                                                                                                                                                                              
+        {                                                                                                                                                                                                                
+          "extensions": [                                                                                                                                                                                                
+            {                                                                                                                                                                                                            
+              "port": 8088,                                                                                                                                                                                              
+              "types": ["ACTION","DISCOVERY"],                                                                                                                                                                           
+              "tls": {
+            }                                                                                                                                                                                                          
+          }                                                                                                                                                                                                          
+          ]                                                                                                                                                                                                    
+        }
+   ```

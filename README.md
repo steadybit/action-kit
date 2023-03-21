@@ -18,6 +18,7 @@ We recommend that you read the following documentation to get started with Actio
  - [Action API](/docs/action-api.md)
  - [How-To Write An Attack Extension](/docs/how-to/write-an-attack-extension.md) 
  - [Action Registration](/docs/action-registration.md)
+ - [Widgets](/docs/widgets.md)
  - [Terminology](/docs/terminology.md)
  - [Examples](/docs/examples.md)
  - [FAQ](/docs/faq.md)
