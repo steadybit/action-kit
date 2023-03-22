@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0
+
+- added support for action hints
+- added support for action parameter hints
+
 ## 2.3.0
 
 - added support for execution view widget `log`

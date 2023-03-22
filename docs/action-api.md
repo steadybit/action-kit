@@ -75,6 +75,10 @@ documentation.
   "category": "resource",
   "target": "kubernetes-deployment",
   "timeControl": "INTERNAL",
+  "hint": {
+    "type": "warning",
+    "content": "This can be dangerous! Please have a look [here](https://foo.bar/baz) first."
+  },
   "parameters": [
     {
       "label": "Wait for rollout completion?",
@@ -84,7 +88,11 @@ documentation.
       "required": false,
       "advanced": true,
       "order": 0,
-      "defaultValue": "false"
+      "defaultValue": "false",
+      "hint": {
+        "type": "info",
+        "content": "We just want to inform you that this is an awesome action."
+      }
     }
   ],
   "prepare": {

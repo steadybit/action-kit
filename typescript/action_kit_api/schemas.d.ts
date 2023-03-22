@@ -211,6 +211,7 @@ export interface components {
        */
       timeControl: "instantaneous" | "internal" | "external";
       parameters: (components["schemas"]["ActionParameter"])[];
+      hint?: components["schemas"]["ActionHint"];
       widgets?: components["schemas"]["Widgets"];
       metrics?: components["schemas"]["MetricsConfiguration"];
       prepare: components["schemas"]["MutatingEndpointReference"];
@@ -231,6 +232,15 @@ export interface components {
       /** @description Target attribute key from which the possible parameter options are gathered. */
       attribute: string;
     };
+    ActionHint: {
+      /**
+       * @description Will be used in the product UI to display the hint in a different color and with a different icon. 
+       * @enum {string}
+       */
+      type: "hint_info" | "hint_warning";
+      /** @description The actual hint text (can contain markdown). Will be displayed in the product UI when configuring the action. */
+      content: string;
+    };
     ActionParameter: {
       /** @description A human-readable label for the action parameter. */
       label: string;
@@ -242,7 +252,7 @@ export interface components {
        * @description What kind of value this parameter is capturing. The type selection influences the `config` passed as part of the `PrepareRequest`. It also results in improved user-interface elements. 
        * @enum {string}
        */
-      type: "string" | "string[]" | "string_array" | "password" | "integer" | "boolean" | "percentage" | "duration" | "file" | "key_value";
+      type: "string" | "string[]" | "string_array" | "password" | "integer" | "boolean" | "percentage" | "duration" | "file" | "key_value" | "httpStatus";
       /** @description Whether or not end-users need to specify a value for this parameter. */
       required?: boolean;
       /** @description Whether this parameter should be placed under the expandable advanced section within the user interface. */
@@ -255,6 +265,7 @@ export interface components {
       options?: (components["schemas"]["ParameterOption"])[];
       /** @description Unique file type specifiers describing what type of files are accepted for parameters of type 'file'. */
       acceptedFileTypes?: (string)[];
+      hint?: components["schemas"]["ActionHint"];
     };
     /** @description The target on which to act on as identified by a discovery. */
     Target: {

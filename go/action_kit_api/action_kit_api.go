@@ -25,6 +25,12 @@ const (
 	Internal      ActionDescriptionTimeControl = "internal"
 )
 
+// Defines values for ActionHintType.
+const (
+	HintInfo    ActionHintType = "hint_info"
+	HintWarning ActionHintType = "hint_warning"
+)
+
 // Defines values for ActionKitErrorStatus.
 const (
 	Errored ActionKitErrorStatus = "errored"
@@ -36,6 +42,7 @@ const (
 	Boolean     ActionParameterType = "boolean"
 	Duration    ActionParameterType = "duration"
 	File        ActionParameterType = "file"
+	HttpStatus  ActionParameterType = "httpStatus"
 	Integer     ActionParameterType = "integer"
 	KeyValue    ActionParameterType = "key_value"
 	Password    ActionParameterType = "password"
@@ -86,7 +93,8 @@ type ActionDescription struct {
 	Category *string `json:"category,omitempty"`
 
 	// Description for end-users to help them understand what the action is doing.
-	Description string `json:"description"`
+	Description string      `json:"description"`
+	Hint        *ActionHint `json:"hint,omitempty"`
 
 	// An icon that is used to identify your action in the ui. Needs to be a data-uri containing an image.
 	Icon *string `json:"icon,omitempty"`
@@ -132,6 +140,18 @@ type ActionDescriptionKind string
 // Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type ActionDescriptionTimeControl string
 
+// ActionHint defines model for ActionHint.
+type ActionHint struct {
+	// The actual hint text (can contain markdown). Will be displayed in the product UI when configuring the action.
+	Content string `json:"content"`
+
+	// Will be used in the product UI to display the hint in a different color and with a different icon.
+	Type ActionHintType `json:"type"`
+}
+
+// Will be used in the product UI to display the hint in a different color and with a different icon.
+type ActionHintType string
+
 // An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 type ActionKitError struct {
 	// A human-readable explanation specific to this occurrence of the problem.
@@ -170,7 +190,8 @@ type ActionParameter struct {
 	DefaultValue *string `json:"defaultValue,omitempty"`
 
 	// Description for end-users to help them understand the action parameter.
-	Description *string `json:"description,omitempty"`
+	Description *string     `json:"description,omitempty"`
+	Hint        *ActionHint `json:"hint,omitempty"`
 
 	// A human-readable label for the action parameter.
 	Label string `json:"label"`

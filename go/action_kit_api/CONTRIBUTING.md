@@ -15,5 +15,5 @@ go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@2cf7fcf5b26d1a4362e7
 ## Releasing
 
  1. Update `CHANGELOG.md`
- 2. Set the tag: `git tag -a go/action_kit_api/v2.0.1 -m go/action_kit_api/v2.0.1`
- 3. Push the tag: `git push go/action_kit_api/v2.0.1`
+ 2. Set the tag: `git tag -a go/action_kit_api/v2.0.2 -m go/action_kit_api/v2.0.2`
+ 3. Push the tag: `git push go/action_kit_api/v2.0.2`

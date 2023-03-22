@@ -87,6 +87,10 @@ func TestActionDescription(t *testing.T) {
 		}),
 		Kind:        Attack,
 		TimeControl: Internal,
+		Hint: Ptr(ActionHint{
+			Type:    HintInfo,
+			Content: "foobar",
+		}),
 		Parameters: []ActionParameter{
 			{
 				Label:        "Wait for rollout completion",
