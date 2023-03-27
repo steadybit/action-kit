@@ -87,6 +87,10 @@ func TestActionDescription(t *testing.T) {
 		}),
 		Kind:        Attack,
 		TimeControl: Internal,
+		Hint: Ptr(ActionHint{
+			Type:    HintInfo,
+			Content: "Some information",
+		}),
 		Parameters: []ActionParameter{
 			{
 				Label:        "Wait for rollout completion",
@@ -94,6 +98,10 @@ func TestActionDescription(t *testing.T) {
 				Type:         Boolean,
 				Advanced:     Ptr(true),
 				DefaultValue: Ptr("false"),
+				Hint: Ptr(ActionHint{
+					Type:    HintWarning,
+					Content: "Some warning message",
+				}),
 				Options: Ptr([]ParameterOption{
 					ExplicitParameterOption{
 						Label: "Any",

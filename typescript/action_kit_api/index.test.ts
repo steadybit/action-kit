@@ -92,6 +92,10 @@ export const actionDescription: ActionDescription = {
 			type: 'boolean',
 			advanced: true,
 			defaultValue: 'false',
+			hint: {
+				type: 'hint_info',
+				content: 'foobar',
+			},
 			options: [
 				{
 					label: 'Any',
@@ -103,6 +107,10 @@ export const actionDescription: ActionDescription = {
 			]
 		}
 	],
+	hint: {
+		type: 'hint_info',
+		content: 'foobar',
+	},
 	metrics: {
 		query: {
 			endpoint: {

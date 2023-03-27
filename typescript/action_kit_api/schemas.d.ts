@@ -211,6 +211,7 @@ export interface components {
        */
       timeControl: "instantaneous" | "internal" | "external";
       parameters: (components["schemas"]["ActionParameter"])[];
+      hint?: components["schemas"]["ActionHint"];
       widgets?: components["schemas"]["Widgets"];
       metrics?: components["schemas"]["MetricsConfiguration"];
       prepare: components["schemas"]["MutatingEndpointReference"];
@@ -230,6 +231,15 @@ export interface components {
     ParameterOptionsFromTargetAttribute: {
       /** @description Target attribute key from which the possible parameter options are gathered. */
       attribute: string;
+    };
+    ActionHint: {
+      /**
+       * @description Will be used in the product UI to display the hint in a different color and with a different icon. 
+       * @enum {string}
+       */
+      type: "hint_info" | "hint_warning";
+      /** @description The actual hint text (can contain markdown). Will be displayed in the product UI when configuring the action. */
+      content: string;
     };
     ActionParameter: {
       /** @description A human-readable label for the action parameter. */
@@ -255,6 +265,7 @@ export interface components {
       options?: (components["schemas"]["ParameterOption"])[];
       /** @description Unique file type specifiers describing what type of files are accepted for parameters of type 'file'. */
       acceptedFileTypes?: (string)[];
+      hint?: components["schemas"]["ActionHint"];
     };
     /** @description The target on which to act on as identified by a discovery. */
     Target: {
