@@ -42,7 +42,6 @@ const (
 	Boolean     ActionParameterType = "boolean"
 	Duration    ActionParameterType = "duration"
 	File        ActionParameterType = "file"
-	HttpStatus  ActionParameterType = "httpStatus"
 	Integer     ActionParameterType = "integer"
 	KeyValue    ActionParameterType = "key_value"
 	Password    ActionParameterType = "password"

@@ -475,7 +475,6 @@ components:
             - duration
             - file
             - key_value
-            - httpStatus            
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It
