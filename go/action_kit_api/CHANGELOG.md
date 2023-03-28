@@ -3,8 +3,14 @@
 ## 2.4.2
 
 - added ExecutonContext to PrepareRequest
-  The execution context of the action. 
-- added agentAwsAccountId to ExecutonContext
+  The execution context of the action.
+- moved agentAwsAccountId to ExecutonContext
+  The AWS account ID of the agent that is executing the action.
+  This is only set when the action is executed on an AWS
+  account.
+
+## 2.4.1
+- added agentAwsAccountId to PrepareRequest
   The AWS account ID of the agent that is executing the action.
   This is only set when the action is executed on an AWS
   account.

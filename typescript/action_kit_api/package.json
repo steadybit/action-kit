@@ -1,6 +1,6 @@
 {
   "name": "@steadybit/action-kit-api",
-  "version": "2.4.2",
+  "version": "2.4.1",
   "description": "TypeScript type definitions for Steadybit's action API.",
   "scripts": {
     "lint": "eslint index.d.ts",
