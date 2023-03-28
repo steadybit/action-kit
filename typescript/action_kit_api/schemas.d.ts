@@ -275,6 +275,11 @@ export interface components {
         [key: string]: (string)[] | undefined;
       };
     };
+    /** @description The execution context contains information about the current execution of the action. */
+    ExecutionContext: {
+      /** @description The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account */
+      agentAwsAccountId?: string;
+    };
     /**
      * Action State 
      * @description Any kind of action specific state that will be passed to the next endpoints.
@@ -451,8 +456,7 @@ export interface components {
             [key: string]: unknown | undefined;
           };
           target?: components["schemas"]["Target"];
-          /** @description The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account. */
-          agentAwsAccountId?: string;
+          executionContext?: components["schemas"]["ExecutionContext"];
         };
       };
     };

@@ -534,6 +534,18 @@ components:
       required:
         - name
         - attributes
+    ExecutionContext:
+      type: object
+      description: >-
+        The execution context contains information about the current execution
+        of the action.
+      properties:
+        agentAwsAccountId:
+          type: string
+          description: >-
+            The AWS account ID of the agent that is executing the action.
+            This is only set when the action is executed on an AWS
+            account
     ActionState:
       title: Action State
       description: >-
@@ -709,12 +721,8 @@ components:
                 additionalProperties: true
               target:
                 $ref: '#/components/schemas/Target'
-              agentAwsAccountId:
-                type: string
-                description: >-
-                  The AWS account ID of the agent that is executing the action.
-                  This is only set when the action is executed on an AWS
-                  account.
+              executionContext:
+                $ref: '#/components/schemas/ExecutionContext'
             required:
               - executionId
               - config

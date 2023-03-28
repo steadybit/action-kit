@@ -241,6 +241,12 @@ type DescribingEndpointReference struct {
 // HTTP method to use when calling the HTTP endpoint.
 type DescribingEndpointReferenceMethod string
 
+// The execution context contains information about the current execution of the action.
+type ExecutionContext struct {
+	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account
+	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
+}
+
 // You can use an explicit/fixed parameter option for a known / finite set of options that never change.
 type ExplicitParameterOption struct {
 	// A human-readable label describing this option.
@@ -529,12 +535,12 @@ type ActionStatusRequestBody struct {
 
 // PrepareActionRequestBody defines model for PrepareActionRequestBody.
 type PrepareActionRequestBody struct {
-	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account.
-	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
-
 	// The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
-	Config      map[string]interface{} `json:"config"`
-	ExecutionId uuid.UUID              `json:"executionId"`
+	Config map[string]interface{} `json:"config"`
+
+	// The execution context contains information about the current execution of the action.
+	ExecutionContext *ExecutionContext `json:"executionContext,omitempty"`
+	ExecutionId      uuid.UUID         `json:"executionId"`
 
 	// The target on which to act on as identified by a discovery.
 	Target *Target `json:"target,omitempty"`
