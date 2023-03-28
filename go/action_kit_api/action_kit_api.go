@@ -529,6 +529,9 @@ type ActionStatusRequestBody struct {
 
 // PrepareActionRequestBody defines model for PrepareActionRequestBody.
 type PrepareActionRequestBody struct {
+	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account.
+	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
+
 	// The action configuration. This contains the end-user configuration done for the action. Possible configuration parameters are defined through the action description.
 	Config      map[string]interface{} `json:"config"`
 	ExecutionId uuid.UUID              `json:"executionId"`

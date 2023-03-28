@@ -451,6 +451,8 @@ export interface components {
             [key: string]: unknown | undefined;
           };
           target?: components["schemas"]["Target"];
+          /** @description The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account. */
+          agentAwsAccountId?: string;
         };
       };
     };

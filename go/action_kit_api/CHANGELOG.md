@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.1
+
+- added agentAwsAccountId to PrepareRequest
+  The AWS account ID of the agent that is executing the action.
+  This is only set when the action is executed on an AWS
+  account.
+ 
 ## 2.4.0
 
 - added support for action hints

@@ -709,6 +709,12 @@ components:
                 additionalProperties: true
               target:
                 $ref: '#/components/schemas/Target'
+              agentAwsAccountId:
+                type: string
+                description: >-
+                  The AWS account ID of the agent that is executing the action.
+                  This is only set when the action is executed on an AWS
+                  account.
             required:
               - executionId
               - config
