@@ -134,6 +134,13 @@ Time control informs Steadybit about behavioral aspects of the action. At this m
   . Note that these actions require a parameter named `duration` with type `duration`.
 - Actions spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
 
+### Hints and parameter hints
+
+Actions and action parameters can contain hints. These will be rendered inside the UI experiment editor. The following screenshot shows an action with a hint
+and hint type "hint_warning" and a parameter hint with type "hint_info". The content of the hint also supports Markdown.
+
+![action hint](img/action-hint.png)
+
 ## Action Execution
 
 Action execution is divided into three steps:
