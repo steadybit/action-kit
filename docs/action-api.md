@@ -137,7 +137,7 @@ Time control informs Steadybit about behavioral aspects of the action. At this m
 ### Hints and parameter hints
 
 Actions and action parameters can contain hints. These will be rendered inside the UI experiment editor. The following screenshot shows an action with a hint
-and hint type "hint_warning" and a parameter hint with type "hint_info".
+and hint type "hint_warning" and a parameter hint with type "hint_info". The action contain can also be written, using Markdown.
 
 ![action hint](img/action-hint.png)
 
