@@ -6,6 +6,7 @@ package action_kit_sdk
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	extension_kit "github.com/steadybit/extension-kit"
@@ -17,7 +18,7 @@ import (
 type Action[T any] interface {
 	// NewEmptyState creates a new empty state. A pointer to this state is passed to the other methods.
 	NewEmptyState() T
-	// Describe returns the action description
+	// Describe returns the action description.
 	Describe() action_kit_api.ActionDescription
 	// Prepare is called before the action is actually started. It is used to validate the action configuration and to prepare the action state.
 	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#preparation)
@@ -39,10 +40,13 @@ type ActionWithStop[T any] interface {
 	Stop(ctx context.Context, state *T) (*action_kit_api.StopResult, error)
 }
 
-func RegisterAction[T any](a Action[T], basePath string) {
-	actionDescription := a.Describe()
+func RegisterAction[T any](a Action[T]) {
+	actionDescription := wrapDescribe(a.Describe())
+	actionId := actionDescription.Id
 
-	exthttp.RegisterHttpHandler(basePath, exthttp.GetterAsHandler(a.Describe))
+	exthttp.RegisterHttpHandler(fmt.Sprintf("/%s", actionId), exthttp.GetterAsHandler(func() action_kit_api.ActionDescription {
+		return actionDescription
+	}))
 	exthttp.RegisterHttpHandler(actionDescription.Prepare.Path, wrapPrepare(a))
 	exthttp.RegisterHttpHandler(actionDescription.Start.Path, wrapStart(a))
 	if actionWithStatus, ok := a.(ActionWithStatus[T]); ok {
@@ -57,6 +61,39 @@ func RegisterAction[T any](a Action[T], basePath string) {
 		}
 		exthttp.RegisterHttpHandler(actionDescription.Stop.Path, wrapStop(actionWithStop))
 	}
+}
+
+// wrapDescribe wraps the action description and adds default paths and methods for prepare, start, status and stop.
+func wrapDescribe(actionDescription action_kit_api.ActionDescription) action_kit_api.ActionDescription {
+	if actionDescription.Prepare.Path == "" {
+		actionDescription.Prepare.Path = fmt.Sprintf("/%s/prepare", actionDescription.Id)
+	}
+	if actionDescription.Prepare.Method == "" {
+		actionDescription.Prepare.Method = action_kit_api.Post
+	}
+	if actionDescription.Start.Path == "" {
+		actionDescription.Start.Path = fmt.Sprintf("/%s/start", actionDescription.Id)
+	}
+	if actionDescription.Start.Method == "" {
+		actionDescription.Start.Method = action_kit_api.Post
+	}
+	if actionDescription.Status != nil {
+		if actionDescription.Status.Path == "" {
+			actionDescription.Status.Path = fmt.Sprintf("/%s/status", actionDescription.Id)
+		}
+		if actionDescription.Status.Method == "" {
+			actionDescription.Status.Method = action_kit_api.Post
+		}
+	}
+	if actionDescription.Stop != nil {
+		if actionDescription.Stop.Path == "" {
+			actionDescription.Stop.Path = fmt.Sprintf("/%s/stop", actionDescription.Id)
+		}
+		if actionDescription.Stop.Method == "" {
+			actionDescription.Stop.Method = action_kit_api.Post
+		}
+	}
+	return actionDescription
 }
 
 func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Request, body []byte) {

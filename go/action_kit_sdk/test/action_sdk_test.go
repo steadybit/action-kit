@@ -26,7 +26,7 @@ func Test_SDK(t *testing.T) {
 	go func() {
 		action := NewExampleAction()
 		extlogging.InitZeroLog()
-		action_kit_sdk.RegisterAction(action, "/example")
+		action_kit_sdk.RegisterAction(action)
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}()
 	time.Sleep(1 * time.Second)
@@ -41,7 +41,7 @@ func Test_SDK(t *testing.T) {
 }
 
 func describe(t *testing.T, serverPort int) {
-	res, err := http.Get(fmt.Sprintf("http://localhost:%d/example", serverPort))
+	res, err := http.Get(fmt.Sprintf("http://localhost:%d/ExampleActionId", serverPort))
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func prepare(t *testing.T, serverPort int) action_kit_api.ActionState {
 	jsonBody, err := json.Marshal(prepareBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/example/prepare", serverPort), "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/prepare", serverPort), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func start(t *testing.T, serverPort int, state action_kit_api.ActionState) actio
 	jsonBody, err := json.Marshal(startBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/example/start", serverPort), "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/start", serverPort), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -114,7 +114,7 @@ func status(t *testing.T, serverPort int, state action_kit_api.ActionState) acti
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/example/status", serverPort), "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/status", serverPort), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -135,7 +135,7 @@ func stop(t *testing.T, serverPort int, state action_kit_api.ActionState) {
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/example/stop", serverPort), "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/stop", serverPort), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)

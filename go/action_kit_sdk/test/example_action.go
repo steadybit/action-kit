@@ -33,23 +33,12 @@ func (action ExampleAction) Describe() action_kit_api.ActionDescription {
 		Id:          "ExampleActionId",
 		Description: "This is an Example Action",
 		Kind:        action_kit_api.Other,
-		Prepare: action_kit_api.MutatingEndpointReference{
-			Method: action_kit_api.Post,
-			Path:   "/example/prepare",
-		},
-		Start: action_kit_api.MutatingEndpointReference{
-			Method: action_kit_api.Post,
-			Path:   "/example/start",
-		},
+		Prepare:     action_kit_api.MutatingEndpointReference{},
+		Start:       action_kit_api.MutatingEndpointReference{},
 		Status: &action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			Method:       action_kit_api.Post,
-			Path:         "/example/status",
 			CallInterval: extutil.Ptr("10s"),
 		},
-		Stop: &action_kit_api.MutatingEndpointReference{
-			Method: action_kit_api.Post,
-			Path:   "/example/stop",
-		},
+		Stop: &action_kit_api.MutatingEndpointReference{},
 	}
 }
 func (action ExampleAction) Prepare(ctx context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
