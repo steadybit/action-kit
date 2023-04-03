@@ -6,6 +6,7 @@ package action_kit_sdk
 import (
 	"context"
 	"encoding/json"
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
@@ -36,7 +37,7 @@ func RegisterHttpHandlers[T any](a Action[T], basePath string) {
 	exthttp.RegisterHttpHandler(actionDescription.Start.Path, wrapStart(a))
 	if actionWithStatus, ok := a.(ActionWithStatus[T]); ok {
 		if actionDescription.Status == nil {
-			panic("ActionWithStatus is implemented but actionDescription.Status is nil")
+			log.Fatal().Msgf("ActionWithStatus is implemented but actionDescription.Status is nil")
 		}
 		exthttp.RegisterHttpHandler(actionDescription.Status.Path, wrapStatus(actionWithStatus))
 	}
@@ -82,6 +83,7 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 		err = extconversion.Convert(parsedBody.State, &state)
 		if err != nil {
 			exthttp.WriteError(w, extension_kit.ToError("Failed to parse state.", err))
+			return
 		}
 
 		result, err := action.Start(r.Context(), state)
@@ -90,7 +92,7 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 			if isExtensionError {
 				exthttp.WriteError(w, extensionError)
 			} else {
-				exthttp.WriteError(w, extension_kit.ToError("Failed to prepare.", err))
+				exthttp.WriteError(w, extension_kit.ToError("Failed to start.", err))
 			}
 			return
 		}
@@ -110,6 +112,7 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 		err = extconversion.Convert(parsedBody.State, &state)
 		if err != nil {
 			exthttp.WriteError(w, extension_kit.ToError("Failed to parse state.", err))
+			return
 		}
 
 		result, err := action.Status(r.Context(), state)
@@ -118,7 +121,7 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 			if isExtensionError {
 				exthttp.WriteError(w, extensionError)
 			} else {
-				exthttp.WriteError(w, extension_kit.ToError("Failed to prepare.", err))
+				exthttp.WriteError(w, extension_kit.ToError("Failed to read status.", err))
 			}
 			return
 		}
@@ -138,6 +141,7 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 		err = extconversion.Convert(parsedBody.State, &state)
 		if err != nil {
 			exthttp.WriteError(w, extension_kit.ToError("Failed to parse state.", err))
+			return
 		}
 
 		result, err := action.Stop(r.Context(), state)
@@ -146,7 +150,7 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 			if isExtensionError {
 				exthttp.WriteError(w, extensionError)
 			} else {
-				exthttp.WriteError(w, extension_kit.ToError("Failed to prepare.", err))
+				exthttp.WriteError(w, extension_kit.ToError("Failed to stop.", err))
 			}
 			return
 		}
