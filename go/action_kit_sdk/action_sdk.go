@@ -15,17 +15,27 @@ import (
 )
 
 type Action[T any] interface {
+	// NewEmptyState creates a new empty state. A pointer to this state is passed to the other methods.
 	NewEmptyState() T
+	// Describe returns the action description
 	Describe() action_kit_api.ActionDescription
+	// Prepare is called before the action is actually started. It is used to validate the action configuration and to prepare the action state.
+	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#preparation)
 	Prepare(ctx context.Context, state *T, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error)
+	// Start is called when the action should actually happen.
+	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#start)
 	Start(ctx context.Context, state *T) (*action_kit_api.StartResult, error)
 }
 type ActionWithStatus[T any] interface {
 	Action[T]
+	// Status is used to observe the current status of the action. This is called periodically by the action-kit if time control [action_kit_api.Internal] is used.
+	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#status)
 	Status(ctx context.Context, state *T) (*action_kit_api.StatusResult, error)
 }
 type ActionWithStop[T any] interface {
 	Action[T]
+	// Stop is used to revert system modification or clean up any leftovers. This method is optional.
+	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#stop)
 	Stop(ctx context.Context, state *T) (*action_kit_api.StopResult, error)
 }
 
