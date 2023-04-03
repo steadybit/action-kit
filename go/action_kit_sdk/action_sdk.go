@@ -29,7 +29,7 @@ type ActionWithStop[T any] interface {
 	Stop(ctx context.Context, state T) (*action_kit_api.StopResult, error)
 }
 
-func RegisterHttpHandlers[T any](a Action[T], basePath string) {
+func RegisterAction[T any](a Action[T], basePath string) {
 	actionDescription := a.Describe()
 
 	exthttp.RegisterHttpHandler(basePath, exthttp.GetterAsHandler(a.Describe))

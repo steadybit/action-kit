@@ -26,7 +26,7 @@ func Test_SDK(t *testing.T) {
 	go func() {
 		action := NewExampleAction()
 		extlogging.InitZeroLog()
-		action_kit_sdk.RegisterHttpHandlers(action, "/example")
+		action_kit_sdk.RegisterAction(action, "/example")
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}()
 	time.Sleep(1 * time.Second)
