@@ -39,6 +39,11 @@ type ActionWithStop[T any] interface {
 	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#stop)
 	Stop(ctx context.Context, state *T) (*action_kit_api.StopResult, error)
 }
+type ActionWithMetricQuery[T any] interface {
+	Action[T]
+	// QueryMetrics is used to fetch metrics from the action. This method is required if the action supports a metric endpoint defined by [action_kit_api.MetricsConfiguration] in the [action_kit_api.ActionDe scription].
+	QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error)
+}
 
 func RegisterAction[T any](a Action[T]) {
 	actionDescription := wrapDescribe(a.Describe())
@@ -51,19 +56,28 @@ func RegisterAction[T any](a Action[T]) {
 	exthttp.RegisterHttpHandler(actionDescription.Start.Path, wrapStart(a))
 	if actionWithStatus, ok := a.(ActionWithStatus[T]); ok {
 		if actionDescription.Status == nil {
-			log.Fatal().Msgf("ActionWithStatus is implemented but actionDescription.Status is nil")
+			log.Fatal().Msgf("ActionWithStatus is implemented but actionDescription.Status is nil.")
 		}
 		exthttp.RegisterHttpHandler(actionDescription.Status.Path, wrapStatus(actionWithStatus))
 	}
 	if actionWithStop, ok := a.(ActionWithStop[T]); ok {
 		if actionDescription.Stop == nil {
-			panic("ActionWithStop is implemented but actionDescription.Stop is nil")
+			log.Fatal().Msgf("ActionWithStop is implemented but actionDescription.Stop is nil.")
 		}
 		exthttp.RegisterHttpHandler(actionDescription.Stop.Path, wrapStop(actionWithStop))
 	}
+	if actionWithMetricQuery, ok := a.(ActionWithMetricQuery[T]); ok {
+		if actionDescription.Metrics == nil {
+			log.Fatal().Msgf("ActionWithMetricQuery is implemented but actionDescription.Metrics is nil.")
+		}
+		if actionDescription.Metrics.Query == nil {
+			log.Fatal().Msgf("ActionWithMetricQuery is implemented but actionDescription.Metrics.Query is nil.")
+		}
+		exthttp.RegisterHttpHandler(actionDescription.Metrics.Query.Endpoint.Path, wrapMetricQuery(actionWithMetricQuery))
+	}
 }
 
-// wrapDescribe wraps the action description and adds default paths and methods for prepare, start, status and stop.
+// wrapDescribe wraps the action description and adds default paths and methods for prepare, start, status, stop and metrics.
 func wrapDescribe(actionDescription action_kit_api.ActionDescription) action_kit_api.ActionDescription {
 	if actionDescription.Prepare.Path == "" {
 		actionDescription.Prepare.Path = fmt.Sprintf("/%s/prepare", actionDescription.Id)
@@ -91,6 +105,14 @@ func wrapDescribe(actionDescription action_kit_api.ActionDescription) action_kit
 		}
 		if actionDescription.Stop.Method == "" {
 			actionDescription.Stop.Method = action_kit_api.Post
+		}
+	}
+	if actionDescription.Metrics != nil && actionDescription.Metrics.Query != nil {
+		if actionDescription.Metrics.Query.Endpoint.Path == "" {
+			actionDescription.Metrics.Query.Endpoint.Path = fmt.Sprintf("/%s/query", actionDescription.Id)
+		}
+		if actionDescription.Metrics.Query.Endpoint.Method == "" {
+			actionDescription.Metrics.Query.Endpoint.Method = action_kit_api.Post
 		}
 	}
 	return actionDescription
@@ -234,6 +256,29 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 				exthttp.WriteError(w, extensionError)
 			} else {
 				exthttp.WriteError(w, extension_kit.ToError("Failed to stop.", err))
+			}
+			return
+		}
+		exthttp.WriteBody(w, result)
+	}
+}
+
+func wrapMetricQuery[T any](action ActionWithMetricQuery[T]) func(w http.ResponseWriter, r *http.Request, body []byte) {
+	return func(w http.ResponseWriter, r *http.Request, body []byte) {
+		var parsedBody action_kit_api.QueryMetricsRequestBody
+		err := json.Unmarshal(body, &parsedBody)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
+			return
+		}
+
+		result, err := action.QueryMetrics(r.Context())
+		if err != nil {
+			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
+			if isExtensionError {
+				exthttp.WriteError(w, extensionError)
+			} else {
+				exthttp.WriteError(w, extension_kit.ToError("Failed to query metrics.", err))
 			}
 			return
 		}
