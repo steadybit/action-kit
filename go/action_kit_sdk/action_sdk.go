@@ -137,6 +137,9 @@ func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Re
 			}
 			return
 		}
+		if result == nil {
+			result = &action_kit_api.PrepareResult{}
+		}
 		if result.State != nil {
 			exthttp.WriteError(w, extension_kit.ToError(" Please modify the state using the given state pointer.", err))
 		}
@@ -168,6 +171,9 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 		}
 
 		result, err := action.Start(r.Context(), &state)
+		if result == nil {
+			result = &action_kit_api.StartResult{}
+		}
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -209,6 +215,9 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 		}
 
 		result, err := action.Status(r.Context(), &state)
+		if result == nil {
+			result = &action_kit_api.StatusResult{}
+		}
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -250,6 +259,9 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 		}
 
 		result, err := action.Stop(r.Context(), &state)
+		if result == nil {
+			result = &action_kit_api.StopResult{}
+		}
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -273,6 +285,9 @@ func wrapMetricQuery[T any](action ActionWithMetricQuery[T]) func(w http.Respons
 		}
 
 		result, err := action.QueryMetrics(r.Context())
+		if result == nil {
+			result = &action_kit_api.QueryMetricsResult{}
+		}
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
