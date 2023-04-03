@@ -17,16 +17,16 @@ import (
 type Action[T any] interface {
 	NewEmptyState() T
 	Describe() action_kit_api.ActionDescription
-	Prepare(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error)
-	Start(ctx context.Context, state T) (*action_kit_api.StartResult, error)
+	Prepare(ctx context.Context, state *T, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error)
+	Start(ctx context.Context, state *T) (*action_kit_api.StartResult, error)
 }
 type ActionWithStatus[T any] interface {
 	Action[T]
-	Status(ctx context.Context, state T) (*action_kit_api.StatusResult, error)
+	Status(ctx context.Context, state *T) (*action_kit_api.StatusResult, error)
 }
 type ActionWithStop[T any] interface {
 	Action[T]
-	Stop(ctx context.Context, state T) (*action_kit_api.StopResult, error)
+	Stop(ctx context.Context, state *T) (*action_kit_api.StopResult, error)
 }
 
 func RegisterAction[T any](a Action[T], basePath string) {
@@ -54,10 +54,11 @@ func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Re
 		var parsedBody action_kit_api.PrepareActionRequestBody
 		err := json.Unmarshal(body, &parsedBody)
 		if err != nil {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
 			return
 		}
-		result, err := action.Prepare(r.Context(), parsedBody)
+		state := action.NewEmptyState()
+		result, err := action.Prepare(r.Context(), &state, parsedBody)
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -67,6 +68,17 @@ func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Re
 			}
 			return
 		}
+		if result.State != nil {
+			exthttp.WriteError(w, extension_kit.ToError(" Please modify the state using the given state pointer.", err))
+		}
+
+		var convertedState action_kit_api.ActionState
+		err = extconversion.Convert(state, &convertedState)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+			return
+		}
+		result.State = convertedState
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -76,7 +88,7 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 		var parsedBody action_kit_api.StartActionRequestBody
 		err := json.Unmarshal(body, &parsedBody)
 		if err != nil {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
 			return
 		}
 		state := action.NewEmptyState()
@@ -86,7 +98,7 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		result, err := action.Start(r.Context(), state)
+		result, err := action.Start(r.Context(), &state)
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -96,6 +108,18 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 			}
 			return
 		}
+
+		if result.State != nil {
+			exthttp.WriteError(w, extension_kit.ToError(" Please modify the state using the given state pointer.", err))
+		}
+
+		var convertedState action_kit_api.ActionState
+		err = extconversion.Convert(state, &convertedState)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+			return
+		}
+		result.State = &convertedState
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -105,7 +129,7 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 		var parsedBody action_kit_api.ActionStatusRequestBody
 		err := json.Unmarshal(body, &parsedBody)
 		if err != nil {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
 			return
 		}
 		state := action.NewEmptyState()
@@ -115,7 +139,7 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 			return
 		}
 
-		result, err := action.Status(r.Context(), state)
+		result, err := action.Status(r.Context(), &state)
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
@@ -125,6 +149,18 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 			}
 			return
 		}
+
+		if result.State != nil {
+			exthttp.WriteError(w, extension_kit.ToError(" Please modify the state using the given state pointer.", err))
+		}
+
+		var convertedState action_kit_api.ActionState
+		err = extconversion.Convert(state, &convertedState)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+			return
+		}
+		result.State = &convertedState
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -134,7 +170,7 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 		var parsedBody action_kit_api.StopActionRequestBody
 		err := json.Unmarshal(body, &parsedBody)
 		if err != nil {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
 			return
 		}
 		state := action.NewEmptyState()
@@ -144,7 +180,7 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 			return
 		}
 
-		result, err := action.Stop(r.Context(), state)
+		result, err := action.Stop(r.Context(), &state)
 		if err != nil {
 			extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 			if isExtensionError {
