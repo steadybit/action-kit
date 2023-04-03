@@ -39,6 +39,13 @@ func (action ExampleAction) Describe() action_kit_api.ActionDescription {
 			CallInterval: extutil.Ptr("10s"),
 		},
 		Stop: &action_kit_api.MutatingEndpointReference{},
+		Metrics: &action_kit_api.MetricsConfiguration{
+			Query: &action_kit_api.MetricsQueryConfiguration{
+				Endpoint: action_kit_api.MutatingEndpointReferenceWithCallInterval{
+					CallInterval: extutil.Ptr("10s"),
+				},
+			},
+		},
 	}
 }
 func (action ExampleAction) Prepare(ctx context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
@@ -102,6 +109,21 @@ func (action ExampleAction) Stop(ctx context.Context, state *ExampleState) (*act
 		},
 		Metrics: &action_kit_api.Metrics{
 			{Metric: map[string]string{"Test": "stop"}, Name: extutil.Ptr("TestMetric")},
+		},
+	}, nil
+}
+
+func (action ExampleAction) QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error) {
+	fmt.Println("QueryMetrics!")
+	return &action_kit_api.QueryMetricsResult{
+		Artifacts: &action_kit_api.Artifacts{
+			{"test", "artifact-query-metrics"},
+		},
+		Messages: &action_kit_api.Messages{
+			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from QueryMetrics"},
+		},
+		Metrics: &action_kit_api.Metrics{
+			{Metric: map[string]string{"Test": "query-metrics"}, Name: extutil.Ptr("TestMetric")},
 		},
 	}, nil
 }

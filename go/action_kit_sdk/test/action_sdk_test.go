@@ -35,6 +35,7 @@ func Test_SDK(t *testing.T) {
 	state := prepare(t, serverPort)
 	state = start(t, serverPort, state)
 	state = status(t, serverPort, state)
+	queryMetrics(t, serverPort)
 	stop(t, serverPort, state)
 
 	fmt.Println("Yes, IntelliJ, yes, the test is finished.")
@@ -128,6 +129,37 @@ func status(t *testing.T, serverPort int, state action_kit_api.ActionState) acti
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
 	return *response.State
+}
+
+func queryMetrics(t *testing.T, serverPort int) {
+	statusBody := action_kit_api.QueryMetricsRequestBody{
+		ExecutionId: uuid.New(),
+		Target: &action_kit_api.Target{
+			Name: "bookinfo",
+			Attributes: map[string][]string{
+				"k8s.namespace":    {"default"},
+				"k8s.cluster-name": {"minikube"},
+			},
+		},
+		Config: map[string]interface{}{
+			"duration": "10s",
+		},
+		Timestamp: time.Now(),
+	}
+	jsonBody, err := json.Marshal(statusBody)
+	require.NoError(t, err)
+	bodyReader := bytes.NewReader(jsonBody)
+	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/query", serverPort), "application/json", bodyReader)
+	require.NoError(t, err)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	var response action_kit_api.QueryMetricsResult
+	err = json.Unmarshal(body, &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, "This is a test Message from QueryMetrics", (*response.Messages)[0].Message)
+	assert.Len(t, *response.Metrics, 1)
+	assert.Len(t, *response.Artifacts, 1)
 }
 
 func stop(t *testing.T, serverPort int, state action_kit_api.ActionState) {
