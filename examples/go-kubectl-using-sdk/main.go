@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+/*
+ * Copyright 2023 steadybit GmbH. All rights reserved.
+ */
 
 package main
 
@@ -22,6 +23,9 @@ func main() {
 			Actions: action_kit_sdk.RegisteredActionsEndpoints(),
 		}
 	}))
+
+	stop := action_kit_sdk.Start()
+	defer stop()
 
 	port := 8083
 	log.Info().Msgf("Starting go-kubectl server on port %d. Get started via /actions", port)

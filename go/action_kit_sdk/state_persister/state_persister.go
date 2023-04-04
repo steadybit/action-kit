@@ -1,17 +1,19 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+/*
+ * Copyright 2023 steadybit GmbH. All rights reserved.
+ */
 
 package state_persister
 
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 )
 
 type PersistedState struct {
 	ExecutionId uuid.UUID
 	ActionId    string
-	State       interface{}
+	State       action_kit_api.ActionState
 }
 
 type StatePersister interface {

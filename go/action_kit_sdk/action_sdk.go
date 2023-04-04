@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+/*
+ * Copyright 2023 steadybit GmbH. All rights reserved.
+ */
 
 package action_kit_sdk
 
@@ -9,11 +10,16 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/action-kit/go/action_kit_sdk/heartbeat"
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 var (
@@ -49,6 +55,58 @@ type ActionWithMetricQuery[T any] interface {
 	Action[T]
 	// QueryMetrics is used to fetch metrics from the action. This method is required if the action supports a metric endpoint defined by [action_kit_api.MetricsConfiguration] in the [action_kit_api.ActionDe scription].
 	QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error)
+}
+
+func Start() func() {
+	hb := heartbeat.StartAndRegisterHandler()
+
+	channel := make(chan os.Signal, 1)
+	signal.Notify(channel, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
+
+	go func(<-chan time.Time, <-chan os.Signal) {
+		select {
+		case <-hb.Channel():
+			log.Debug().Msg("Heartbeat failed. Stopping active actions.")
+			StopAllActiveActions("heartbeat failed")
+		case s := <-channel:
+			log.Debug().Msgf("Received signal %s. Stopping active actions", s)
+			StopAllActiveActions(fmt.Sprintf("received signal %s", s))
+		}
+	}(hb.Channel(), channel)
+
+	return func() {
+		close(channel)
+		hb.Stop()
+	}
+}
+
+func StopAllActiveActions(reason string) {
+	ctx := context.Background()
+	states, err := statePersister.GetStates(ctx)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to load active action states")
+	}
+	if len(states) == 0 {
+		log.Warn().Msgf("Stopping active actions: %s.", reason)
+	}
+	for _, persistedState := range states {
+		action, ok := registeredActions[persistedState.ActionId]
+		if !ok {
+			log.Error().Msgf("Action %s is not registered. Cannot stop active action", persistedState.ActionId)
+			continue
+		}
+		if actionWithStop, ok := action.(ActionWithStop[any]); ok {
+			state := actionWithStop.NewEmptyState()
+			if err := extconversion.Convert(persistedState.State, &state); err != nil {
+				log.Error().Err(err).Msgf("Failed to convert state. Cannot stop active action %s", persistedState.ActionId)
+				continue
+			}
+			log.Warn().Msgf("Stopping active action %s execution %s", persistedState.ActionId, persistedState.ExecutionId)
+			if _, err := actionWithStop.Stop(ctx, &state); err != nil {
+				log.Error().Err(err).Msgf("Failed to stop active action %s execution %s", persistedState.ActionId, persistedState.ExecutionId)
+			}
+		}
+	}
 }
 
 func RegisterAction[T any](a Action[T]) {
@@ -160,7 +218,7 @@ func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Re
 		result.State = convertedState
 
 		if action.Describe().Stop != nil {
-			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: convertedState})
 			if err != nil {
 				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
 				return
@@ -212,7 +270,7 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 		result.State = &convertedState
 
 		if action.Describe().Stop != nil {
-			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: convertedState})
 			if err != nil {
 				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
 				return
@@ -264,7 +322,7 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 		result.State = &convertedState
 
 		if action.Describe().Stop != nil {
-			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: convertedState})
 			if err != nil {
 				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
 				return
@@ -341,7 +399,7 @@ func wrapMetricQuery[T any](action ActionWithMetricQuery[T]) func(w http.Respons
 // RegisteredActionsEndpoints returns a list of all root endpoints of registered actions.
 func RegisteredActionsEndpoints() []action_kit_api.DescribingEndpointReference {
 	var result []action_kit_api.DescribingEndpointReference
-	for actionId, _ := range registeredActions {
+	for actionId := range registeredActions {
 		result = append(result, action_kit_api.DescribingEndpointReference{
 			Method: "GET",
 			Path:   fmt.Sprintf("/%s", actionId),
