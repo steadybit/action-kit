@@ -18,12 +18,18 @@ type ExampleState struct {
 	TestStep string
 }
 
-func (action *ExampleAction) NewEmptyState() ExampleState {
-	return ExampleState{}
-}
-
 func NewExampleAction() Action[ExampleState] {
 	return &ExampleAction{}
+}
+
+// Make sure our ExampleAction implements all the interfaces we need
+var _ Action[ExampleState] = (*ExampleAction)(nil)
+var _ ActionWithStatus[ExampleState] = (*ExampleAction)(nil)
+var _ ActionWithStop[ExampleState] = (*ExampleAction)(nil)
+var _ ActionWithMetricQuery[ExampleState] = (*ExampleAction)(nil)
+
+func (action *ExampleAction) NewEmptyState() ExampleState {
+	return ExampleState{}
 }
 
 func (action *ExampleAction) Describe() action_kit_api.ActionDescription {

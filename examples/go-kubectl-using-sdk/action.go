@@ -26,12 +26,16 @@ type RolloutRestartState struct {
 	Wait       bool
 }
 
-func (f *RolloutRestartAction) NewEmptyState() RolloutRestartState {
-	return RolloutRestartState{}
-}
-
 func NewRolloutRestartAction() action_kit_sdk.Action[RolloutRestartState] {
 	return &RolloutRestartAction{}
+}
+
+// Make sure RolloutRestartAction implements all the interfaces we need
+var _ action_kit_sdk.Action[RolloutRestartState] = (*RolloutRestartAction)(nil)
+var _ action_kit_sdk.ActionWithStatus[RolloutRestartState] = (*RolloutRestartAction)(nil)
+
+func (f *RolloutRestartAction) NewEmptyState() RolloutRestartState {
+	return RolloutRestartState{}
 }
 
 func (f *RolloutRestartAction) Describe() action_kit_api.ActionDescription {
