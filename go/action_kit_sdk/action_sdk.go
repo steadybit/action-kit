@@ -1,6 +1,5 @@
-/*
- * Copyright 2023 steadybit GmbH. All rights reserved.
- */
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
 package action_kit_sdk
 
@@ -57,6 +56,7 @@ type ActionWithMetricQuery[T any] interface {
 	QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error)
 }
 
+// Start starts the safety nets of the action-kit sdk. A heartbeat will constantly check the connection to the agent. The method returns a function that needs to be deferred to close the required resources.
 func Start() func() {
 	hb := heartbeat.StartAndRegisterHandler()
 
@@ -67,10 +67,10 @@ func Start() func() {
 		select {
 		case <-hb.Channel():
 			log.Debug().Msg("Heartbeat failed. Stopping active actions.")
-			StopAllActiveActions("heartbeat failed")
+			stopAllActiveActions("heartbeat failed")
 		case s := <-channel:
 			log.Debug().Msgf("Received signal %s. Stopping active actions", s)
-			StopAllActiveActions(fmt.Sprintf("received signal %s", s))
+			stopAllActiveActions(fmt.Sprintf("received signal %s", s))
 		}
 	}(hb.Channel(), channel)
 
@@ -80,7 +80,7 @@ func Start() func() {
 	}
 }
 
-func StopAllActiveActions(reason string) {
+func stopAllActiveActions(reason string) {
 	ctx := context.Background()
 	states, err := statePersister.GetStates(ctx)
 	if err != nil {
