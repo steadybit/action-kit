@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+type ExtensionListResponse struct {
+	Actions []action_kit_api.DescribingEndpointReference `json:"attacks"`
+}
+
 func Test_SDK(t *testing.T) {
 	const serverPort = 3333
 
@@ -27,22 +31,41 @@ func Test_SDK(t *testing.T) {
 		action := NewExampleAction()
 		extlogging.InitZeroLog()
 		action_kit_sdk.RegisterAction(action)
+		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(func() ExtensionListResponse {
+			return ExtensionListResponse{
+				Actions: action_kit_sdk.RegisteredActionsEndpoints(),
+			}
+		}))
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}()
 	time.Sleep(1 * time.Second)
 
-	describe(t, serverPort)
-	state := prepare(t, serverPort)
-	state = start(t, serverPort, state)
-	state = status(t, serverPort, state)
-	queryMetrics(t, serverPort)
-	stop(t, serverPort, state)
+	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
+	actionPath := listExtension(t, basePath)
+	actionDescription := describe(t, fmt.Sprintf("%s%s", basePath, actionPath))
+	state := prepare(t, fmt.Sprintf("%s%s", basePath, actionDescription.Prepare.Path))
+	state = start(t, fmt.Sprintf("%s%s", basePath, actionDescription.Start.Path), state)
+	state = status(t, fmt.Sprintf("%s%s", basePath, actionDescription.Status.Path), state)
+	queryMetrics(t, fmt.Sprintf("%s%s", basePath, actionDescription.Metrics.Query.Endpoint.Path))
+	stop(t, fmt.Sprintf("%s%s", basePath, actionDescription.Stop.Path), state)
 
 	fmt.Println("Yes, IntelliJ, yes, the test is finished.")
 }
 
-func describe(t *testing.T, serverPort int) {
-	res, err := http.Get(fmt.Sprintf("http://localhost:%d/ExampleActionId", serverPort))
+func listExtension(t *testing.T, path string) string {
+	res, err := http.Get(path)
+	require.NoError(t, err)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	var response ExtensionListResponse
+	err = json.Unmarshal(body, &response)
+	require.NoError(t, err)
+	assert.NotEmpty(t, response.Actions)
+	return response.Actions[0].Path
+}
+
+func describe(t *testing.T, actionPath string) action_kit_api.ActionDescription {
+	res, err := http.Get(actionPath)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -54,9 +77,10 @@ func describe(t *testing.T, serverPort int) {
 	assert.NotNil(t, response.Start)
 	assert.NotNil(t, response.Status)
 	assert.NotNil(t, response.Stop)
+	return response
 }
 
-func prepare(t *testing.T, serverPort int) action_kit_api.ActionState {
+func prepare(t *testing.T, path string) action_kit_api.ActionState {
 	prepareBody := action_kit_api.PrepareActionRequestBody{
 		ExecutionId: uuid.New(),
 		Target: &action_kit_api.Target{
@@ -73,7 +97,7 @@ func prepare(t *testing.T, serverPort int) action_kit_api.ActionState {
 	jsonBody, err := json.Marshal(prepareBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/prepare", serverPort), "application/json", bodyReader)
+	res, err := http.Post(path, "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -89,12 +113,12 @@ func prepare(t *testing.T, serverPort int) action_kit_api.ActionState {
 	return response.State
 }
 
-func start(t *testing.T, serverPort int, state action_kit_api.ActionState) action_kit_api.ActionState {
+func start(t *testing.T, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
 	startBody := action_kit_api.StartActionRequestBody{State: state}
 	jsonBody, err := json.Marshal(startBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/start", serverPort), "application/json", bodyReader)
+	res, err := http.Post(path, "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -110,12 +134,12 @@ func start(t *testing.T, serverPort int, state action_kit_api.ActionState) actio
 	return *response.State
 }
 
-func status(t *testing.T, serverPort int, state action_kit_api.ActionState) action_kit_api.ActionState {
+func status(t *testing.T, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
 	statusBody := action_kit_api.ActionStatusRequestBody{State: state}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/status", serverPort), "application/json", bodyReader)
+	res, err := http.Post(path, "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -131,7 +155,7 @@ func status(t *testing.T, serverPort int, state action_kit_api.ActionState) acti
 	return *response.State
 }
 
-func queryMetrics(t *testing.T, serverPort int) {
+func queryMetrics(t *testing.T, path string) {
 	statusBody := action_kit_api.QueryMetricsRequestBody{
 		ExecutionId: uuid.New(),
 		Target: &action_kit_api.Target{
@@ -149,7 +173,7 @@ func queryMetrics(t *testing.T, serverPort int) {
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/query", serverPort), "application/json", bodyReader)
+	res, err := http.Post(path, "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -162,12 +186,12 @@ func queryMetrics(t *testing.T, serverPort int) {
 	assert.Len(t, *response.Artifacts, 1)
 }
 
-func stop(t *testing.T, serverPort int, state action_kit_api.ActionState) {
+func stop(t *testing.T, path string, state action_kit_api.ActionState) {
 	statusBody := action_kit_api.ActionStatusRequestBody{State: state}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("http://localhost:%d/ExampleActionId/stop", serverPort), "application/json", bodyReader)
+	res, err := http.Post(path, "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)

@@ -15,6 +15,10 @@ import (
 	"net/http"
 )
 
+var (
+	registeredActions = map[string]any{}
+)
+
 type Action[T any] interface {
 	// NewEmptyState creates a new empty state. A pointer to this state is passed to the other methods.
 	NewEmptyState() T
@@ -48,6 +52,7 @@ type ActionWithMetricQuery[T any] interface {
 func RegisterAction[T any](a Action[T]) {
 	actionDescription := wrapDescribe(a.Describe())
 	actionId := actionDescription.Id
+	registeredActions[actionId] = a
 
 	exthttp.RegisterHttpHandler(fmt.Sprintf("/%s", actionId), exthttp.GetterAsHandler(func() action_kit_api.ActionDescription {
 		return actionDescription
@@ -299,4 +304,15 @@ func wrapMetricQuery[T any](action ActionWithMetricQuery[T]) func(w http.Respons
 		}
 		exthttp.WriteBody(w, result)
 	}
+}
+
+func RegisteredActionsEndpoints() []action_kit_api.DescribingEndpointReference {
+	var result []action_kit_api.DescribingEndpointReference
+	for actionId, _ := range registeredActions {
+		result = append(result, action_kit_api.DescribingEndpointReference{
+			Method: "GET",
+			Path:   fmt.Sprintf("/%s", actionId),
+		})
+	}
+	return result
 }
