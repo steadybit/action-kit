@@ -18,8 +18,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/rs/xid v1.3.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.27.0 h1:1T7qCieN22GVc8S4Q2yuexzBb1EqjbgjSH9RohbMjKs=
 github.com/rs/zerolog v1.27.0/go.mod h1:7frBqO0oezxmnO7GF86FY++uy8I0Tk/If5ni1G9Qc0U=
-github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.2 h1:LPYnZKbycK0ABxP7jdRCLBAy7MTdqVzY7y2oRn2oYs4=
-github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.2/go.mod h1:4yGr/DzsHpw6elju1XHCeUsY/qoqNTcLY3ytgnNcMt8=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.3 h1:Z1aYPqcbfN+foMdKZqARlyaLY8NwayuGQPOiYHmBjdM=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.3/go.mod h1:4yGr/DzsHpw6elju1XHCeUsY/qoqNTcLY3ytgnNcMt8=
 github.com/steadybit/extension-kit v1.7.4 h1:wlH/M+NPjnGeMt4YNHUkbDHr0Dg/5SRdUF5SNNkH2Hk=
 github.com/steadybit/extension-kit v1.7.4/go.mod h1:zC5Tw+wrJTx4xvOlsIY+MfMoRYoglj83vR15Xr3aP5c=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

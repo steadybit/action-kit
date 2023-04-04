@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
@@ -17,6 +18,7 @@ import (
 
 var (
 	registeredActions = map[string]any{}
+	statePersister    = state_persister.NewInmemoryStatePersister()
 )
 
 type Action[T any] interface {
@@ -156,6 +158,14 @@ func wrapPrepare[T any](action Action[T]) func(w http.ResponseWriter, r *http.Re
 			return
 		}
 		result.State = convertedState
+
+		if action.Describe().Stop != nil {
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			if err != nil {
+				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
+				return
+			}
+		}
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -200,6 +210,14 @@ func wrapStart[T any](action Action[T]) func(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		result.State = &convertedState
+
+		if action.Describe().Stop != nil {
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			if err != nil {
+				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
+				return
+			}
+		}
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -244,6 +262,14 @@ func wrapStatus[T any](action ActionWithStatus[T]) func(w http.ResponseWriter, r
 			return
 		}
 		result.State = &convertedState
+
+		if action.Describe().Stop != nil {
+			err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: action.Describe().Id, State: state})
+			if err != nil {
+				exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
+				return
+			}
+		}
 		exthttp.WriteBody(w, result)
 	}
 }
@@ -274,6 +300,12 @@ func wrapStop[T any](action ActionWithStop[T]) func(w http.ResponseWriter, r *ht
 			} else {
 				exthttp.WriteError(w, extension_kit.ToError("Failed to stop.", err))
 			}
+			return
+		}
+
+		err = statePersister.DeleteState(r.Context(), parsedBody.ExecutionId)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to delete action state.", err))
 			return
 		}
 		exthttp.WriteBody(w, result)

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
-package test
+package action_kit_sdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extlogging"
 	"github.com/stretchr/testify/assert"
@@ -30,10 +30,10 @@ func Test_SDK(t *testing.T) {
 	go func() {
 		action := NewExampleAction()
 		extlogging.InitZeroLog()
-		action_kit_sdk.RegisterAction(action)
+		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(func() ExtensionListResponse {
 			return ExtensionListResponse{
-				Actions: action_kit_sdk.RegisteredActionsEndpoints(),
+				Actions: RegisteredActionsEndpoints(),
 			}
 		}))
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
@@ -43,11 +43,13 @@ func Test_SDK(t *testing.T) {
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
 	actionPath := listExtension(t, basePath)
 	actionDescription := describe(t, fmt.Sprintf("%s%s", basePath, actionPath))
-	state := prepare(t, fmt.Sprintf("%s%s", basePath, actionDescription.Prepare.Path))
-	state = start(t, fmt.Sprintf("%s%s", basePath, actionDescription.Start.Path), state)
-	state = status(t, fmt.Sprintf("%s%s", basePath, actionDescription.Status.Path), state)
-	queryMetrics(t, fmt.Sprintf("%s%s", basePath, actionDescription.Metrics.Query.Endpoint.Path))
-	stop(t, fmt.Sprintf("%s%s", basePath, actionDescription.Stop.Path), state)
+	executionId := uuid.New()
+
+	state := prepare(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Prepare.Path))
+	state = start(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Start.Path), state)
+	state = status(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Status.Path), state)
+	queryMetrics(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Metrics.Query.Endpoint.Path))
+	stop(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Stop.Path), state)
 
 	fmt.Println("Yes, IntelliJ, yes, the test is finished.")
 }
@@ -80,9 +82,9 @@ func describe(t *testing.T, actionPath string) action_kit_api.ActionDescription 
 	return response
 }
 
-func prepare(t *testing.T, path string) action_kit_api.ActionState {
+func prepare(t *testing.T, executionId uuid.UUID, path string) action_kit_api.ActionState {
 	prepareBody := action_kit_api.PrepareActionRequestBody{
-		ExecutionId: uuid.New(),
+		ExecutionId: executionId,
 		Target: &action_kit_api.Target{
 			Name: "bookinfo",
 			Attributes: map[string][]string{
@@ -110,11 +112,17 @@ func prepare(t *testing.T, path string) action_kit_api.ActionState {
 	assert.Equal(t, "Prepare", response.State["TestStep"])
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
+
+	states, err := statePersister.GetStates(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, states, 1)
+	assert.Equal(t, "Prepare", (*states[0]).State.(ExampleState).TestStep)
+
 	return response.State
 }
 
-func start(t *testing.T, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
-	startBody := action_kit_api.StartActionRequestBody{State: state}
+func start(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
+	startBody := action_kit_api.StartActionRequestBody{State: state, ExecutionId: executionId}
 	jsonBody, err := json.Marshal(startBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
@@ -131,11 +139,17 @@ func start(t *testing.T, path string, state action_kit_api.ActionState) action_k
 	assert.Equal(t, "Start", (*response.State)["TestStep"])
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
+
+	states, err := statePersister.GetStates(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, states, 1)
+	assert.Equal(t, "Start", (*states[0]).State.(ExampleState).TestStep)
+
 	return *response.State
 }
 
-func status(t *testing.T, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
-	statusBody := action_kit_api.ActionStatusRequestBody{State: state}
+func status(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
+	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: executionId}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
@@ -152,12 +166,18 @@ func status(t *testing.T, path string, state action_kit_api.ActionState) action_
 	assert.Equal(t, "Status", (*response.State)["TestStep"])
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
+
+	states, err := statePersister.GetStates(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, states, 1)
+	assert.Equal(t, "Status", (*states[0]).State.(ExampleState).TestStep)
+
 	return *response.State
 }
 
-func queryMetrics(t *testing.T, path string) {
+func queryMetrics(t *testing.T, executionId uuid.UUID, path string) {
 	statusBody := action_kit_api.QueryMetricsRequestBody{
-		ExecutionId: uuid.New(),
+		ExecutionId: executionId,
 		Target: &action_kit_api.Target{
 			Name: "bookinfo",
 			Attributes: map[string][]string{
@@ -186,8 +206,8 @@ func queryMetrics(t *testing.T, path string) {
 	assert.Len(t, *response.Artifacts, 1)
 }
 
-func stop(t *testing.T, path string, state action_kit_api.ActionState) {
-	statusBody := action_kit_api.ActionStatusRequestBody{State: state}
+func stop(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) {
+	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: executionId}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
@@ -202,4 +222,8 @@ func stop(t *testing.T, path string, state action_kit_api.ActionState) {
 	assert.Equal(t, "This is a test Message from Stop", (*response.Messages)[0].Message)
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
+
+	states, err := statePersister.GetStates(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, states, 0)
 }

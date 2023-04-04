@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
-package test
+package action_kit_sdk
 
 import (
 	"context"
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
@@ -23,7 +22,7 @@ func (action *ExampleAction) NewEmptyState() ExampleState {
 	return ExampleState{}
 }
 
-func NewExampleAction() action_kit_sdk.Action[ExampleState] {
+func NewExampleAction() Action[ExampleState] {
 	return &ExampleAction{}
 }
 

@@ -7,7 +7,7 @@ The module encapsulates the following technical aspects:
 
 - JSON marshalling and unmarshalling of action inputs and outputs
 - The sdk will wrap around your `describe` call and will provide some meaningful defaults for your endpoint definitions.
-- (TODO) An additional layer of rollback stability. The SDK will keep a copy of your action state in memory to be able to rollback to the previous state in case
+- An additional layer of rollback stability. The SDK will keep a copy of your action state in memory to be able to rollback to the previous state in case
   of connections issues.
 
 ## Installation
