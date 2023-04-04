@@ -16,19 +16,49 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"os"
+	"syscall"
 	"testing"
 	"time"
+)
+
+var (
+	ANY_ARG = struct{}{}
 )
 
 type ExtensionListResponse struct {
 	Actions []action_kit_api.DescribingEndpointReference `json:"attacks"`
 }
 
-func Test_SDK(t *testing.T) {
-	const serverPort = 3333
+type ActionOperations struct {
+	executionId uuid.UUID
+	basePath    string
+	description action_kit_api.ActionDescription
+	calls       <-chan Call
+}
 
-	go func() {
-		action := NewExampleAction()
+type TestCase struct {
+	Name string
+	Fn   func(t *testing.T, op ActionOperations)
+}
+
+func Test_SDK(t *testing.T) {
+	testCases := []TestCase{
+		{
+			Name: "should run a simple action",
+			Fn:   testcaseSimple,
+		},
+		{
+			Name: "should stop actions on USR1 signal",
+			Fn:   testcaseUsr1Signal,
+		},
+	}
+	calls := make(chan Call, 1024)
+	defer close(calls)
+
+	const serverPort = 3333
+	go func(calls chan<- Call) {
+		action := NewExampleAction(calls)
 		extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(func() ExtensionListResponse {
@@ -36,22 +66,56 @@ func Test_SDK(t *testing.T) {
 				Actions: RegisteredActionsEndpoints(),
 			}
 		}))
+		stop := Start()
+		defer stop()
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
-	}()
+	}(calls)
 	time.Sleep(1 * time.Second)
 
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
 	actionPath := listExtension(t, basePath)
-	actionDescription := describe(t, fmt.Sprintf("%s%s", basePath, actionPath))
-	executionId := uuid.New()
+	op := ActionOperations{
+		basePath:    basePath,
+		description: describe(t, fmt.Sprintf("%s%s", basePath, actionPath)),
+		executionId: uuid.New(),
+		calls:       calls,
+	}
 
-	state := prepare(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Prepare.Path))
-	state = start(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Start.Path), state)
-	state = status(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Status.Path), state)
-	queryMetrics(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Metrics.Query.Endpoint.Path))
-	stop(t, executionId, fmt.Sprintf("%s%s", basePath, actionDescription.Stop.Path), state)
+	for _, testCase := range testCases {
+		op.resetCalls()
+		t.Run(testCase.Name, func(t *testing.T) {
+			testCase.Fn(t, op)
+		})
+	}
 
 	fmt.Println("Yes, IntelliJ, yes, the test is finished.")
+}
+
+func testcaseSimple(t *testing.T, op ActionOperations) {
+	state := op.prepare(t)
+	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
+
+	state = op.start(t, state)
+	op.assertCall(t, "Start", toExampleState(state))
+
+	state = op.status(t, state)
+	op.assertCall(t, "Status", toExampleState(state))
+
+	op.queryMetrics(t)
+	op.assertCall(t, "QueryMetrics")
+
+	op.stop(t, state)
+	op.assertCall(t, "Stop", toExampleState(state))
+}
+
+func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
+	state := op.prepare(t)
+	state = op.start(t, state)
+	op.resetCalls()
+
+	err := syscall.Kill(os.Getpid(), syscall.SIGUSR1)
+	require.NoError(t, err)
+	op.assertCall(t, "Stop", toExampleState(state))
 }
 
 func listExtension(t *testing.T, path string) string {
@@ -82,9 +146,9 @@ func describe(t *testing.T, actionPath string) action_kit_api.ActionDescription 
 	return response
 }
 
-func prepare(t *testing.T, executionId uuid.UUID, path string) action_kit_api.ActionState {
+func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
 	prepareBody := action_kit_api.PrepareActionRequestBody{
-		ExecutionId: executionId,
+		ExecutionId: op.executionId,
 		Target: &action_kit_api.Target{
 			Name: "bookinfo",
 			Attributes: map[string][]string{
@@ -99,7 +163,7 @@ func prepare(t *testing.T, executionId uuid.UUID, path string) action_kit_api.Ac
 	jsonBody, err := json.Marshal(prepareBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(path, "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -121,12 +185,12 @@ func prepare(t *testing.T, executionId uuid.UUID, path string) action_kit_api.Ac
 	return response.State
 }
 
-func start(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
-	startBody := action_kit_api.StartActionRequestBody{State: state, ExecutionId: executionId}
+func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState) action_kit_api.ActionState {
+	startBody := action_kit_api.StartActionRequestBody{State: state, ExecutionId: op.executionId}
 	jsonBody, err := json.Marshal(startBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(path, "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Start.Path), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -148,12 +212,12 @@ func start(t *testing.T, executionId uuid.UUID, path string, state action_kit_ap
 	return *response.State
 }
 
-func status(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) action_kit_api.ActionState {
-	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: executionId}
+func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionState) action_kit_api.ActionState {
+	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: op.executionId}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(path, "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Status.Path), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -175,9 +239,9 @@ func status(t *testing.T, executionId uuid.UUID, path string, state action_kit_a
 	return *response.State
 }
 
-func queryMetrics(t *testing.T, executionId uuid.UUID, path string) {
+func (op *ActionOperations) queryMetrics(t *testing.T) {
 	statusBody := action_kit_api.QueryMetricsRequestBody{
-		ExecutionId: executionId,
+		ExecutionId: op.executionId,
 		Target: &action_kit_api.Target{
 			Name: "bookinfo",
 			Attributes: map[string][]string{
@@ -193,7 +257,7 @@ func queryMetrics(t *testing.T, executionId uuid.UUID, path string) {
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(path, "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Metrics.Query.Endpoint.Path), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -206,12 +270,12 @@ func queryMetrics(t *testing.T, executionId uuid.UUID, path string) {
 	assert.Len(t, *response.Artifacts, 1)
 }
 
-func stop(t *testing.T, executionId uuid.UUID, path string, state action_kit_api.ActionState) {
-	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: executionId}
+func (op *ActionOperations) stop(t *testing.T, state action_kit_api.ActionState) {
+	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: op.executionId}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(path, "application/json", bodyReader)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Stop.Path), "application/json", bodyReader)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
@@ -226,4 +290,28 @@ func stop(t *testing.T, executionId uuid.UUID, path string, state action_kit_api
 	states, err := statePersister.GetStates(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, states, 0)
+}
+
+func (op *ActionOperations) resetCalls() {
+	for len(op.calls) > 0 {
+		<-op.calls
+	}
+}
+
+func (op *ActionOperations) assertCall(t *testing.T, name string, args ...interface{}) {
+	select {
+	case call := <-op.calls:
+		assert.Equal(t, name, call.Name)
+		assert.Equal(t, len(args), len(call.Args), "Arguments differ in length")
+		for i, expected := range args {
+			if expected == ANY_ARG {
+				continue
+			}
+			actual := call.Args[i]
+			fmt.Printf("Expected: %v, Actual: %v", &expected, actual)
+			assert.EqualValues(t, expected, actual)
+		}
+	case <-time.After(1 * time.Second):
+		assert.Fail(t, "No call to received", "Expected call to %s", name)
+	}
 }

@@ -1,6 +1,5 @@
-/*
- * Copyright 2023 steadybit GmbH. All rights reserved.
- */
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
 package heartbeat
 

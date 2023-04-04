@@ -1,6 +1,5 @@
-/*
- * Copyright 2023 steadybit GmbH. All rights reserved.
- */
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
 package heartbeat
 
@@ -39,7 +38,10 @@ func Start(interval, timeout time.Duration) *Heartbeat {
 				}
 			case <-time.After(interval):
 				if time.Since(last) > timeout {
-					log.Debug().Msgf("no heartbeat received within %s (last: %s)", timeout, last.Format(time.RFC3339))
+					log.Debug().
+						Str("timeout", timeout.String()).
+						Str("last", last.Format(time.RFC3339)).
+						Msg("no heartbeat received")
 					signal <- time.Now()
 				} else {
 					log.Trace().Msg("missed heartbeat")
@@ -60,7 +62,10 @@ func (h *Heartbeat) RegisterHandler() {
 
 func (h *Heartbeat) handler(w http.ResponseWriter, _ *http.Request, _ []byte) {
 	log.Trace().Msg("received heartbeat")
-	h.pulse <- time.Now()
+	select {
+	case h.pulse <- time.Now():
+	default:
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

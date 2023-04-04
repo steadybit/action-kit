@@ -5,12 +5,18 @@ package action_kit_sdk
 
 import (
 	"context"
-	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
+type Call struct {
+	Name string
+	Args []interface{}
+}
+
 type ExampleAction struct {
+	calls chan<- Call
 }
 
 type ExampleState struct {
@@ -18,8 +24,8 @@ type ExampleState struct {
 	TestStep string
 }
 
-func NewExampleAction() Action[ExampleState] {
-	return &ExampleAction{}
+func NewExampleAction(calls chan<- Call) Action[ExampleState] {
+	return &ExampleAction{calls: calls}
 }
 
 // Make sure our ExampleAction implements all the interfaces we need
@@ -28,12 +34,20 @@ var _ ActionWithStatus[ExampleState] = (*ExampleAction)(nil)
 var _ ActionWithStop[ExampleState] = (*ExampleAction)(nil)
 var _ ActionWithMetricQuery[ExampleState] = (*ExampleAction)(nil)
 
+func toExampleState(state action_kit_api.ActionState) *ExampleState {
+	result := ExampleState{}
+	err := extconversion.Convert(state, &result)
+	if err != nil {
+		panic(err)
+	}
+	return &result
+}
+
 func (action *ExampleAction) NewEmptyState() ExampleState {
 	return ExampleState{}
 }
 
 func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
-	fmt.Println("Describe!")
 	return action_kit_api.ActionDescription{
 		Id:          "ExampleActionId",
 		Description: "This is an Example Action",
@@ -54,7 +68,7 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 	}
 }
 func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
-	fmt.Println("Prepare!")
+	action.calls <- Call{"Prepare", []interface{}{state, request}}
 	state.Duration = request.Config["duration"].(string)
 	state.TestStep = "Prepare"
 	return &action_kit_api.PrepareResult{
@@ -71,9 +85,8 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 }
 
 func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*action_kit_api.StartResult, error) {
-	fmt.Println("Start!")
+	action.calls <- Call{"Start", []interface{}{state}}
 	state.TestStep = "Start"
-
 	return &action_kit_api.StartResult{
 		Artifacts: &action_kit_api.Artifacts{
 			{"test", "artifact-start"},
@@ -88,7 +101,7 @@ func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*act
 }
 
 func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*action_kit_api.StatusResult, error) {
-	fmt.Println("Status!!")
+	action.calls <- Call{"Status", []interface{}{state}}
 	state.TestStep = "Status"
 	return &action_kit_api.StatusResult{
 		Artifacts: &action_kit_api.Artifacts{
@@ -103,8 +116,8 @@ func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*ac
 	}, nil
 }
 
-func (action *ExampleAction) Stop(_ context.Context, _ *ExampleState) (*action_kit_api.StopResult, error) {
-	fmt.Println("Stop!")
+func (action *ExampleAction) Stop(_ context.Context, state *ExampleState) (*action_kit_api.StopResult, error) {
+	action.calls <- Call{"Stop", []interface{}{state}}
 	return &action_kit_api.StopResult{
 		Artifacts: &action_kit_api.Artifacts{
 			{"test", "artifact-stop"},
@@ -119,7 +132,7 @@ func (action *ExampleAction) Stop(_ context.Context, _ *ExampleState) (*action_k
 }
 
 func (action *ExampleAction) QueryMetrics(_ context.Context) (*action_kit_api.QueryMetricsResult, error) {
-	fmt.Println("QueryMetrics!")
+	action.calls <- Call{"QueryMetrics", nil}
 	return &action_kit_api.QueryMetricsResult{
 		Artifacts: &action_kit_api.Artifacts{
 			{"test", "artifact-query-metrics"},

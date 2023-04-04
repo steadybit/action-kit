@@ -17,12 +17,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 )
 
 var (
-	registeredActions = map[string]any{}
+	registeredActions = make(map[string]interface{})
 	statePersister    = state_persister.NewInmemoryStatePersister()
 )
 
@@ -66,11 +67,10 @@ func Start() func() {
 	go func(<-chan time.Time, <-chan os.Signal) {
 		select {
 		case <-hb.Channel():
-			log.Debug().Msg("Heartbeat failed. Stopping active actions.")
-			stopAllActiveActions("heartbeat failed")
+			StopAllActiveActions("heartbeat failed")
 		case s := <-channel:
-			log.Debug().Msgf("Received signal %s. Stopping active actions", s)
-			stopAllActiveActions(fmt.Sprintf("received signal %s", s))
+			log.Debug().Str("signal", s.String()).Msg("received signal")
+			StopAllActiveActions(fmt.Sprintf("received signal %s", s))
 		}
 	}(hb.Channel(), channel)
 
@@ -80,30 +80,50 @@ func Start() func() {
 	}
 }
 
-func stopAllActiveActions(reason string) {
+func StopAllActiveActions(reason string) {
 	ctx := context.Background()
 	states, err := statePersister.GetStates(ctx)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to load active action states")
 	}
 	if len(states) == 0 {
-		log.Warn().Msgf("Stopping active actions: %s.", reason)
+		log.Warn().Str("reason", reason).Msg("stopping active actions")
 	}
 	for _, persistedState := range states {
 		action, ok := registeredActions[persistedState.ActionId]
 		if !ok {
-			log.Error().Msgf("Action %s is not registered. Cannot stop active action", persistedState.ActionId)
+			log.Info().
+				Str("actionId", persistedState.ActionId).
+				Str("executionId", persistedState.ExecutionId.String()).
+				Msgf("action is not registered, cannot stop active action")
 			continue
 		}
-		if actionWithStop, ok := action.(ActionWithStop[any]); ok {
-			state := actionWithStop.NewEmptyState()
+
+		actionType := reflect.ValueOf(action)
+		if stopMethod := actionType.MethodByName("Stop"); !stopMethod.IsNil() {
+			rState := actionType.MethodByName("NewEmptyState").Call(nil)[0]
+			state := reflect.New(rState.Type()).Interface()
+
 			if err := extconversion.Convert(persistedState.State, &state); err != nil {
-				log.Error().Err(err).Msgf("Failed to convert state. Cannot stop active action %s", persistedState.ActionId)
+				log.Error().
+					Str("actionId", persistedState.ActionId).
+					Str("executionId", persistedState.ExecutionId.String()).
+					Err(err).
+					Msg("failed to convert state, cannot stop active action")
 				continue
 			}
-			log.Warn().Msgf("Stopping active action %s execution %s", persistedState.ActionId, persistedState.ExecutionId)
-			if _, err := actionWithStop.Stop(ctx, &state); err != nil {
-				log.Error().Err(err).Msgf("Failed to stop active action %s execution %s", persistedState.ActionId, persistedState.ExecutionId)
+
+			log.Info().
+				Str("actionId", persistedState.ActionId).
+				Str("executionId", persistedState.ExecutionId.String()).
+				Msg("stopping active action")
+
+			if err := stopMethod.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(state)})[1].Interface(); err != nil {
+				log.Warn().
+					Str("actionId", persistedState.ActionId).
+					Str("executionId", persistedState.ExecutionId.String()).
+					Err(err.(error)).
+					Msg("failed stopping active action")
 			}
 		}
 	}
