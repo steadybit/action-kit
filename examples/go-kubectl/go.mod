@@ -4,7 +4,8 @@ go 1.18
 
 require (
 	github.com/rs/zerolog v1.29.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.2
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.3
+	github.com/steadybit/action-kit/go/action_kit_sdk v0.0.0-20230404132010-36eca5e11eea
 	github.com/steadybit/extension-kit v1.7.4
 )
 
