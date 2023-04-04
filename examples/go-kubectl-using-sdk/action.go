@@ -26,15 +26,15 @@ type RolloutRestartState struct {
 	Wait       bool
 }
 
-func (f RolloutRestartAction) NewEmptyState() RolloutRestartState {
+func (f *RolloutRestartAction) NewEmptyState() RolloutRestartState {
 	return RolloutRestartState{}
 }
 
 func NewRolloutRestartAction() action_kit_sdk.Action[RolloutRestartState] {
-	return RolloutRestartAction{}
+	return &RolloutRestartAction{}
 }
 
-func (f RolloutRestartAction) Describe() action_kit_api.ActionDescription {
+func (f *RolloutRestartAction) Describe() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
 		Label:       "Rollout Restart Deployment",
@@ -60,7 +60,7 @@ func (f RolloutRestartAction) Describe() action_kit_api.ActionDescription {
 	}
 }
 
-func (f RolloutRestartAction) Prepare(ctx context.Context, state *RolloutRestartState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
+func (f *RolloutRestartAction) Prepare(_ context.Context, state *RolloutRestartState, _ action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	var prepareAttackRequest action_kit_api.PrepareActionRequestBody
 	wait := false
 	if prepareAttackRequest.Config["wait"] != nil {
@@ -79,7 +79,7 @@ func (f RolloutRestartAction) Prepare(ctx context.Context, state *RolloutRestart
 	return nil, nil
 }
 
-func (f RolloutRestartAction) Start(ctx context.Context, state *RolloutRestartState) (*action_kit_api.StartResult, error) {
+func (f *RolloutRestartAction) Start(_ context.Context, state *RolloutRestartState) (*action_kit_api.StartResult, error) {
 	log.Info().Msgf("Starting rollout restart attack for %s\n", state)
 
 	cmd := exec.Command("kubectl",
@@ -95,7 +95,7 @@ func (f RolloutRestartAction) Start(ctx context.Context, state *RolloutRestartSt
 	return nil, nil
 }
 
-func (f RolloutRestartAction) Status(ctx context.Context, state *RolloutRestartState) (*action_kit_api.StatusResult, error) {
+func (f *RolloutRestartAction) Status(_ context.Context, state *RolloutRestartState) (*action_kit_api.StatusResult, error) {
 	log.Info().Msgf("Checking rollout restart attack status for %s\n", state)
 
 	if !state.Wait {

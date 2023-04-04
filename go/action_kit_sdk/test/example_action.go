@@ -19,15 +19,15 @@ type ExampleState struct {
 	TestStep string
 }
 
-func (action ExampleAction) NewEmptyState() ExampleState {
+func (action *ExampleAction) NewEmptyState() ExampleState {
 	return ExampleState{}
 }
 
 func NewExampleAction() action_kit_sdk.Action[ExampleState] {
-	return ExampleAction{}
+	return &ExampleAction{}
 }
 
-func (action ExampleAction) Describe() action_kit_api.ActionDescription {
+func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 	fmt.Println("Describe!")
 	return action_kit_api.ActionDescription{
 		Id:          "ExampleActionId",
@@ -48,7 +48,7 @@ func (action ExampleAction) Describe() action_kit_api.ActionDescription {
 		},
 	}
 }
-func (action ExampleAction) Prepare(ctx context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
+func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	fmt.Println("Prepare!")
 	state.Duration = request.Config["duration"].(string)
 	state.TestStep = "Prepare"
@@ -65,7 +65,7 @@ func (action ExampleAction) Prepare(ctx context.Context, state *ExampleState, re
 	}, nil
 }
 
-func (action ExampleAction) Start(ctx context.Context, state *ExampleState) (*action_kit_api.StartResult, error) {
+func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*action_kit_api.StartResult, error) {
 	fmt.Println("Start!")
 	state.TestStep = "Start"
 
@@ -82,7 +82,7 @@ func (action ExampleAction) Start(ctx context.Context, state *ExampleState) (*ac
 	}, nil
 }
 
-func (action ExampleAction) Status(ctx context.Context, state *ExampleState) (*action_kit_api.StatusResult, error) {
+func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*action_kit_api.StatusResult, error) {
 	fmt.Println("Status!!")
 	state.TestStep = "Status"
 	return &action_kit_api.StatusResult{
@@ -98,7 +98,7 @@ func (action ExampleAction) Status(ctx context.Context, state *ExampleState) (*a
 	}, nil
 }
 
-func (action ExampleAction) Stop(ctx context.Context, state *ExampleState) (*action_kit_api.StopResult, error) {
+func (action *ExampleAction) Stop(_ context.Context, _ *ExampleState) (*action_kit_api.StopResult, error) {
 	fmt.Println("Stop!")
 	return &action_kit_api.StopResult{
 		Artifacts: &action_kit_api.Artifacts{
@@ -113,7 +113,7 @@ func (action ExampleAction) Stop(ctx context.Context, state *ExampleState) (*act
 	}, nil
 }
 
-func (action ExampleAction) QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error) {
+func (action *ExampleAction) QueryMetrics(_ context.Context) (*action_kit_api.QueryMetricsResult, error) {
 	fmt.Println("QueryMetrics!")
 	return &action_kit_api.QueryMetricsResult{
 		Artifacts: &action_kit_api.Artifacts{
