@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.3
+
+- added the execution id to the StartRequest, StatusRequest and StopRequest
+
 ## 2.4.2
 
 - added ExecutonContext to PrepareRequest

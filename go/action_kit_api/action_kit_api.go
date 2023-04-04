@@ -529,6 +529,8 @@ type StopActionResponse struct {
 
 // ActionStatusRequestBody defines model for ActionStatusRequestBody.
 type ActionStatusRequestBody struct {
+	ExecutionId uuid.UUID `json:"executionId"`
+
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
 }
@@ -561,12 +563,16 @@ type QueryMetricsRequestBody struct {
 
 // StartActionRequestBody defines model for StartActionRequestBody.
 type StartActionRequestBody struct {
+	ExecutionId uuid.UUID `json:"executionId"`
+
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
 }
 
 // StopActionRequestBody defines model for StopActionRequestBody.
 type StopActionRequestBody struct {
+	ExecutionId uuid.UUID `json:"executionId"`
+
 	// Any kind of action specific state that will be passed to the next endpoints.
 	State ActionState `json:"state"`
 }
@@ -809,5 +815,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface {}
-type Widget interface {}
+type ParameterOption interface{}
+type Widget interface{}

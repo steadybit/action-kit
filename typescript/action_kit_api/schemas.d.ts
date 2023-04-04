@@ -467,6 +467,8 @@ export interface components {
     StartActionRequestBody?: {
       content: {
         "application/json": {
+          /** Format: string */
+          executionId: string;
           state: components["schemas"]["ActionState"];
         };
       };
@@ -478,6 +480,8 @@ export interface components {
     ActionStatusRequestBody?: {
       content: {
         "application/json": {
+          /** Format: string */
+          executionId: string;
           state: components["schemas"]["ActionState"];
         };
       };
@@ -489,6 +493,8 @@ export interface components {
     StopActionRequestBody?: {
       content: {
         "application/json": {
+          /** Format: string */
+          executionId: string;
           state: components["schemas"]["ActionState"];
         };
       };

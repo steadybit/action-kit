@@ -734,9 +734,17 @@ components:
           schema:
             type: object
             properties:
+              executionId:
+                type: string
+                format: string
+                x-go-type: uuid.UUID
+                x-go-type-import:
+                  name: uuid
+                  path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
             required:
+              - executionId
               - state
     ActionStatusRequestBody:
       title: Action Status Request
@@ -746,9 +754,17 @@ components:
           schema:
             type: object
             properties:
+              executionId:
+                type: string
+                format: string
+                x-go-type: uuid.UUID
+                x-go-type-import:
+                  name: uuid
+                  path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
             required:
+              - executionId
               - state
     StopActionRequestBody:
       title: Stop Action Request
@@ -758,9 +774,17 @@ components:
           schema:
             type: object
             properties:
+              executionId:
+                type: string
+                format: string
+                x-go-type: uuid.UUID
+                x-go-type-import:
+                  name: uuid
+                  path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
             required:
+              - executionId
               - state
   responses:
     ActionListResponse:
