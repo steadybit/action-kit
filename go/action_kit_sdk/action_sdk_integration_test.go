@@ -116,7 +116,7 @@ func prepare(t *testing.T, executionId uuid.UUID, path string) action_kit_api.Ac
 	states, err := statePersister.GetStates(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, states, 1)
-	assert.Equal(t, "Prepare", (*states[0]).State.(ExampleState).TestStep)
+	assert.Equal(t, "Prepare", (*states[0]).State["TestStep"])
 
 	return response.State
 }
@@ -143,7 +143,7 @@ func start(t *testing.T, executionId uuid.UUID, path string, state action_kit_ap
 	states, err := statePersister.GetStates(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, states, 1)
-	assert.Equal(t, "Start", (*states[0]).State.(ExampleState).TestStep)
+	assert.Equal(t, "Start", (*states[0]).State["TestStep"])
 
 	return *response.State
 }
@@ -170,7 +170,7 @@ func status(t *testing.T, executionId uuid.UUID, path string, state action_kit_a
 	states, err := statePersister.GetStates(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, states, 1)
-	assert.Equal(t, "Status", (*states[0]).State.(ExampleState).TestStep)
+	assert.Equal(t, "Status", (*states[0]).State["TestStep"])
 
 	return *response.State
 }
