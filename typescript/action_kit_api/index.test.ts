@@ -6,65 +6,75 @@ import {
 	PrepareActionRequestBody,
 	StartActionRequestBody,
 	StopActionRequestBody,
-	ActionDescription, PrepareResult, StartResult, StatusResult, StopResult, ActionKitError, QueryMetricsResult, StateOverTimeWidget, StopActionResponse
+	ActionDescription,
+	PrepareResult,
+	StartResult,
+	StatusResult,
+	StopResult,
+	ActionKitError,
+	QueryMetricsResult,
+	StateOverTimeWidget,
+	StopActionResponse,
 } from './index';
 
 export const actionList: ActionList = {
 	actions: [
 		{
 			method: 'get',
-			path: '/action'
-		}
-	]
+			path: '/action',
+		},
+	],
 };
 
 export const prepareActionRequestBody: PrepareActionRequestBody = {
 	executionId: 'dsadsa',
 	config: {
-		'duration': 5000
+		duration: 5000,
 	},
 	target: {
 		name: 'gateway',
 		attributes: {
-			'key': ['value1', 'value2']
-		}
-	}
+			key: ['value1', 'value2'],
+		},
+	},
 };
 
 export const startActionRequestBody: StartActionRequestBody = {
+	executionId: 'dsadsa',
 	state: {
-		'duration': 5000
-	}
+		duration: 5000,
+	},
 };
 
 export const stopActionRequestBody: StopActionRequestBody = {
+	executionId: 'dsadsa',
 	state: {
-		'duration': 5000
-	}
+		duration: 5000,
+	},
 };
 
 export const stopActionResponse: StopActionResponse = {
-	title: 'Action stopped'
+	title: 'Action stopped',
 };
 
 const widget: StateOverTimeWidget = {
 	type: 'com.steadybit.widget.state_over_time',
 	title: 'My fancy widget',
 	identity: {
-		from: 'id'
+		from: 'id',
 	},
 	label: {
-		from: 'label'
+		from: 'label',
 	},
 	tooltip: {
-		from: 'tooltip'
+		from: 'tooltip',
 	},
 	state: {
-		from: 'state'
+		from: 'state',
 	},
 	value: {
-		hide: true
-	}
+		hide: true,
+	},
 };
 export const actionDescription: ActionDescription = {
 	id: 'com.steadybit.example.attacks.kubernetes.rollout-restart',
@@ -77,14 +87,12 @@ export const actionDescription: ActionDescription = {
 	targetSelectionTemplates: [
 		{
 			label: 'lab',
-			query: 'a=""'
-		}
+			query: 'a=""',
+		},
 	],
 	kind: 'attack',
 	timeControl: 'internal',
-	widgets: [
-		widget
-	],
+	widgets: [widget],
 	parameters: [
 		{
 			label: 'Wait for rollout completion',
@@ -99,13 +107,13 @@ export const actionDescription: ActionDescription = {
 			options: [
 				{
 					label: 'Any',
-					value: '*'
+					value: '*',
 				},
 				{
-					attribute: 'k8s.namespace'
-				}
-			]
-		}
+					attribute: 'k8s.namespace',
+				},
+			],
+		},
 	],
 	hint: {
 		type: 'hint_info',
@@ -115,228 +123,228 @@ export const actionDescription: ActionDescription = {
 		query: {
 			endpoint: {
 				method: 'post',
-				path: '/actions/rollout-restart/prepare'
+				path: '/actions/rollout-restart/prepare',
 			},
 			parameters: [
 				{
 					label: 'PromQL query',
 					name: 'query',
 					type: 'string',
-				}
-			]
-		}
+				},
+			],
+		},
 	},
 	prepare: {
 		method: 'post',
-		path: '/actions/rollout-restart/prepare'
+		path: '/actions/rollout-restart/prepare',
 	},
 	start: {
 		method: 'post',
-		path: '/actions/rollout-restart/start'
+		path: '/actions/rollout-restart/start',
 	},
 	status: {
 		method: 'delete',
-		path: '/actions/rollout-restart/status'
+		path: '/actions/rollout-restart/status',
 	},
 	stop: {
 		method: 'put',
-		path: '/actions/rollout-restart/stop'
-	}
+		path: '/actions/rollout-restart/stop',
+	},
 };
 
 export const prepareResult: PrepareResult = {
 	state: {
-		'duration': 5000
+		duration: 5000,
 	},
 	messages: [
 		{
 			level: 'debug',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'info',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'warn',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'error',
-			message: 'test'
-		}
+			message: 'test',
+		},
 	],
 	artifacts: [
 		{
 			label: 'load_test_results.tar.gz',
-			data: 'SGVsbG8gV29ybGQ='
-		}
+			data: 'SGVsbG8gV29ybGQ=',
+		},
 	],
 	metrics: [
 		{
 			timestamp: '2018-11-13T20:20:39+00:00',
 			metric: {
-				__name__: 'latecy'
+				__name__: 'latecy',
 			},
-			value: 42
-		}
-	]
+			value: 42,
+		},
+	],
 };
 
 export const startResult: StartResult = {
 	state: {
-		'duration': 5000
+		duration: 5000,
 	},
 	messages: [
 		{
 			level: 'debug',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'info',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'warn',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'error',
-			message: 'test'
-		}
+			message: 'test',
+		},
 	],
 	artifacts: [
 		{
 			label: 'load_test_results.tar.gz',
-			data: 'SGVsbG8gV29ybGQ='
-		}
+			data: 'SGVsbG8gV29ybGQ=',
+		},
 	],
 	metrics: [
 		{
 			timestamp: '2018-11-13T20:20:39+00:00',
 			metric: {
-				__name__: 'latecy'
+				__name__: 'latecy',
 			},
-			value: 42
-		}
-	]
+			value: 42,
+		},
+	],
 };
 
 export const statusResult: StatusResult = {
 	completed: true,
 	state: {
-		'duration': 5000
+		duration: 5000,
 	},
 	messages: [
 		{
 			level: 'debug',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'info',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'warn',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'error',
-			message: 'test'
-		}
+			message: 'test',
+		},
 	],
 	artifacts: [
 		{
 			label: 'load_test_results.tar.gz',
-			data: 'SGVsbG8gV29ybGQ='
-		}
+			data: 'SGVsbG8gV29ybGQ=',
+		},
 	],
 	metrics: [
 		{
 			timestamp: '2018-11-13T20:20:39+00:00',
 			metric: {
-				__name__: 'latecy'
+				__name__: 'latecy',
 			},
-			value: 42
-		}
-	]
+			value: 42,
+		},
+	],
 };
 
 export const stopResult: StopResult = {
 	messages: [
 		{
 			level: 'debug',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'info',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'warn',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'error',
-			message: 'test'
-		}
+			message: 'test',
+		},
 	],
 	artifacts: [
 		{
 			label: 'load_test_results.tar.gz',
-			data: 'SGVsbG8gV29ybGQ='
-		}
+			data: 'SGVsbG8gV29ybGQ=',
+		},
 	],
 	metrics: [
 		{
 			timestamp: '2018-11-13T20:20:39+00:00',
 			metric: {
-				__name__: 'latecy'
+				__name__: 'latecy',
 			},
-			value: 42
-		}
-	]
+			value: 42,
+		},
+	],
 };
 
 export const actionKitError: ActionKitError = {
 	detail: 'd',
 	instance: 'i',
 	title: 't',
-	type: 't'
+	type: 't',
 };
 
 export const queryMetricsResult: QueryMetricsResult = {
 	messages: [
 		{
 			level: 'debug',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'info',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'warn',
-			message: 'test'
+			message: 'test',
 		},
 		{
 			level: 'error',
-			message: 'test'
-		}
+			message: 'test',
+		},
 	],
 	artifacts: [
 		{
 			label: 'load_test_results.tar.gz',
-			data: 'SGVsbG8gV29ybGQ='
-		}
+			data: 'SGVsbG8gV29ybGQ=',
+		},
 	],
 	metrics: [
 		{
 			timestamp: '2018-11-13T20:20:39+00:00',
 			metric: {
-				__name__: 'latecy'
+				__name__: 'latecy',
 			},
-			value: 42
-		}
-	]
-}
+			value: 42,
+		},
+	],
+};

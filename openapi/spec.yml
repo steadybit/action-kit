@@ -679,7 +679,6 @@ components:
                 format: string
                 x-go-type: uuid.UUID
                 x-go-type-import:
-                  name: uuid
                   path: github.com/google/uuid
               timestamp:
                 type: string
@@ -710,7 +709,6 @@ components:
                 format: string
                 x-go-type: uuid.UUID
                 x-go-type-import:
-                  name: uuid
                   path: github.com/google/uuid
               config:
                 type: object
@@ -739,7 +737,6 @@ components:
                 format: string
                 x-go-type: uuid.UUID
                 x-go-type-import:
-                  name: uuid
                   path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
@@ -759,7 +756,6 @@ components:
                 format: string
                 x-go-type: uuid.UUID
                 x-go-type-import:
-                  name: uuid
                   path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
@@ -779,7 +775,6 @@ components:
                 format: string
                 x-go-type: uuid.UUID
                 x-go-type-import:
-                  name: uuid
                   path: github.com/google/uuid
               state:
                 $ref: '#/components/schemas/ActionState'
