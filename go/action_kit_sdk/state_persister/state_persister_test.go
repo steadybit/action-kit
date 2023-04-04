@@ -5,6 +5,7 @@ package state_persister
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -16,16 +17,19 @@ type exampleState struct {
 
 func TestInmemoryStatePersister_basics(t *testing.T) {
 	persister := NewInmemoryStatePersister()
-	err := persister.PersistState(context.Background(), &PersistedState{"exe-1", "action-1", &exampleState{"test", 1}})
+	exe1 := uuid.New()
+	exe2 := uuid.New()
+
+	err := persister.PersistState(context.Background(), &PersistedState{exe1, "action-1", &exampleState{"test", 1}})
 	require.NoError(t, err)
-	err = persister.PersistState(context.Background(), &PersistedState{"exe-2", "action-1", &exampleState{"test", 2}})
+	err = persister.PersistState(context.Background(), &PersistedState{exe2, "action-1", &exampleState{"test", 2}})
 	require.NoError(t, err)
 
 	states, err := persister.GetStates(context.Background())
 	require.NoError(t, err)
 	require.Len(t, states, 2)
 
-	err = persister.DeleteState(context.Background(), "exe-1")
+	err = persister.DeleteState(context.Background(), exe1)
 	require.NoError(t, err)
 
 	states, err = persister.GetStates(context.Background())
@@ -35,10 +39,11 @@ func TestInmemoryStatePersister_basics(t *testing.T) {
 
 func TestInmemoryStatePersister_should_ignore_not_found(t *testing.T) {
 	persister := NewInmemoryStatePersister()
-	err := persister.PersistState(context.Background(), &PersistedState{"exe-1", "action-1", &exampleState{"test", 1}})
+	exe1 := uuid.New()
+	err := persister.PersistState(context.Background(), &PersistedState{exe1, "action-1", &exampleState{"test", 1}})
 	require.NoError(t, err)
 
-	err = persister.DeleteState(context.Background(), "not-found")
+	err = persister.DeleteState(context.Background(), uuid.New())
 	require.NoError(t, err)
 
 	states, err := persister.GetStates(context.Background())
@@ -48,10 +53,11 @@ func TestInmemoryStatePersister_should_ignore_not_found(t *testing.T) {
 
 func TestInmemoryStatePersister_should_update_existing_values(t *testing.T) {
 	persister := NewInmemoryStatePersister()
-	err := persister.PersistState(context.Background(), &PersistedState{"exe-1", "action-1", &exampleState{"test", 1}})
+	exe1 := uuid.New()
+	err := persister.PersistState(context.Background(), &PersistedState{exe1, "action-1", &exampleState{"test", 1}})
 	require.NoError(t, err)
 
-	err = persister.PersistState(context.Background(), &PersistedState{"exe-1", "action-1", &exampleState{"updated", 200}})
+	err = persister.PersistState(context.Background(), &PersistedState{exe1, "action-1", &exampleState{"updated", 200}})
 	require.NoError(t, err)
 
 	states, err := persister.GetStates(context.Background())
