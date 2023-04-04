@@ -3,10 +3,13 @@
 
 package state_persister
 
-import "context"
+import (
+	"context"
+	"github.com/google/uuid"
+)
 
 type PersistedState struct {
-	ExecutionId string
+	ExecutionId uuid.UUID
 	ActionId    string
 	State       interface{}
 }
@@ -14,15 +17,15 @@ type PersistedState struct {
 type StatePersister interface {
 	PersistState(ctx context.Context, state *PersistedState) error
 	GetStates(ctx context.Context) ([]*PersistedState, error)
-	DeleteState(ctx context.Context, executionId string) error
+	DeleteState(ctx context.Context, executionId uuid.UUID) error
 }
 
 func NewInmemoryStatePersister() StatePersister {
-	return &inmemoryStatePersister{states: make(map[string]*PersistedState)}
+	return &inmemoryStatePersister{states: make(map[uuid.UUID]*PersistedState)}
 }
 
 type inmemoryStatePersister struct {
-	states map[string]*PersistedState
+	states map[uuid.UUID]*PersistedState
 }
 
 func (p *inmemoryStatePersister) PersistState(_ context.Context, state *PersistedState) error {
@@ -37,7 +40,7 @@ func (p *inmemoryStatePersister) GetStates(_ context.Context) ([]*PersistedState
 	return states, nil
 }
 
-func (p *inmemoryStatePersister) DeleteState(_ context.Context, executionId string) error {
+func (p *inmemoryStatePersister) DeleteState(_ context.Context, executionId uuid.UUID) error {
 	delete(p.states, executionId)
 	return nil
 }
