@@ -26,10 +26,6 @@ var (
 	ANY_ARG = struct{}{}
 )
 
-type ExtensionListResponse struct {
-	Actions []action_kit_api.DescribingEndpointReference `json:"attacks"`
-}
-
 type ActionOperations struct {
 	executionId uuid.UUID
 	basePath    string
@@ -61,11 +57,7 @@ func Test_SDK(t *testing.T) {
 		action := NewExampleAction(calls)
 		extlogging.InitZeroLog()
 		RegisterAction(action)
-		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(func() ExtensionListResponse {
-			return ExtensionListResponse{
-				Actions: RegisteredActionsEndpoints(),
-			}
-		}))
+		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
 		stop := Start()
 		defer stop()
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
@@ -123,7 +115,7 @@ func listExtension(t *testing.T, path string) string {
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	var response ExtensionListResponse
+	response := action_kit_api.ActionList{}
 	err = json.Unmarshal(body, &response)
 	require.NoError(t, err)
 	assert.NotEmpty(t, response.Actions)

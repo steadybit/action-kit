@@ -416,8 +416,8 @@ func wrapMetricQuery[T any](action ActionWithMetricQuery[T]) func(w http.Respons
 	}
 }
 
-// RegisteredActionsEndpoints returns a list of all root endpoints of registered actions.
-func RegisteredActionsEndpoints() []action_kit_api.DescribingEndpointReference {
+// GetActionList returns a list of all root endpoints of registered actions.
+func GetActionList() action_kit_api.ActionList {
 	var result []action_kit_api.DescribingEndpointReference
 	for actionId := range registeredActions {
 		result = append(result, action_kit_api.DescribingEndpointReference{
@@ -425,5 +425,12 @@ func RegisteredActionsEndpoints() []action_kit_api.DescribingEndpointReference {
 			Path:   fmt.Sprintf("/%s", actionId),
 		})
 	}
-	return result
+
+	return action_kit_api.ActionList{
+		Heartbeat: &action_kit_api.DescribingEndpointReference{
+			Method: "POST",
+			Path:   "/heartbeat",
+		},
+		Actions: result,
+	}
 }

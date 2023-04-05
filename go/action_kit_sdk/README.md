@@ -37,9 +37,5 @@ go get github.com/steadybit/action-kit/go/action_kit_sdk
 
 4. Add your registered actions to the index endpoint of your extension:
    ```go
-   exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(func() action_kit_api.ActionList {
-     return action_kit_api.ActionList{
-         Actions: action_kit_sdk.RegisteredActionsEndpoints(),
-     }
-   }))
+   exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(action_kit_sdk.GetActionList))
    ```

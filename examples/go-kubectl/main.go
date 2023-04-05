@@ -7,7 +7,6 @@ package main
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extlogging"
@@ -18,11 +17,7 @@ func main() {
 	extlogging.InitZeroLog()
 
 	action_kit_sdk.RegisterAction(NewRolloutRestartAction())
-	exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(func() action_kit_api.ActionList {
-		return action_kit_api.ActionList{
-			Actions: action_kit_sdk.RegisteredActionsEndpoints(),
-		}
-	}))
+	exthttp.RegisterHttpHandler("/actions", exthttp.GetterAsHandler(action_kit_sdk.GetActionList))
 
 	stop := action_kit_sdk.Start()
 	defer stop()
