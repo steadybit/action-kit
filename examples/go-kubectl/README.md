@@ -1,6 +1,7 @@
 # Attack Example: Kubernetes Attacks via kubectl
 
-This attack example showcases how to leverage Go and ActionKit to expose arbitrary kubectl commands as attacks – in this case, `kubectl rollout restart`!
+This attack example showcases how to leverage Go and the [Action Kit Go SDK](../../go/action_kit_sdk/README.md) to expose arbitrary kubectl commands as
+attacks – in this case, `kubectl rollout restart`!
 
 The attack example exposes several HTTP endpoints that translate the incoming HTTP requests into executed kubectl commands. The attack is deployed within
 Kubernetes as a container that contains the kubectl CLI. Interacting with the kubectl CLI is often more approachable than direct interaction with the Kubernetes

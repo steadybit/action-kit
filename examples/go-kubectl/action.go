@@ -1,34 +1,44 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2022 Steadybit GmbH
+// SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
 package main
 
 import "C"
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_api"
+	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit"
-	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extutil"
-	"net/http"
 	"os/exec"
 	"strings"
 )
 
-func getActionList() action_kit_api.ActionList {
-	return action_kit_api.ActionList{
-		Actions: []action_kit_api.DescribingEndpointReference{
-			{
-				"GET",
-				"/actions/rollout-restart",
-			},
-		},
-	}
+type RolloutRestartAction struct {
 }
 
-func getRolloutRestartDescription() action_kit_api.ActionDescription {
+type RolloutRestartState struct {
+	Cluster    string
+	Namespace  string
+	Deployment string
+	Wait       bool
+}
+
+func NewRolloutRestartAction() action_kit_sdk.Action[RolloutRestartState] {
+	return &RolloutRestartAction{}
+}
+
+// Make sure RolloutRestartAction implements all the interfaces we need
+var _ action_kit_sdk.Action[RolloutRestartState] = (*RolloutRestartAction)(nil)
+var _ action_kit_sdk.ActionWithStatus[RolloutRestartState] = (*RolloutRestartAction)(nil)
+
+func (f *RolloutRestartAction) NewEmptyState() RolloutRestartState {
+	return RolloutRestartState{}
+}
+
+func (f *RolloutRestartAction) Describe() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          "com.steadybit.example.attacks.kubernetes.rollout-restart",
 		Label:       "Rollout Restart Deployment",
@@ -48,33 +58,14 @@ func getRolloutRestartDescription() action_kit_api.ActionDescription {
 				DefaultValue: extutil.Ptr("false"),
 			},
 		},
-		Prepare: action_kit_api.MutatingEndpointReference{
-			Method: "POST",
-			Path:   "/actions/rollout-restart/prepare",
-		},
-		Start: action_kit_api.MutatingEndpointReference{
-			Method: "POST",
-			Path:   "/actions/rollout-restart/start",
-		},
-		Status: extutil.Ptr(action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			Method: "POST",
-			Path:   "/actions/rollout-restart/status",
-		}),
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{
-			Method: "POST",
-			Path:   "/actions/rollout-restart/stop",
-		}),
+		Prepare: action_kit_api.MutatingEndpointReference{},
+		Start:   action_kit_api.MutatingEndpointReference{},
+		Status:  extutil.Ptr(action_kit_api.MutatingEndpointReferenceWithCallInterval{}),
 	}
 }
 
-func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
+func (f *RolloutRestartAction) Prepare(_ context.Context, state *RolloutRestartState, _ action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	var prepareAttackRequest action_kit_api.PrepareActionRequestBody
-	err := json.Unmarshal(body, &prepareAttackRequest)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
-		return
-	}
-
 	wait := false
 	if prepareAttackRequest.Config["wait"] != nil {
 		switch v := prepareAttackRequest.Config["wait"].(type) {
@@ -85,59 +76,36 @@ func prepareRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) 
 		}
 	}
 
-	state := make(action_kit_api.ActionState)
-	state["Cluster"] = prepareAttackRequest.Target.Attributes["k8s.cluster-name"][0]
-	state["Namespace"] = prepareAttackRequest.Target.Attributes["k8s.namespace"][0]
-	state["Deployment"] = prepareAttackRequest.Target.Attributes["k8s.deployment"][0]
-	state["Wait"] = wait
-	exthttp.WriteBody(w, action_kit_api.PrepareResult{
-		State: state,
-	})
+	state.Cluster = prepareAttackRequest.Target.Attributes["k8s.cluster-name"][0]
+	state.Namespace = prepareAttackRequest.Target.Attributes["k8s.namespace"][0]
+	state.Deployment = prepareAttackRequest.Target.Attributes["k8s.deployment"][0]
+	state.Wait = wait
+	return nil, nil
 }
 
-func startRolloutRestart(w http.ResponseWriter, _ *http.Request, body []byte) {
-	var startAttackRequest action_kit_api.StartActionRequestBody
-	err := json.Unmarshal(body, &startAttackRequest)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
-		return
-	}
-
-	log.Info().Msgf("Starting rollout restart attack for %s\n", startAttackRequest)
+func (f *RolloutRestartAction) Start(_ context.Context, state *RolloutRestartState) (*action_kit_api.StartResult, error) {
+	log.Info().Msgf("Starting rollout restart attack for %s\n", state)
 
 	cmd := exec.Command("kubectl",
 		"rollout",
 		"restart",
 		"--namespace",
-		startAttackRequest.State["Namespace"].(string),
-		fmt.Sprintf("deployment/%s", startAttackRequest.State["Deployment"].(string)))
+		state.Namespace,
+		fmt.Sprintf("deployment/%s", state.Deployment))
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
-		log.Err(cmdErr).Msgf("Failed to execute rollout restart: %s", cmdOut)
-		exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Failed to execute rollout restart: %s", cmdOut), cmdErr))
-		return
+		return nil, extension_kit.ToError(fmt.Sprintf("Failed to execute rollout restart: %s", cmdOut), cmdErr)
 	}
-
-	exthttp.WriteBody(w, action_kit_api.StartResult{
-		State: extutil.Ptr(startAttackRequest.State),
-	})
+	return nil, nil
 }
 
-func rolloutRestartStatus(w http.ResponseWriter, _ *http.Request, body []byte) {
-	var attackStatusRequest action_kit_api.ActionStatusRequestBody
-	err := json.Unmarshal(body, &attackStatusRequest)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to read request body", err))
-		return
-	}
+func (f *RolloutRestartAction) Status(_ context.Context, state *RolloutRestartState) (*action_kit_api.StatusResult, error) {
+	log.Info().Msgf("Checking rollout restart attack status for %s\n", state)
 
-	log.Info().Msgf("Checking rollout restart attack status for %s\n", attackStatusRequest)
-
-	if !attackStatusRequest.State["Wait"].(bool) {
-		exthttp.WriteBody(w, action_kit_api.StatusResult{
+	if !state.Wait {
+		return &action_kit_api.StatusResult{
 			Completed: true,
-		})
-		return
+		}, nil
 	}
 
 	cmd := exec.Command("kubectl",
@@ -145,20 +113,16 @@ func rolloutRestartStatus(w http.ResponseWriter, _ *http.Request, body []byte) {
 		"status",
 		"--watch=false",
 		"--namespace",
-		attackStatusRequest.State["Namespace"].(string),
-		fmt.Sprintf("deployment/%s", attackStatusRequest.State["Deployment"].(string)))
+		state.Namespace,
+		fmt.Sprintf("deployment/%s", state.Deployment))
 	cmdOut, cmdErr := cmd.CombinedOutput()
 	if cmdErr != nil {
-		exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Failed to check rollout status: %s", cmdOut), cmdErr))
-		return
+		return nil, extension_kit.ToError(fmt.Sprintf("Failed to check rollout status: %s", cmdOut), cmdErr)
 	}
 
 	cmdOutStr := string(cmdOut)
 	completed := !strings.Contains(strings.ToLower(cmdOutStr), "waiting")
-	exthttp.WriteBody(w, action_kit_api.StatusResult{
+	return &action_kit_api.StatusResult{
 		Completed: completed,
-	})
-}
-
-func stopRolloutRestart(_ http.ResponseWriter, _ *http.Request, _ []byte) {
+	}, nil
 }
