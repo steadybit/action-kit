@@ -60,22 +60,23 @@ type ActionWithMetricQuery[T any] interface {
 // Start starts the safety nets of the action-kit sdk. A heartbeat will constantly check the connection to the agent. The method returns a function that needs to be deferred to close the required resources.
 func Start() func() {
 	hb := heartbeat.StartAndRegisterHandler()
-
-	channel := make(chan os.Signal, 1)
-	signal.Notify(channel, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
-
-	go func(<-chan time.Time, <-chan os.Signal) {
-		select {
-		case <-hb.Channel():
+	go func(heartbeats <-chan time.Time) {
+		for range heartbeats {
 			StopAllActiveActions("heartbeat failed")
-		case s := <-channel:
+		}
+	}(hb.Channel())
+
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
+	go func(signals <-chan os.Signal) {
+		for s := range signals {
 			log.Debug().Str("signal", s.String()).Msg("received signal")
 			StopAllActiveActions(fmt.Sprintf("received signal %s", s))
 		}
-	}(hb.Channel(), channel)
+	}(signalChannel)
 
 	return func() {
-		close(channel)
+		close(signalChannel)
 		hb.Stop()
 	}
 }
