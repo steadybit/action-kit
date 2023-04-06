@@ -4,27 +4,16 @@
 package heartbeat
 
 import (
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/extension-kit/exthttp"
-	"net/http"
 	"time"
 )
 
-type Heartbeat struct {
-	pulse   chan time.Time
-	channel chan time.Time
+type Monitor struct {
+	pulse chan time.Time
 }
 
-func StartAndRegisterHandler() *Heartbeat {
-	hb := Start(15*time.Second, 60*time.Second)
-	hb.RegisterHandler()
-	return hb
-}
-
-func Start(interval, timeout time.Duration) *Heartbeat {
+func Notify(ch chan<- time.Time, interval, timeout time.Duration) *Monitor {
 	pulse := make(chan time.Time)
-	signal := make(chan time.Time)
 
 	go func(pulse <-chan time.Time, signal chan<- time.Time) {
 		last := time.Now()
@@ -38,10 +27,16 @@ func Start(interval, timeout time.Duration) *Heartbeat {
 					return
 				}
 			case <-time.After(interval):
+				log.Debug().
+					Dur("interval", interval).
+					Dur("timeout", timeout).
+					Time("last", last).
+					Msg("missing timeout")
 				if time.Since(last) > timeout {
-					log.Debug().
-						Str("timeout", timeout.String()).
-						Str("last", last.Format(time.RFC3339)).
+					log.Warn().
+						Dur("interval", interval).
+						Dur("timeout", timeout).
+						Time("last", last).
 						Msg("no heartbeat received")
 					signal <- time.Now()
 				} else {
@@ -49,30 +44,21 @@ func Start(interval, timeout time.Duration) *Heartbeat {
 				}
 			}
 		}
-	}(pulse, signal)
+	}(pulse, ch)
 
-	return &Heartbeat{
-		pulse:   pulse,
-		channel: signal,
+	return &Monitor{
+		pulse: pulse,
 	}
 }
 
-func (h *Heartbeat) RegisterHandler() {
-	http.Handle("/heartbeat", exthttp.PanicRecovery(exthttp.LogRequestWithLevel(h.handler, zerolog.DebugLevel)))
-}
-
-func (h *Heartbeat) handler(w http.ResponseWriter, _ *http.Request, _ []byte) {
+func (h *Monitor) RecordHeartbeat() {
 	log.Trace().Msg("received heartbeat")
 	select {
 	case h.pulse <- time.Now():
 	default:
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Heartbeat) Stop() {
+func (h *Monitor) Stop() {
 	close(h.pulse)
-}
-func (h *Heartbeat) Channel() chan time.Time {
-	return h.channel
 }

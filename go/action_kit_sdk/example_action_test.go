@@ -55,7 +55,7 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 		Prepare:     action_kit_api.MutatingEndpointReference{},
 		Start:       action_kit_api.MutatingEndpointReference{},
 		Status: &action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			CallInterval: extutil.Ptr("10s"),
+			CallInterval: extutil.Ptr("1s"),
 		},
 		Stop: &action_kit_api.MutatingEndpointReference{},
 		Metrics: &action_kit_api.MetricsConfiguration{

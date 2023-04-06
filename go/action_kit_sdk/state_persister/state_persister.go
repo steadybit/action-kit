@@ -5,6 +5,7 @@ package state_persister
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 )
@@ -17,7 +18,8 @@ type PersistedState struct {
 
 type StatePersister interface {
 	PersistState(ctx context.Context, state *PersistedState) error
-	GetStates(ctx context.Context) ([]*PersistedState, error)
+	GetExecutionIds(ctx context.Context) ([]uuid.UUID, error)
+	GetState(ctx context.Context, uuid uuid.UUID) (*PersistedState, error)
 	DeleteState(ctx context.Context, executionId uuid.UUID) error
 }
 
@@ -33,12 +35,21 @@ func (p *inmemoryStatePersister) PersistState(_ context.Context, state *Persiste
 	p.states[state.ExecutionId] = state
 	return nil
 }
-func (p *inmemoryStatePersister) GetStates(_ context.Context) ([]*PersistedState, error) {
-	var states []*PersistedState
-	for _, state := range p.states {
-		states = append(states, state)
+
+func (p *inmemoryStatePersister) GetExecutionIds(_ context.Context) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	for id := range p.states {
+		ids = append(ids, id)
 	}
-	return states, nil
+	return ids, nil
+}
+
+func (p *inmemoryStatePersister) GetState(_ context.Context, uuid uuid.UUID) (*PersistedState, error) {
+	state, ok := p.states[uuid]
+	if !ok {
+		return nil, fmt.Errorf("state not found for execution id %s", uuid)
+	}
+	return state, nil
 }
 
 func (p *inmemoryStatePersister) DeleteState(_ context.Context, executionId uuid.UUID) error {
