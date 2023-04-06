@@ -17,7 +17,7 @@ type Heartbeat struct {
 }
 
 func StartAndRegisterHandler() *Heartbeat {
-	hb := Start(30*time.Second, 15*time.Second)
+	hb := Start(15*time.Second, 60*time.Second)
 	hb.RegisterHandler()
 	return hb
 }

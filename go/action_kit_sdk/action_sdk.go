@@ -87,7 +87,7 @@ func StopAllActiveActions(reason string) {
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to load active action states")
 	}
-	if len(states) == 0 {
+	if len(states) > 0 {
 		log.Warn().Str("reason", reason).Msg("stopping active actions")
 	}
 	for _, persistedState := range states {
