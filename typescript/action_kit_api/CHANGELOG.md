@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.4
+
+- added the heartbeat endpoint ref to ActionList to subscribe to the heartbeat event
+
 ## 2.4.3
 
 - added the execution id to the StartRequest, StatusRequest and StopRequest
