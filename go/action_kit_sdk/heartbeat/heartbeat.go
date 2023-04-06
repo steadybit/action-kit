@@ -4,6 +4,7 @@
 package heartbeat
 
 import (
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-kit/exthttp"
 	"net/http"
@@ -57,7 +58,7 @@ func Start(interval, timeout time.Duration) *Heartbeat {
 }
 
 func (h *Heartbeat) RegisterHandler() {
-	exthttp.RegisterHttpHandler("/heartbeat", h.handler)
+	http.Handle("/heartbeat", exthttp.PanicRecovery(exthttp.LogRequestWithLevel(h.handler, zerolog.DebugLevel)))
 }
 
 func (h *Heartbeat) handler(w http.ResponseWriter, _ *http.Request, _ []byte) {
