@@ -15,6 +15,7 @@ export interface components {
      * @description Lists all actions that the platform/agent could execute.
      */
     ActionList: {
+      heartbeat?: components["schemas"]["DescribingEndpointReference"];
       actions: (components["schemas"]["DescribingEndpointReference"])[];
     };
     /**
