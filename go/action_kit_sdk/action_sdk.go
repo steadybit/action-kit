@@ -12,6 +12,7 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
+	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
 	"reflect"
@@ -64,11 +65,23 @@ func Start() func() {
 	}(hb.Channel())
 
 	signalChannel := make(chan os.Signal, 1)
-	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
+	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 	go func(signals <-chan os.Signal) {
 		for s := range signals {
-			log.Debug().Str("signal", s.String()).Msg("received signal")
-			StopAllActiveActions(fmt.Sprintf("received signal %s", s))
+			signalName := unix.SignalName(s.(syscall.Signal))
+
+			log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
+			StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
+
+			switch s {
+			case syscall.SIGINT:
+				fmt.Println()
+				os.Exit(128 + int(s.(syscall.Signal)))
+
+			case syscall.SIGTERM:
+				fmt.Printf("Terminated: %d\n", int(s.(syscall.Signal)))
+				os.Exit(128 + int(s.(syscall.Signal)))
+			}
 		}
 	}(signalChannel)
 
