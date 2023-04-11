@@ -175,9 +175,6 @@ type ActionKitErrorStatus string
 // Lists all actions that the platform/agent could execute.
 type ActionList struct {
 	Actions []DescribingEndpointReference `json:"actions"`
-
-	// HTTP endpoint which the Steadybit platform/agent could communicate with.
-	Heartbeat *DescribingEndpointReference `json:"heartbeat,omitempty"`
 }
 
 // ActionParameter defines model for ActionParameter.

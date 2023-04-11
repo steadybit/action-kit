@@ -16,8 +16,6 @@ components:
       description: Lists all actions that the platform/agent could execute.
       type: object
       properties:
-        heartbeat:
-          $ref: '#/components/schemas/DescribingEndpointReference'
         actions:
           type: array
           items:
