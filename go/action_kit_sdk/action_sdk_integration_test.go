@@ -48,6 +48,10 @@ func Test_SDK(t *testing.T) {
 			Name: "should stop actions on USR1 signal",
 			Fn:   testcaseUsr1Signal,
 		},
+		{
+			Name: "should stop actions on heartbeat timeout",
+			Fn:   testcaseHeartbeatTimeout,
+		},
 	}
 	calls := make(chan Call, 1024)
 	defer close(calls)
@@ -58,22 +62,23 @@ func Test_SDK(t *testing.T) {
 		extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		stop := Start()
-		defer stop()
+		InstallSignalHandler()
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(calls)
 	time.Sleep(1 * time.Second)
 
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
 	actionPath := listExtension(t, basePath)
-	op := ActionOperations{
-		basePath:    basePath,
-		description: describe(t, fmt.Sprintf("%s%s", basePath, actionPath)),
-		executionId: uuid.New(),
-		calls:       calls,
-	}
+	description := describe(t, fmt.Sprintf("%s%s", basePath, actionPath))
 
 	for _, testCase := range testCases {
+		op := ActionOperations{
+			basePath:    basePath,
+			description: description,
+			executionId: uuid.New(),
+			calls:       calls,
+		}
+
 		op.resetCalls()
 		t.Run(testCase.Name, func(t *testing.T) {
 			testCase.Fn(t, op)
@@ -108,6 +113,25 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	err := syscall.Kill(os.Getpid(), syscall.SIGUSR1)
 	require.NoError(t, err)
 	op.assertCall(t, "Stop", toExampleState(state))
+
+	statusResult := op.statusResult(t, state)
+	require.NotNil(t, statusResult.Error)
+	assert.Equal(t, action_kit_api.Failed, *statusResult.Error.Status)
+	assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
+}
+
+func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
+	state := op.prepare(t)
+	state = op.start(t, state)
+	op.resetCalls()
+
+	time.Sleep(6 * time.Second)
+	op.assertCall(t, "Stop", toExampleState(state))
+
+	statusResult := op.statusResult(t, state)
+	require.NotNil(t, statusResult.Error)
+	assert.Equal(t, action_kit_api.Failed, *statusResult.Error.Status)
+	assert.Equal(t, "Action was stopped by extension: heartbeat timeout", statusResult.Error.Title)
 }
 
 func listExtension(t *testing.T, path string) string {
@@ -169,10 +193,13 @@ func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
 
-	states, err := statePersister.GetStates(context.Background())
+	executionIds, err := statePersister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	assert.Len(t, states, 1)
-	assert.Equal(t, "Prepare", (*states[0]).State["TestStep"])
+	assert.Len(t, executionIds, 1)
+
+	state, err := statePersister.GetState(context.Background(), executionIds[0])
+	require.NoError(t, err)
+	assert.Equal(t, "Prepare", (*state).State["TestStep"])
 
 	return response.State
 }
@@ -196,15 +223,38 @@ func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
 
-	states, err := statePersister.GetStates(context.Background())
+	executionIds, err := statePersister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	assert.Len(t, states, 1)
-	assert.Equal(t, "Start", (*states[0]).State["TestStep"])
+	assert.Len(t, executionIds, 1)
+
+	pState, err := statePersister.GetState(context.Background(), executionIds[0])
+	require.NoError(t, err)
+	assert.Equal(t, "Start", (*pState).State["TestStep"])
 
 	return *response.State
 }
 
 func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionState) action_kit_api.ActionState {
+	response := op.statusResult(t, state)
+
+	assert.Equal(t, "This is a test Message from Status", (*response.Messages)[0].Message)
+	assert.Equal(t, "10s", (*response.State)["Duration"])
+	assert.Equal(t, "Status", (*response.State)["TestStep"])
+	assert.Len(t, *response.Metrics, 1)
+	assert.Len(t, *response.Artifacts, 1)
+
+	executionIds, err := statePersister.GetExecutionIds(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, executionIds, 1)
+
+	pState, err := statePersister.GetState(context.Background(), executionIds[0])
+	require.NoError(t, err)
+	assert.Equal(t, "Status", (*pState).State["TestStep"])
+
+	return *response.State
+}
+
+func (op *ActionOperations) statusResult(t *testing.T, state action_kit_api.ActionState) action_kit_api.StatusResult {
 	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: op.executionId}
 	jsonBody, err := json.Marshal(statusBody)
 	require.NoError(t, err)
@@ -216,19 +266,7 @@ func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionStat
 	var response action_kit_api.StatusResult
 	err = json.Unmarshal(body, &response)
 	require.NoError(t, err)
-
-	assert.Equal(t, "This is a test Message from Status", (*response.Messages)[0].Message)
-	assert.Equal(t, "10s", (*response.State)["Duration"])
-	assert.Equal(t, "Status", (*response.State)["TestStep"])
-	assert.Len(t, *response.Metrics, 1)
-	assert.Len(t, *response.Artifacts, 1)
-
-	states, err := statePersister.GetStates(context.Background())
-	require.NoError(t, err)
-	assert.Len(t, states, 1)
-	assert.Equal(t, "Status", (*states[0]).State["TestStep"])
-
-	return *response.State
+	return response
 }
 
 func (op *ActionOperations) queryMetrics(t *testing.T) {
@@ -279,9 +317,9 @@ func (op *ActionOperations) stop(t *testing.T, state action_kit_api.ActionState)
 	assert.Len(t, *response.Metrics, 1)
 	assert.Len(t, *response.Artifacts, 1)
 
-	states, err := statePersister.GetStates(context.Background())
+	executionIds, err := statePersister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	assert.Len(t, states, 0)
+	assert.Len(t, executionIds, 0)
 }
 
 func (op *ActionOperations) resetCalls() {

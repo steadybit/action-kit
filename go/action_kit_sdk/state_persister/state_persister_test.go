@@ -26,16 +26,16 @@ func TestInmemoryStatePersister_basics(t *testing.T) {
 	err = persister.PersistState(context.Background(), &PersistedState{exe2, "action-1", action_kit_api.ActionState{"test": 2}})
 	require.NoError(t, err)
 
-	states, err := persister.GetStates(context.Background())
+	executionIds, err := persister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	require.Len(t, states, 2)
+	require.Len(t, executionIds, 2)
 
 	err = persister.DeleteState(context.Background(), exe1)
 	require.NoError(t, err)
 
-	states, err = persister.GetStates(context.Background())
+	executionIds, err = persister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	require.Len(t, states, 1)
+	require.Len(t, executionIds, 1)
 }
 
 func TestInmemoryStatePersister_should_ignore_not_found(t *testing.T) {
@@ -47,9 +47,9 @@ func TestInmemoryStatePersister_should_ignore_not_found(t *testing.T) {
 	err = persister.DeleteState(context.Background(), uuid.New())
 	require.NoError(t, err)
 
-	states, err := persister.GetStates(context.Background())
+	executionIds, err := persister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	require.Len(t, states, 1)
+	require.Len(t, executionIds, 1)
 }
 
 func TestInmemoryStatePersister_should_update_existing_values(t *testing.T) {
@@ -61,8 +61,12 @@ func TestInmemoryStatePersister_should_update_existing_values(t *testing.T) {
 	err = persister.PersistState(context.Background(), &PersistedState{exe1, "action-1", action_kit_api.ActionState{"test": 100}})
 	require.NoError(t, err)
 
-	states, err := persister.GetStates(context.Background())
+	executionIds, err := persister.GetExecutionIds(context.Background())
 	require.NoError(t, err)
-	require.Len(t, states, 1)
-	require.Equal(t, 100, states[0].State["test"])
+	require.Len(t, executionIds, 1)
+
+	state, err := persister.GetState(context.Background(), executionIds[0])
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	require.Equal(t, 100, state.State["test"])
 }

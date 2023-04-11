@@ -5,8 +5,8 @@ go 1.20
 require (
 	github.com/google/uuid v1.3.0
 	github.com/rs/zerolog v1.29.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.4
-	github.com/steadybit/extension-kit v1.7.7
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.4.5
+	github.com/steadybit/extension-kit v1.7.8
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sys v0.7.0
 )
