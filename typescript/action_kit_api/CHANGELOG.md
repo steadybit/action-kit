@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.6
+
+- add EnvVarOrUri, Header, Separator and TextArea to ParameterTypes
+-
 ## 2.4.5
 
 - remove the heartbeat endpoint ref to ActionList in favor of status calls
