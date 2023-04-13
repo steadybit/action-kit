@@ -19,7 +19,9 @@ Before we dive into the implementation, let us first understand what metric quer
 
 Any action with metric query support gains a new section within the action configuration sidebar. Through this section, users can define zero or more metric queries that will be sent to the extension for as long as this action runs within the experiment.
 
-![An image showing the Prometheus action's help text about metric queries.](./img/prom-01-empty.png)
+<a href="./img/prom-01-empty.png" target="_blank">
+<img src="./img/prom-01-empty.png" alt="An image showing the Prometheus action's help text about metric queries." width="300">
+</a>
 
 The image above shows that the Prometheus action gains a new configuration element for metric queries. It is important to note that the definition of metric queries is up to the extension. For Prometheus, a metric query is a PromQL query. Other systems may have other query systems, e.g., Elasticsearch has JSON objects for its request body search and the Lucene query language. ActionKit doesn't make any assumptions about the query parameters, as you will learn in this how-to.
 
