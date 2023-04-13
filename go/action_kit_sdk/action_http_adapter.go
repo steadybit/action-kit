@@ -242,8 +242,7 @@ func (a *ActionHttpAdapter[T]) HandleStop(w http.ResponseWriter, r *http.Request
 	if stopEvent := getStopEvent(parsedBody.ExecutionId); stopEvent != nil {
 		exthttp.WriteBody(w, action_kit_api.StopResult{
 			Error: &action_kit_api.ActionKitError{
-				Title:  fmt.Sprintf("Action was stopped by extension %s", stopEvent.reason),
-				Status: extutil.Ptr(action_kit_api.Failed),
+				Title: fmt.Sprintf("Action was stopped by extension %s", stopEvent.reason),
 			},
 		})
 		return

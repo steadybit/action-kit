@@ -233,7 +233,7 @@ func markAsStopped(executionId uuid.UUID, reason string) {
 	})
 }
 
-func getFirstStopEvent(executionId uuid.UUID) *stopEvent {
+func getStopEvent(executionId uuid.UUID) *stopEvent {
 	for _, event := range stopEvents {
 		if event.executionId == executionId {
 			return &event
