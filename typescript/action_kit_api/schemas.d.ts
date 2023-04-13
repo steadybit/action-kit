@@ -66,12 +66,29 @@ export interface components {
       timestamp?: string;
       fields?: components["schemas"]["MessageFields"];
     };
-    /** TargetSelectionTemplates */
-    TargetSelectionTemplates: (components["schemas"]["TargetSelectionTemplate"])[];
     /**
-     * TargetSelectionTemplate 
+     * TargetSelection 
+     * @description Used to specify various aspects of the target selection. If the action don't need a target selection, this field can be omitted.
+     */
+    TargetSelection: {
+      /** @description What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit. */
+      targetType: string;
+      selectionTemplates?: components["schemas"]["TargetSelectionTemplates"];
+      /**
+       * @description How many targets should be selected by the user. Values: 
+       *  * `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+       *  * `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+       *  * `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection. 
+       * @enum {string}
+       */
+      quantityRestriction?: "ExactlyOne" | "All" | "None";
+    };
+    /**
+     * TargetSelectionTemplates 
      * @description Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
      */
+    TargetSelectionTemplates: (components["schemas"]["TargetSelectionTemplate"])[];
+    /** TargetSelectionTemplate */
     TargetSelectionTemplate: {
       /** @description Human-readable short label. */
       label: string;
@@ -85,24 +102,36 @@ export interface components {
        */
       query: string;
     };
-    /** Widgets */
+    /**
+     * Widgets 
+     * @description Widgets that will be rendered in the experiment result view after an experiment has finished.
+     */
     Widgets: (components["schemas"]["Widget"])[];
     /** Widget */
     Widget: components["schemas"]["StateOverTimeWidget"] | components["schemas"]["LogWidget"] | components["schemas"]["PredefinedWidget"];
-    /** LogWidget */
+    /**
+     * LogWidget 
+     * @description A widget that shows log messages.
+     */
     LogWidget: {
       /** @enum {string} */
       type: "com.steadybit.widget.log";
       title: string;
       logType: string;
     };
-    /** PredefinedWidget */
+    /**
+     * PredefinedWidget 
+     * @description The platform contains a set of hand crafted predefined widgets. This widget type allows to use one of them.
+     */
     PredefinedWidget: {
       /** @enum {string} */
       type: "com.steadybit.widget.predefined";
       predefinedWidgetId: string;
     };
-    /** StateOverTimeWidget */
+    /**
+     * StateOverTimeWidget 
+     * @description A widget that shows a state of over time.
+     */
     StateOverTimeWidget: {
       /** @enum {string} */
       type: "com.steadybit.widget.state_over_time";
@@ -202,14 +231,23 @@ export interface components {
       kind: "attack" | "check" | "load_test" | "other";
       /** @description Used for categorization of the action within user interfaces. */
       category?: string;
-      /** @description What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit. */
+      targetSelection?: components["schemas"]["TargetSelection"];
+      /**
+       * @deprecated 
+       * @description Deprecated: use `TargetSelection.targetType` instead.
+       */
       targetType?: string;
+      /**
+       * @deprecated 
+       * @description Deprecated: use `TargetSelection.selectionTemplates` instead.
+       */
       targetSelectionTemplates?: components["schemas"]["TargetSelectionTemplates"];
       /**
        * @description Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations. 
        * @enum {string}
        */
       timeControl: "instantaneous" | "internal" | "external";
+      /** @description Parameters that are used to configure the action. These parameters will be rendered in the ui and will be validated. */
       parameters: (components["schemas"]["ActionParameter"])[];
       hint?: components["schemas"]["ActionHint"];
       widgets?: components["schemas"]["Widgets"];
@@ -232,6 +270,7 @@ export interface components {
       /** @description Target attribute key from which the possible parameter options are gathered. */
       attribute: string;
     };
+    /** @description Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action. */
     ActionHint: {
       /**
        * @description Will be used in the product UI to display the hint in a different color and with a different icon. 
@@ -259,6 +298,10 @@ export interface components {
       advanced?: boolean;
       /** @description You can define this fields to order the parameters in the user interface. The lower the value, the higher the position. */
       order?: number;
+      /** @description The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`. */
+      minValue?: number;
+      /** @description The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`. */
+      maxValue?: number;
       /** @description A default value for this parameter. This value will be used if the user does not specify a value for this parameter. */
       defaultValue?: string;
       /** @description Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users. */

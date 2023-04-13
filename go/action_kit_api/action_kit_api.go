@@ -90,14 +90,23 @@ const (
 	ComSteadybitWidgetStateOverTime StateOverTimeWidgetType = "com.steadybit.widget.state_over_time"
 )
 
+// Defines values for TargetSelectionQuantityRestriction.
+const (
+	All        TargetSelectionQuantityRestriction = "All"
+	ExactlyOne TargetSelectionQuantityRestriction = "ExactlyOne"
+	None       TargetSelectionQuantityRestriction = "None"
+)
+
 // Provides details about a possible action, e.g., what configuration options it has, how to present it to end-users and how to trigger the action.
 type ActionDescription struct {
 	// Used for categorization of the action within user interfaces.
 	Category *string `json:"category,omitempty"`
 
 	// Description for end-users to help them understand what the action is doing.
-	Description string      `json:"description"`
-	Hint        *ActionHint `json:"hint,omitempty"`
+	Description string `json:"description"`
+
+	// Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action.
+	Hint *ActionHint `json:"hint,omitempty"`
 
 	// An icon that is used to identify your action in the ui. Needs to be a data-uri containing an image.
 	Icon *string `json:"icon,omitempty"`
@@ -109,9 +118,11 @@ type ActionDescription struct {
 	Kind ActionDescriptionKind `json:"kind"`
 
 	// A human-readable label for the action.
-	Label      string                `json:"label"`
-	Metrics    *MetricsConfiguration `json:"metrics,omitempty"`
-	Parameters []ActionParameter     `json:"parameters"`
+	Label   string                `json:"label"`
+	Metrics *MetricsConfiguration `json:"metrics,omitempty"`
+
+	// Parameters that are used to configure the action. These parameters will be rendered in the ui and will be validated.
+	Parameters []ActionParameter `json:"parameters"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
 	Prepare MutatingEndpointReference `json:"prepare"`
@@ -123,17 +134,24 @@ type ActionDescription struct {
 	Status *MutatingEndpointReferenceWithCallInterval `json:"status,omitempty"`
 
 	// HTTP endpoint which the Steadybit platform/agent could communicate with.
-	Stop                     *MutatingEndpointReference `json:"stop,omitempty"`
-	TargetSelectionTemplates *TargetSelectionTemplates  `json:"targetSelectionTemplates,omitempty"`
+	Stop *MutatingEndpointReference `json:"stop,omitempty"`
 
-	// What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.
+	// Used to specify various aspects of the target selection. If the action don't need a target selection, this field can be omitted.
+	TargetSelection *TargetSelection `json:"targetSelection,omitempty"`
+
+	// Deprecated: use `TargetSelection.selectionTemplates` instead.
+	TargetSelectionTemplates *TargetSelectionTemplates `json:"targetSelectionTemplates,omitempty"`
+
+	// Deprecated: use `TargetSelection.targetType` instead.
 	TargetType *string `json:"targetType,omitempty"`
 
 	// Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 	TimeControl ActionDescriptionTimeControl `json:"timeControl"`
 
 	// The version of the action. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same action version. We do recommend usage of semver strings.
-	Version string   `json:"version"`
+	Version string `json:"version"`
+
+	// Widgets that will be rendered in the experiment result view after an experiment has finished.
 	Widgets *Widgets `json:"widgets,omitempty"`
 }
 
@@ -143,7 +161,7 @@ type ActionDescriptionKind string
 // Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
 type ActionDescriptionTimeControl string
 
-// ActionHint defines model for ActionHint.
+// Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action.
 type ActionHint struct {
 	// The actual hint text (can contain markdown). Will be displayed in the product UI when configuring the action.
 	Content string `json:"content"`
@@ -193,11 +211,19 @@ type ActionParameter struct {
 	DefaultValue *string `json:"defaultValue,omitempty"`
 
 	// Description for end-users to help them understand the action parameter.
-	Description *string     `json:"description,omitempty"`
-	Hint        *ActionHint `json:"hint,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action.
+	Hint *ActionHint `json:"hint,omitempty"`
 
 	// A human-readable label for the action parameter.
 	Label string `json:"label"`
+
+	// The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
+	MaxValue *int `json:"maxValue,omitempty"`
+
+	// The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
+	MinValue *int `json:"minValue,omitempty"`
 
 	// The key under which the action parameter is stored. This key can then be found within the prepare request's config field.
 	Name string `json:"name"`
@@ -260,7 +286,7 @@ type ExplicitParameterOption struct {
 	Value string `json:"value"`
 }
 
-// LogWidget defines model for LogWidget.
+// A widget that shows log messages.
 type LogWidget struct {
 	LogType string        `json:"logType"`
 	Title   string        `json:"title"`
@@ -344,7 +370,7 @@ type ParameterOptionsFromTargetAttribute struct {
 	Attribute string `json:"attribute"`
 }
 
-// PredefinedWidget defines model for PredefinedWidget.
+// The platform contains a set of hand crafted predefined widgets. This widget type allows to use one of them.
 type PredefinedWidget struct {
 	PredefinedWidgetId string               `json:"predefinedWidgetId"`
 	Type               PredefinedWidgetType `json:"type"`
@@ -392,7 +418,7 @@ type StartResult struct {
 	State *ActionState `json:"state,omitempty"`
 }
 
-// StateOverTimeWidget defines model for StateOverTimeWidget.
+// A widget that shows a state of over time.
 type StateOverTimeWidget struct {
 	Identity StateOverTimeWidgetIdentityConfig `json:"identity"`
 	Label    StateOverTimeWidgetLabelConfig    `json:"label"`
@@ -475,7 +501,28 @@ type Target struct {
 	Name       string              `json:"name"`
 }
 
-// Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
+// Used to specify various aspects of the target selection. If the action don't need a target selection, this field can be omitted.
+type TargetSelection struct {
+	// How many targets should be selected by the user. Values:
+	//  * `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+	//  * `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+	//  * `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+	QuantityRestriction *TargetSelectionQuantityRestriction `json:"quantityRestriction,omitempty"`
+
+	// Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
+	SelectionTemplates *TargetSelectionTemplates `json:"selectionTemplates,omitempty"`
+
+	// What target type this action should be offered for. Matches the `id` field within `DescribeTargetTypeResponse` within DiscoveryKit.
+	TargetType string `json:"targetType"`
+}
+
+// How many targets should be selected by the user. Values:
+//   - `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+//   - `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+//   - `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+type TargetSelectionQuantityRestriction string
+
+// TargetSelectionTemplate defines model for TargetSelectionTemplate.
 type TargetSelectionTemplate struct {
 	// Longer target selection template description. For example, to explain the template's purpose.
 	Description *string `json:"description,omitempty"`
@@ -490,10 +537,10 @@ type TargetSelectionTemplate struct {
 	Query string `json:"query"`
 }
 
-// TargetSelectionTemplates defines model for TargetSelectionTemplates.
+// Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
 type TargetSelectionTemplates = []TargetSelectionTemplate
 
-// Widgets defines model for Widgets.
+// Widgets that will be rendered in the experiment result view after an experiment has finished.
 type Widgets = []Widget
 
 // ActionListResponse defines model for ActionListResponse.
@@ -819,5 +866,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface {}
-type Widget interface {}
+type ParameterOption interface{}
+type Widget interface{}

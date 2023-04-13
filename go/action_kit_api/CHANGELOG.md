@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.0
+
+- option to define quantity restrictions for target selections
+- added more docs
+- deprecated `ActionDescription.targetType` -> moved to `ActionDescription.targetSelection.targetType`
+- deprecated `ActionDescription.targetSelectionTemplates` -> moved to `ActionDescription.targetSelection.selectionTemplates`
+
 ## 2.4.6
 
 - add EnvVarOrUri, Header, Separator and TextArea to ParameterTypes

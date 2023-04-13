@@ -93,14 +93,41 @@ components:
           $ref: '#/components/schemas/MessageFields'
       required:
         - message
+    TargetSelection:
+      title: TargetSelection
+      description: >-
+        Used to specify various aspects of the target selection. If the action don't need a target selection, this field can be omitted.
+      type: object
+      properties:
+        targetType:
+          type: string
+          description: >-
+            What target type this action should be offered for. Matches the `id`
+            field within `DescribeTargetTypeResponse` within DiscoveryKit.
+        selectionTemplates:
+          $ref: '#/components/schemas/TargetSelectionTemplates'
+        quantityRestriction:
+          type: string
+          enum:
+            - ExactlyOne
+            - All
+            - None
+          description: >-
+            How many targets should be selected by the user.
+            Values: 
+             * `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+             * `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+             * `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+      required:
+        - targetType
     TargetSelectionTemplates:
       title: TargetSelectionTemplates
+      description: Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
       type: array
       items:
         $ref: '#/components/schemas/TargetSelectionTemplate'
     TargetSelectionTemplate:
       title: TargetSelectionTemplate
-      description: Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
       type: object
       properties:
         label:
@@ -124,6 +151,8 @@ components:
         - query
     Widgets:
       title: Widgets
+      description: >-
+        Widgets that will be rendered in the experiment result view after an experiment has finished.
       type: array
       items:
         $ref: '#/components/schemas/Widget'
@@ -135,6 +164,8 @@ components:
         - $ref: '#/components/schemas/PredefinedWidget'
     LogWidget:
       title: LogWidget
+      description: >-
+        A widget that shows log messages.
       type: object
       properties:
         type:
@@ -152,6 +183,8 @@ components:
         - title
     PredefinedWidget:
       title: PredefinedWidget
+      description: >-
+        The platform contains a set of hand crafted predefined widgets. This widget type allows to use one of them.
       type: object
       properties:
         type:
@@ -165,6 +198,8 @@ components:
         - predefinedWidgetId
     StateOverTimeWidget:
       title: StateOverTimeWidget
+      description: >-
+        A widget that shows a state of over time.
       type: object
       properties:
         type:
@@ -360,13 +395,19 @@ components:
         category:
           type: string
           description: Used for categorization of the action within user interfaces.
+        targetSelection:
+          $ref: '#/components/schemas/TargetSelection'
         targetType:
           type: string
+          deprecated: true
           description: >-
-            What target type this action should be offered for. Matches the `id`
-            field within `DescribeTargetTypeResponse` within DiscoveryKit.
+            Deprecated: use `TargetSelection.targetType` instead.
         targetSelectionTemplates:
-          $ref: '#/components/schemas/TargetSelectionTemplates'
+          allOf:
+            - $ref: '#/components/schemas/TargetSelectionTemplates'
+          deprecated: true
+          description: >-
+            Deprecated: use `TargetSelection.selectionTemplates` instead.
         timeControl:
           type: string
           enum:
@@ -382,6 +423,8 @@ components:
             controlled durations.
         parameters:
           type: array
+          description: >-
+            Parameters that are used to configure the action. These parameters will be rendered in the ui and will be validated.
           items:
             $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
@@ -434,6 +477,8 @@ components:
       required:
         - attribute
     ActionHint:
+      description: >-
+        Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action.
       properties:
         type:
           type: string
@@ -496,6 +541,14 @@ components:
           description: >-
             You can define this fields to order the parameters in the user
             interface. The lower the value, the higher the position.
+        minValue:
+          type: integer
+          description: >- 
+            The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
+        maxValue:
+          type: integer
+          description: >-
+            The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
         defaultValue:
           type: string
           description: >-
