@@ -866,5 +866,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface{}
-type Widget interface{}
+type ParameterOption interface {}
+type Widget interface {}
