@@ -142,7 +142,6 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 			Msg("stopping active action")
 
 		markAsStopped(persistedState.ExecutionId, reason)
-		stopMonitorHeartbeat(persistedState.ExecutionId)
 
 		if err := stopMethod.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(state)})[1].Interface(); err != nil {
 			log.Warn().
@@ -150,7 +149,10 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 				Str("executionId", persistedState.ExecutionId.String()).
 				Err(err.(error)).
 				Msg("failed stopping active action")
+			return
 		}
+
+		stopMonitorHeartbeat(persistedState.ExecutionId)
 		if err := statePersister.DeleteState(ctx, persistedState.ExecutionId); err != nil {
 			log.Debug().
 				Str("actionId", persistedState.ActionId).
@@ -231,7 +233,7 @@ func markAsStopped(executionId uuid.UUID, reason string) {
 	})
 }
 
-func getStopEvent(executionId uuid.UUID) *stopEvent {
+func getFirstStopEvent(executionId uuid.UUID) *stopEvent {
 	for _, event := range stopEvents {
 		if event.executionId == executionId {
 			return &event
