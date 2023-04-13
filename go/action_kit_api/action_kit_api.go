@@ -41,16 +41,18 @@ const (
 const (
 	Boolean     ActionParameterType = "boolean"
 	Duration    ActionParameterType = "duration"
+	EnvVarOrUri ActionParameterType = "envVarOrUri"
 	File        ActionParameterType = "file"
+	Header      ActionParameterType = "header"
 	Integer     ActionParameterType = "integer"
 	KeyValue    ActionParameterType = "key_value"
 	Password    ActionParameterType = "password"
 	Percentage  ActionParameterType = "percentage"
+	Separator   ActionParameterType = "separator"
 	String      ActionParameterType = "string"
 	String1     ActionParameterType = "string[]"
 	StringArray ActionParameterType = "string_array"
 	Textarea    ActionParameterType = "textarea"
-	Uri         ActionParameterType = "uri"
 )
 
 // Defines values for DescribingEndpointReferenceMethod.

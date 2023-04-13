@@ -475,8 +475,10 @@ components:
             - duration
             - file
             - key_value
-            - uri
+            - envVarOrUri
             - textarea
+            - separator
+            - header
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It
