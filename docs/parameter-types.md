@@ -378,7 +378,7 @@ For a large string, we support a `textarea` parameter type.
 {
   "name": "body",
   "label": "Body",
-  "type": "textarea",
+  "type": "textarea"
 }
 ```
 
@@ -396,15 +396,15 @@ For a large string, we support a `textarea` parameter type.
 
 ```json
 {
-  "env": null
+  "body": null
 }
 ```
 
-## `envVarOrUri`
+## `url`
 
-For URL or Environment variables, we support a `url` parameter type.
+For URLs, we support a `url` parameter type.
 
-<img src="img/parameters/url.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a url parameter looks like." />
+<img src="img/parameters/url.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a URL parameter looks like." />
 
 ### Example
 
@@ -412,8 +412,8 @@ For URL or Environment variables, we support a `url` parameter type.
 
 ```json
 {
-  "name": "url",
-  "label": "URK",
+  "name": "targetUrl",
+  "label": "Target URL",
   "type": "url"
 }
 ```
@@ -423,7 +423,7 @@ For URL or Environment variables, we support a `url` parameter type.
 ##### With a Value
 ```json
 {
-  "uri": "https://steadybit.com"
+  "targetUrl": "https://steadybit.com"
 }
 ```
 
@@ -432,7 +432,7 @@ For URL or Environment variables, we support a `url` parameter type.
 
 ```json
 {
-  "env": null
+  "targetUrl": null
 }
 ```
 
