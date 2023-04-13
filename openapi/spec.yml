@@ -475,7 +475,7 @@ components:
             - duration
             - file
             - key_value
-            - envVarOrUri
+            - url
             - textarea
             - separator
             - header

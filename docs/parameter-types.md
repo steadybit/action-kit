@@ -15,7 +15,7 @@ Supported parameter types:
   * [`file`](#file)
   * [`key_value`](#key_value)
   * [`textarea`](#textarea)
-  * [`envVarOrUri`](#envVarOrUri)
+  * [`url`](#url)
   * [`separator`](#separator)
   * [`header`](#header)
 ## `boolean`
@@ -402,9 +402,9 @@ For a large string, we support a `textarea` parameter type.
 
 ## `envVarOrUri`
 
-For URI or Environment variables, we support a `envVarOrUri` parameter type.
+For URL or Environment variables, we support a `url` parameter type.
 
-<img src="img/parameters/envVarOrUri.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a envVarOrUri parameter looks like." />
+<img src="img/parameters/url.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a url parameter looks like." />
 
 ### Example
 
@@ -412,9 +412,9 @@ For URI or Environment variables, we support a `envVarOrUri` parameter type.
 
 ```json
 {
-  "name": "uri",
-  "label": "URI",
-  "type": "envVarOrUri"
+  "name": "url",
+  "label": "URK",
+  "type": "url"
 }
 ```
 
