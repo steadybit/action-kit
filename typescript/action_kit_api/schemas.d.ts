@@ -252,7 +252,7 @@ export interface components {
        * @description What kind of value this parameter is capturing. The type selection influences the `config` passed as part of the `PrepareRequest`. It also results in improved user-interface elements. 
        * @enum {string}
        */
-      type: "string" | "string[]" | "string_array" | "password" | "integer" | "boolean" | "percentage" | "duration" | "file" | "key_value";
+      type: "string" | "string[]" | "string_array" | "password" | "integer" | "boolean" | "percentage" | "duration" | "file" | "key_value" | "uri" | "textarea";
       /** @description Whether or not end-users need to specify a value for this parameter. */
       required?: boolean;
       /** @description Whether this parameter should be placed under the expandable advanced section within the user interface. */

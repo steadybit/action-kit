@@ -49,6 +49,8 @@ const (
 	String      ActionParameterType = "string"
 	String1     ActionParameterType = "string[]"
 	StringArray ActionParameterType = "string_array"
+	Textarea    ActionParameterType = "textarea"
+	Uri         ActionParameterType = "uri"
 )
 
 // Defines values for DescribingEndpointReferenceMethod.
