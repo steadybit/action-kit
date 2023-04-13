@@ -14,7 +14,10 @@ Supported parameter types:
   * [`password`](#password)
   * [`file`](#file)
   * [`key_value`](#key_value)
-
+  * [`textarea`](#textarea)
+  * [`envVarOrUri`](#envVarOrUri)
+  * [`separator`](#separator)
+  * [`header`](#header)
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
@@ -359,3 +362,118 @@ For key/value pairs, e.g., tags, labels and environment variables, we support a 
 {
   "env": []
 }
+```
+
+## `textarea`
+
+For a large string, we support a `textarea` parameter type.
+
+<img src="img/parameters/textarea.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a textarea parameter looks like." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "body",
+  "label": "Body",
+  "type": "textarea",
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+
+##### With a Value
+```json
+{
+  "body": "looooooong string"
+}
+```
+
+
+##### Without a Value
+
+```json
+{
+  "env": null
+}
+```
+
+## `envVarOrUri`
+
+For URI or Environment variables, we support a `envVarOrUri` parameter type.
+
+<img src="img/parameters/envVarOrUri.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a envVarOrUri parameter looks like." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "uri",
+  "label": "URI",
+  "type": "envVarOrUri"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+
+##### With a Value
+```json
+{
+  "uri": "https://steadybit.com"
+}
+```
+
+
+##### Without a Value
+
+```json
+{
+  "env": null
+}
+```
+
+## `separator`
+
+For a common separator in the settings field list, we support a `separator` parameter type.
+
+<img src="img/parameters/separator.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a separator parameter looks like." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "-",
+  "label": "-",
+  "type": "separator"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+you will not recieve values for this parameter type
+
+## `header`
+
+For a common header in the settings field list, we support a `header` parameter type.
+
+<img src="img/parameters/header.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a header parameter looks like." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "importantSettings",
+  "label": "Important Settings",
+  "type": "header"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+you will not recieve values for this parameter type
