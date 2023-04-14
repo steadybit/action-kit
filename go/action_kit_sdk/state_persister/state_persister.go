@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"sync"
 )
 
 type PersistedState struct {
@@ -24,35 +25,36 @@ type StatePersister interface {
 }
 
 func NewInmemoryStatePersister() StatePersister {
-	return &inmemoryStatePersister{states: make(map[uuid.UUID]*PersistedState)}
+	return &inmemoryStatePersister{states: sync.Map{}}
 }
 
 type inmemoryStatePersister struct {
-	states map[uuid.UUID]*PersistedState
+	states sync.Map // map[uuid.UUID]*PersistedState
 }
 
 func (p *inmemoryStatePersister) PersistState(_ context.Context, state *PersistedState) error {
-	p.states[state.ExecutionId] = state
+	p.states.Store(state.ExecutionId, state)
 	return nil
 }
 
 func (p *inmemoryStatePersister) GetExecutionIds(_ context.Context) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	for id := range p.states {
-		ids = append(ids, id)
-	}
+	p.states.Range(func(key, value interface{}) bool {
+		ids = append(ids, key.(uuid.UUID))
+		return true
+	})
 	return ids, nil
 }
 
 func (p *inmemoryStatePersister) GetState(_ context.Context, uuid uuid.UUID) (*PersistedState, error) {
-	state, ok := p.states[uuid]
+	state, ok := p.states.Load(uuid)
 	if !ok {
 		return nil, fmt.Errorf("state not found for execution id %s", uuid)
 	}
-	return state, nil
+	return state.(*PersistedState), nil
 }
 
 func (p *inmemoryStatePersister) DeleteState(_ context.Context, executionId uuid.UUID) error {
-	delete(p.states, executionId)
+	p.states.Delete(executionId)
 	return nil
 }
