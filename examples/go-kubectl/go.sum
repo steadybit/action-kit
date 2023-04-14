@@ -18,6 +18,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/rs/xid v1.4.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.29.0 h1:Zes4hju04hjbvkVkOhdl2HpZa+0PmVwigmo8XoORE5w=
 github.com/rs/zerolog v1.29.0/go.mod h1:NILgTygv/Uej1ra5XxGf82ZFSLk58MFGAUS2o6usyD0=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.5.0 h1:r2hBze1w0Agl1MerRNCTicxM6tbcZbJLVRzKq3P1CwI=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.5.0/go.mod h1:4yGr/DzsHpw6elju1XHCeUsY/qoqNTcLY3ytgnNcMt8=
 github.com/steadybit/action-kit/go/action_kit_sdk v1.0.2 h1:pYpKm1BaRY296OH56oMXTfUQjEJLwE2e6ESxRoBuyME=
 github.com/steadybit/action-kit/go/action_kit_sdk v1.0.2/go.mod h1:mTMPHv8eCORj2cVHL3BMDEcUlU86A0mRyaCNsVi25AQ=
 github.com/steadybit/extension-kit v1.7.9 h1:qL8s8iq/UE7pQbLSdiK4hYZNGDqj/SRsZ8tb3KpJjFY=
