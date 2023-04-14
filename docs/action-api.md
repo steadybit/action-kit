@@ -44,7 +44,6 @@ This endpoint needs to be [registered with Steadybit agents](./action-registrati
 ### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionListResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionListResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionListResponse`
 
 ## Action Description
@@ -117,7 +116,6 @@ documentation.
 ### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `DescribeActionResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `DescribeActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `DescribeActionResponse`
 
 ### Versioning
@@ -201,7 +199,6 @@ as part of the start step).
 #### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `PrepareActionRequestBody`, `PrepareActionResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `PrepareActionRequestBody`, `PrepareActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `PrepareActionRequestBody`, `PrepareActionResponse`
 
 ### Start
@@ -243,7 +240,6 @@ what the status endpoint is for).
 #### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StartActionRequestBody`, `StartActionResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StartActionRequestBody`, `StartActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StartActionRequestBody`, `StartActionResponse`
 
 ### Status
@@ -280,7 +276,6 @@ The status endpoint is continuously called until it responds with `completed=tru
 #### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionStatusRequestBody`, `ActionStatusResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionStatusRequestBody`, `ActionStatusResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionStatusRequestBody`, `ActionStatusResponse`
 
 ### Stop
@@ -309,7 +304,6 @@ Error Handling can be found in [this chapter](#error-handling).
 #### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `StopActionRequestBody`, `StopActionResponse`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `StopActionRequestBody`, `StopActionResponse`
 
 ### Error handling
@@ -332,5 +326,4 @@ The attribute `status` in `ActionKitError` defines, how Steadybit will show the 
 #### References
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionKitError`
-- [TypeScript API](https://github.com/steadybit/action-kit/tree/main/typescript/action_kit_api): `ActionKitError`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionKitError`
