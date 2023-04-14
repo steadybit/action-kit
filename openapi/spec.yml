@@ -109,15 +109,15 @@ components:
         quantityRestriction:
           type: string
           enum:
-            - ExactlyOne
-            - All
-            - None
+            - exactly_one
+            - all
+            - none
           description: >-
             How many targets should be selected by the user.
             Values: 
-             * `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
-             * `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
-             * `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+             * `exactly_one` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+             * `all` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+             * `none` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
       required:
         - targetType
     TargetSelectionTemplates:
