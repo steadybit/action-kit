@@ -92,9 +92,9 @@ const (
 
 // Defines values for TargetSelectionQuantityRestriction.
 const (
-	All        TargetSelectionQuantityRestriction = "All"
-	ExactlyOne TargetSelectionQuantityRestriction = "ExactlyOne"
-	None       TargetSelectionQuantityRestriction = "None"
+	All        TargetSelectionQuantityRestriction = "all"
+	ExactlyOne TargetSelectionQuantityRestriction = "exactly_one"
+	None       TargetSelectionQuantityRestriction = "none"
 )
 
 // Provides details about a possible action, e.g., what configuration options it has, how to present it to end-users and how to trigger the action.
@@ -504,9 +504,9 @@ type Target struct {
 // Used to specify various aspects of the target selection. If the action don't need a target selection, this field can be omitted.
 type TargetSelection struct {
 	// How many targets should be selected by the user. Values:
-	//  * `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
-	//  * `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
-	//  * `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+	//  * `exactly_one` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+	//  * `all` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+	//  * `none` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
 	QuantityRestriction *TargetSelectionQuantityRestriction `json:"quantityRestriction,omitempty"`
 
 	// Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
@@ -517,9 +517,9 @@ type TargetSelection struct {
 }
 
 // How many targets should be selected by the user. Values:
-//   - `ExactlyOne` - Exactly one target must be selected. The execution will fail if more than one target is selected.
-//   - `All` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
-//   - `None` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+//   - `exactly_one` - Exactly one target must be selected. The execution will fail if more than one target is selected.
+//   - `all` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
+//   - `none` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
 type TargetSelectionQuantityRestriction string
 
 // TargetSelectionTemplate defines model for TargetSelectionTemplate.

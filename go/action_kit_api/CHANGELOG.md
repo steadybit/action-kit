@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.1
+
+- fix enum constants for `QuantityRestriction`
+
 ## 2.5.0
 
 - option to define quantity restrictions for target selections
