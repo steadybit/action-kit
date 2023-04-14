@@ -9,6 +9,8 @@ require (
 	github.com/steadybit/extension-kit v1.7.9
 )
 
+replace github.com/steadybit/action-kit/go/action_kit_api/v2 => ../../go/action_kit_api
+
 require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect

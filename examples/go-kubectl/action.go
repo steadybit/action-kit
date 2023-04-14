@@ -47,7 +47,9 @@ func (f *RolloutRestartAction) Describe() action_kit_api.ActionDescription {
 		Version:     "1.5.0",
 		Kind:        action_kit_api.Attack,
 		Category:    extutil.Ptr("state"),
-		TargetType:  extutil.Ptr("kubernetes-deployment"),
+		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+			TargetType: "kubernetes-deployment",
+		}),
 		TimeControl: action_kit_api.Internal,
 		Parameters: []action_kit_api.ActionParameter{
 			{
