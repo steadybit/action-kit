@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- QueryMetricsRequestBody was missing in QueryMetrics-interface
+
 ## 1.0.2
 
 - Add signal handler that stops active actions on SIGTERM, SIGINT and SIGUSR1

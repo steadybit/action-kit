@@ -296,7 +296,7 @@ func (a *ActionHttpAdapter[T]) HandleQueryMetric(w http.ResponseWriter, r *http.
 		return
 	}
 
-	result, err := action.QueryMetrics(r.Context())
+	result, err := action.QueryMetrics(r.Context(), parsedBody)
 	if result == nil {
 		result = &action_kit_api.QueryMetricsResult{}
 	}

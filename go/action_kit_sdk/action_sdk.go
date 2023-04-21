@@ -61,7 +61,7 @@ type ActionWithStop[T any] interface {
 type ActionWithMetricQuery[T any] interface {
 	Action[T]
 	// QueryMetrics is used to fetch metrics from the action. This method is required if the action supports a metric endpoint defined by [action_kit_api.MetricsConfiguration] in the [action_kit_api.ActionDe scription].
-	QueryMetrics(ctx context.Context) (*action_kit_api.QueryMetricsResult, error)
+	QueryMetrics(ctx context.Context, request action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error)
 }
 
 // InstallSignalHandler registers a signal handler that stops all active actions on SIGINT, SIGTERM and SIGUSR1.

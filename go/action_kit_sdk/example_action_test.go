@@ -131,7 +131,7 @@ func (action *ExampleAction) Stop(_ context.Context, state *ExampleState) (*acti
 	}, nil
 }
 
-func (action *ExampleAction) QueryMetrics(_ context.Context) (*action_kit_api.QueryMetricsResult, error) {
+func (action *ExampleAction) QueryMetrics(_ context.Context, _ action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error) {
 	action.calls <- Call{"QueryMetrics", nil}
 	return &action_kit_api.QueryMetricsResult{
 		Artifacts: &action_kit_api.Artifacts{
