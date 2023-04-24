@@ -9,8 +9,6 @@ The Steadybit ActionKit enables the extension of Steadybit with new action capab
 - health and state checks and
 - every other runnable action!
 
-At this moment, ActionKit can be considered an **open-beta**. The contracts and APIs *may* change. If you want to learn more, [reach out to us](https://www.steadybit.com/contact).
-
 ## Getting Started
 
 We recommend that you read the following documentation to get started with ActionKit.
@@ -22,3 +20,4 @@ We recommend that you read the following documentation to get started with Actio
  - [Terminology](/docs/terminology.md)
  - [Examples](/docs/examples.md)
  - [FAQ](/docs/faq.md)
+ - [Extension-Scaffold](https://github.com/steadybit/extension-scaffold/blob/main/README.md)
