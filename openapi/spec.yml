@@ -428,6 +428,15 @@ components:
           items:
             $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
+        additionalFlags:
+          type: array
+          description: >-
+            Additional flags that are used to configure the action for specific cases:
+              * `DISABLE_HEARTBEAT` - Disable the heartbeat between agent and platform for this action during execution
+          items:
+            type: string
+            enum:
+              - DISABLE_HEARTBEAT
         hint:
           $ref: '#/components/schemas/ActionHint'
         widgets:

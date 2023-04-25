@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.2
+
+- add `AdditionalFlags` for `ActionDescription`
+
 ## 2.5.1
 
 - fix enum constants for `QuantityRestriction`

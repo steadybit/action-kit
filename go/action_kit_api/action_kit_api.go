@@ -10,6 +10,11 @@ import (
 	"github.com/google/uuid"
 )
 
+// Defines values for ActionDescriptionAdditionalFlags.
+const (
+	DISABLEHEARTBEAT ActionDescriptionAdditionalFlags = "DISABLE_HEARTBEAT"
+)
+
 // Defines values for ActionDescriptionKind.
 const (
 	Attack   ActionDescriptionKind = "attack"
@@ -99,6 +104,10 @@ const (
 
 // Provides details about a possible action, e.g., what configuration options it has, how to present it to end-users and how to trigger the action.
 type ActionDescription struct {
+	// Additional flags that are used to configure the action for specific cases:
+	//   * `DISABLE_HEARTBEAT` - Disable the heartbeat between agent and platform for this action during execution
+	AdditionalFlags *[]ActionDescriptionAdditionalFlags `json:"additionalFlags,omitempty"`
+
 	// Used for categorization of the action within user interfaces.
 	Category *string `json:"category,omitempty"`
 
@@ -154,6 +163,9 @@ type ActionDescription struct {
 	// Widgets that will be rendered in the experiment result view after an experiment has finished.
 	Widgets *Widgets `json:"widgets,omitempty"`
 }
+
+// ActionDescriptionAdditionalFlags defines model for ActionDescription.AdditionalFlags.
+type ActionDescriptionAdditionalFlags string
 
 // Describes what kind of action this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
 type ActionDescriptionKind string
