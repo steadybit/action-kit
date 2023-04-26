@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -25,7 +26,7 @@ var (
 	registeredActions = make(map[string]interface{})
 	statePersister    = state_persister.NewInmemoryStatePersister()
 	stopEvents        = make([]stopEvent, 0, 10)
-	heartbeatMonitors = make(map[uuid.UUID]*heartbeat.Monitor)
+	heartbeatMonitors = sync.Map{}
 )
 
 type stopEvent struct {
@@ -199,7 +200,7 @@ func GetActionList() action_kit_api.ActionList {
 func monitorHeartbeat(executionId uuid.UUID, interval, timeout time.Duration) {
 	ch := make(chan time.Time, 1)
 	monitor := heartbeat.Notify(ch, interval, timeout)
-	heartbeatMonitors[executionId] = monitor
+	heartbeatMonitors.Store(executionId, monitor)
 	go func() {
 		for range ch {
 			StopAction(context.Background(), executionId, "heartbeat timeout")
@@ -208,17 +209,17 @@ func monitorHeartbeat(executionId uuid.UUID, interval, timeout time.Duration) {
 }
 
 func recordHeartbeat(executionId uuid.UUID) {
-	monitor := heartbeatMonitors[executionId]
+	monitor, _ := heartbeatMonitors.Load(executionId)
 	if monitor != nil {
-		monitor.RecordHeartbeat()
+		monitor.(*heartbeat.Monitor).RecordHeartbeat()
 	}
 }
 
 func stopMonitorHeartbeat(executionId uuid.UUID) {
-	monitor := heartbeatMonitors[executionId]
+	monitor, _ := heartbeatMonitors.Load(executionId)
 	if monitor != nil {
-		monitor.Stop()
-		delete(heartbeatMonitors, executionId)
+		monitor.(*heartbeat.Monitor).Stop()
+		heartbeatMonitors.Delete(executionId)
 	}
 }
 

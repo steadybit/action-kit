@@ -1,3 +1,4 @@
 node_modules/
 *.iml
 /action_kit_api.go
+**/coverage.out

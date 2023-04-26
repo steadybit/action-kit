@@ -73,7 +73,7 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 	state.TestStep = "Prepare"
 	return &action_kit_api.PrepareResult{
 		Artifacts: &action_kit_api.Artifacts{
-			{"test", "artifact-prepare"},
+			{Data: "test", Label: "artifact-prepare"},
 		},
 		Messages: &action_kit_api.Messages{
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Prepare"},
@@ -89,7 +89,7 @@ func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*act
 	state.TestStep = "Start"
 	return &action_kit_api.StartResult{
 		Artifacts: &action_kit_api.Artifacts{
-			{"test", "artifact-start"},
+			{Data: "test", Label: "artifact-start"},
 		},
 		Messages: &action_kit_api.Messages{
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Start"},
@@ -105,7 +105,7 @@ func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*ac
 	state.TestStep = "Status"
 	return &action_kit_api.StatusResult{
 		Artifacts: &action_kit_api.Artifacts{
-			{"test", "artifact-status"},
+			{Data: "test", Label: "artifact-status"},
 		},
 		Messages: &action_kit_api.Messages{
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Status"},
@@ -120,7 +120,7 @@ func (action *ExampleAction) Stop(_ context.Context, state *ExampleState) (*acti
 	action.calls <- Call{"Stop", []interface{}{state}}
 	return &action_kit_api.StopResult{
 		Artifacts: &action_kit_api.Artifacts{
-			{"test", "artifact-stop"},
+			{Data: "test", Label: "artifact-stop"},
 		},
 		Messages: &action_kit_api.Messages{
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Stop"},
@@ -135,7 +135,7 @@ func (action *ExampleAction) QueryMetrics(_ context.Context, _ action_kit_api.Qu
 	action.calls <- Call{"QueryMetrics", nil}
 	return &action_kit_api.QueryMetricsResult{
 		Artifacts: &action_kit_api.Artifacts{
-			{"test", "artifact-query-metrics"},
+			{Data: "test", Label: "artifact-query-metrics"},
 		},
 		Messages: &action_kit_api.Messages{
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from QueryMetrics"},
