@@ -18,6 +18,7 @@ Supported parameter types:
   * [`url`](#url)
   * [`separator`](#separator)
   * [`header`](#header)
+  * [`bitrate`](#bitrate)
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
@@ -477,3 +478,43 @@ For a common header in the settings field list, we support a `header` parameter 
 
 #### Configuration Value Received in `prepare` Call of Actions
 you will not recieve values for this parameter type
+
+## `bitrate`
+
+Defines a bitrate with value and unit E.g.:
+ * 1024kbps: 1024 Kilobytes per second
+ * 10mbps: 10 Megabytes per second
+ * 64kbit: 64 Kilobits per second
+ * 10mbit: 10 Megabits per second
+
+<img src="img/parameters/bitrate.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a bitrate parameter looks like. Depicting a textual label and a toggle component." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "bandwidth",
+  "label": "How fast you want to go?",
+  "type": "bitrate",
+  "defaultValue": "1024kbit"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+
+##### With a Value
+```json
+{
+  "bandwidth": "1024kbit"
+}
+```
+
+##### Without a Value
+
+```json
+{
+  "activateOrder66": null
+}
+```

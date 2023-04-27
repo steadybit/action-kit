@@ -44,6 +44,7 @@ const (
 
 // Defines values for ActionParameterType.
 const (
+	Bitrate     ActionParameterType = "bitrate"
 	Boolean     ActionParameterType = "boolean"
 	Duration    ActionParameterType = "duration"
 	File        ActionParameterType = "file"
@@ -287,6 +288,9 @@ type DescribingEndpointReferenceMethod string
 type ExecutionContext struct {
 	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account
 	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
+
+	// URLs that are used by the agent (e.g to communicate with extensions and platform). These URLs shall not be affected by actions.
+	RestrictedUrls *[]string `json:"restrictedUrls,omitempty"`
 }
 
 // You can use an explicit/fixed parameter option for a known / finite set of options that never change.

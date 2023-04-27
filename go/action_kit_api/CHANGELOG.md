@@ -2,6 +2,8 @@
 
 ## 2.5.2
 
+- add `restrictedUrls` to ExecutionContext
+- add `bitrate` parameter type
 - add `AdditionalFlags` for `ActionDescription`
 
 ## 2.5.1

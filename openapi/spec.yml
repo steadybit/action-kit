@@ -1,3 +1,4 @@
+
 openapi: 3.1.0
 info:
   title: Steadybit ActionKit API
@@ -533,6 +534,7 @@ components:
             - textarea
             - separator
             - header
+            - bitrate
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It
@@ -612,6 +614,12 @@ components:
             The AWS account ID of the agent that is executing the action.
             This is only set when the action is executed on an AWS
             account
+        restrictedUrls:
+          type: array
+          items:
+            type: string
+          description: >-
+            URLs that are used by the agent (e.g to communicate with extensions and platform). These URLs shall not be affected by actions.
     ActionState:
       title: Action State
       description: >-
