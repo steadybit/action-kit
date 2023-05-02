@@ -432,6 +432,9 @@ type RestrictedCIDR struct {
 
 	// The minimum port number that is allowed to be used for the CIDR.
 	PortMin int `json:"portMin"`
+
+	// The URL of the protected CIDR.
+	Url string `json:"url"`
 }
 
 // StartResult defines model for StartResult.
