@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.0
+
+- change `restrictedUrls` to []RestrictedCIDRs
+
 ## 2.5.2
 
 - add `restrictedUrls` to ExecutionContext

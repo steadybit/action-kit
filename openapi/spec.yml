@@ -466,6 +466,36 @@ components:
       anyOf:
         - $ref: '#/components/schemas/ExplicitParameterOption'
         - $ref: '#/components/schemas/ParameterOptionsFromTargetAttribute'
+    RestrictedCIDR:
+      type: object
+      properties:
+        name:
+          type: string
+          description: >-
+              The name of the protected CIDR.
+        portMin:
+          type: integer
+          description: >-
+            The minimum port number that is allowed to be used for the CIDR.
+          minimum: 0
+          maximum: 65535
+        portMax:
+            type: integer
+            description: >-
+                The maximum port number that is allowed to be used for the CIDR.
+            minimum: 0
+            maximum: 65535
+        cidr:
+          type: string
+          description: >-
+            A CIDR that is used to restrict the target selection to a specific
+            network.
+          pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$'
+      required:
+        - name
+        - cidr
+        - portMin
+        - portMax
     ExplicitParameterOption:
       description: You can use an explicit/fixed parameter option for a known / finite set of options that never change.
       properties:
@@ -614,12 +644,12 @@ components:
             The AWS account ID of the agent that is executing the action.
             This is only set when the action is executed on an AWS
             account
-        restrictedUrls:
+        restrictedCIDRs:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/RestrictedCIDR'
           description: >-
-            URLs that are used by the agent (e.g to communicate with extensions and platform). These URLs shall not be affected by actions.
+            CIDRs and Ports that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
     ActionState:
       title: Action State
       description: >-

@@ -289,8 +289,8 @@ type ExecutionContext struct {
 	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account
 	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
 
-	// URLs that are used by the agent (e.g to communicate with extensions and platform). These URLs shall not be affected by actions.
-	RestrictedUrls *[]string `json:"restrictedUrls,omitempty"`
+	// CIDRs and Ports that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
+	RestrictedCIDRs *[]RestrictedCIDR `json:"restrictedCIDRs,omitempty"`
 }
 
 // You can use an explicit/fixed parameter option for a known / finite set of options that never change.
@@ -417,6 +417,21 @@ type QueryMetricsResult struct {
 	// Log-messages that will be passed to the platform (default agent log).
 	Messages *Messages `json:"messages,omitempty"`
 	Metrics  *Metrics  `json:"metrics,omitempty"`
+}
+
+// RestrictedCIDR defines model for RestrictedCIDR.
+type RestrictedCIDR struct {
+	// A CIDR that is used to restrict the target selection to a specific network.
+	Cidr string `json:"cidr"`
+
+	// The name of the protected CIDR.
+	Name string `json:"name"`
+
+	// The maximum port number that is allowed to be used for the CIDR.
+	PortMax int `json:"portMax"`
+
+	// The minimum port number that is allowed to be used for the CIDR.
+	PortMin int `json:"portMin"`
 }
 
 // StartResult defines model for StartResult.
