@@ -7,8 +7,10 @@ The module encapsulates the following technical aspects:
 
 - JSON marshalling and unmarshalling of action inputs and outputs
 - The sdk will wrap around your `describe` call and will provide some meaningful defaults for your endpoint definitions.
-- An additional layer of rollback stability. The SDK will keep a copy of your action state in memory to be able to rollback to the previous state in case
+- An additional layer of rollback stability. The SDK will keep a copy of your action state in memory to be able to roll back to the previous state in case
   of connections issues.
+- Automatic handling of `file` parameters. The SDK will automatically download the file, store it in a temporary directory and delete the file after the action
+  has stopped. The `Config`-map in `action_kit_api.PrepareActionRequestBody` will contain the path to the downloaded file.
 
 ## Installation
 
@@ -23,7 +25,7 @@ go get github.com/steadybit/action-kit/go/action_kit_sdk
 1. Implement at least the `action_kit_sdk.Action` interface:
     - Examples:
         - [examples/go-kubectl/action.go](../../examples/go-kubectl/action.go)
-        - [go/action_kit_sdk/action_sdk_example_action_test.go](./example_action_test.go)
+        - [go/action_kit_sdk/example_action_test.go](./example_action_test.go)
 
 2. Implement other interfaces if you need them:
     - `action_kit_sdk.ActionWithStatus`

@@ -4,6 +4,7 @@
 package action_kit_sdk
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/rs/zerolog/log"
@@ -13,7 +14,12 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extutil"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -38,6 +44,19 @@ func NewActionHttpAdapter[T any](action Action[T]) *ActionHttpAdapter[T] {
 			log.Fatal().Msgf("ActionWithMetricQuery is implemented but description.Metrics.Query is nil.")
 		}
 	}
+	var hasFileParameter bool
+	for _, parameter := range description.Parameters {
+		if parameter.Type == action_kit_api.File {
+			hasFileParameter = true
+			break
+		}
+	}
+	if hasFileParameter && !adapter.HasStop() {
+		log.Fatal().Msgf("Actions using a parameter of type 'file' need to implement ActionWithStop.")
+	}
+	if description.TimeControl == action_kit_api.Internal && !adapter.HasStatus() {
+		log.Fatal().Msgf("Actions using TimeControl 'Internal' need to implement ActionWithStatus.")
+	}
 	return adapter
 }
 
@@ -46,14 +65,12 @@ func (a *ActionHttpAdapter[T]) HandleGetDescription(w http.ResponseWriter, _ *ht
 }
 
 func (a *ActionHttpAdapter[T]) HandlePrepare(w http.ResponseWriter, r *http.Request, body []byte) {
-	var parsedBody action_kit_api.PrepareActionRequestBody
-	err := json.Unmarshal(body, &parsedBody)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
+	prepareActionRequestBody := parseRequestAndHandleFiles(w, r, body)
+	if prepareActionRequestBody == nil {
 		return
 	}
 	state := a.action.NewEmptyState()
-	result, err := a.action.Prepare(r.Context(), &state, parsedBody)
+	result, err := a.action.Prepare(r.Context(), &state, *prepareActionRequestBody)
 	if err != nil {
 		extensionError, isExtensionError := err.(extension_kit.ExtensionError)
 		if isExtensionError {
@@ -67,7 +84,7 @@ func (a *ActionHttpAdapter[T]) HandlePrepare(w http.ResponseWriter, r *http.Requ
 		result = &action_kit_api.PrepareResult{}
 	}
 	if result.State != nil {
-		exthttp.WriteError(w, extension_kit.ToError(" Please modify the state using the given state pointer.", err))
+		exthttp.WriteError(w, extension_kit.ToError("Please modify the state using the given state pointer.", err))
 	}
 
 	var convertedState action_kit_api.ActionState
@@ -79,13 +96,82 @@ func (a *ActionHttpAdapter[T]) HandlePrepare(w http.ResponseWriter, r *http.Requ
 	result.State = convertedState
 
 	if a.description.Stop != nil {
-		err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: a.description.Id, State: convertedState})
+		err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: prepareActionRequestBody.ExecutionId, ActionId: a.description.Id, State: convertedState})
 		if err != nil {
 			exthttp.WriteError(w, extension_kit.ToError("Failed to persist action state.", err))
 			return
 		}
 	}
 	exthttp.WriteBody(w, result)
+}
+
+func parseRequestAndHandleFiles(w http.ResponseWriter, r *http.Request, body []byte) *action_kit_api.PrepareActionRequestBody {
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			exthttp.WriteError(w, extension_kit.ToError("Failed to parse multipart request body.", err))
+			return nil
+		}
+		prepareActionRequest := parsePrepareActionRequestBody(w, []byte(r.MultipartForm.Value["request"][0]))
+		folder := fmt.Sprintf("/tmp/steadybit/%v", prepareActionRequest.ExecutionId)
+		err = os.MkdirAll(folder, 0755)
+		for parameterName, fileHeaders := range r.MultipartForm.File {
+			if len(fileHeaders) > 1 {
+				exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Too many Fileheaders for parameter %s.", parameterName), err))
+				return nil
+			}
+			filename := folder + "/" + filepath.Base(fileHeaders[0].Filename)
+			log.Debug().Msgf("Save File: Parameter %s, File %s", parameterName, filename)
+			err := saveFile(filename, fileHeaders[0])
+			if err != nil {
+				exthttp.WriteError(w, extension_kit.ToError(fmt.Sprintf("Failed to save file %s.", filename), err))
+				return nil
+			}
+			prepareActionRequest.Config[parameterName] = filename
+		}
+		return prepareActionRequest
+	} else {
+		return parsePrepareActionRequestBody(w, body)
+	}
+}
+
+func saveFile(filename string, fileHeader *multipart.FileHeader) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to close file %s", file.Name())
+		}
+	}(file)
+
+	open, err := fileHeader.Open()
+	if err != nil {
+		return err
+	}
+	buffer := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buffer, open); err != nil {
+		return err
+	}
+	if _, err = file.Write(buffer.Bytes()); err != nil {
+		return err
+	}
+	if err = file.Sync(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func parsePrepareActionRequestBody(w http.ResponseWriter, request []byte) *action_kit_api.PrepareActionRequestBody {
+	var parsedBody action_kit_api.PrepareActionRequestBody
+	err := json.Unmarshal(request, &parsedBody)
+	if err != nil {
+		exthttp.WriteError(w, extension_kit.ToError("Failed to parse request body.", err))
+		return nil
+	}
+	return &parsedBody
 }
 
 func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Request, body []byte) {
@@ -267,6 +353,17 @@ func (a *ActionHttpAdapter[T]) HandleStop(w http.ResponseWriter, r *http.Request
 			exthttp.WriteError(w, extension_kit.ToError("Failed to stop.", err))
 		}
 		return
+	}
+
+	folder := fmt.Sprintf("/tmp/steadybit/%v", parsedBody.ExecutionId)
+	_, err = os.Stat(folder)
+	if !os.IsNotExist(err) {
+		err = os.RemoveAll(folder)
+		if err != nil {
+			log.Error().Msgf("Could not remove directory '%s'", folder)
+		} else {
+			log.Debug().Msgf("Directory '%s' removed successfully", folder)
+		}
 	}
 
 	err = statePersister.DeleteState(r.Context(), parsedBody.ExecutionId)

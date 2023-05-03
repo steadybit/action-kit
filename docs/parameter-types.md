@@ -291,6 +291,8 @@ The `password` parameter behaves like the `string` parameter type, except for th
 
 Files can be uploaded and passed to actions through a parameter of the `file` type. Uploaded files are delivered to actions in base64 encoding. Through the optional `acceptedFileTypes` option you can restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers) may be selected by users.
 
+If an action has a parameter of the `file` type, the [prepare](./action-api.md#preparation) request will be a `multipart/form-data` request. The files will be parts of the request body.
+
 <img src="img/parameters/file.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a file parameter looks like. Depicting a textual label and a drop area for files." />
 
 ### Example

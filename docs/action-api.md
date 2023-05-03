@@ -191,6 +191,9 @@ The state object is later used in HTTP requests to the start and stop endpoints.
 state object, e.g., a subset of the target's attributes, the configuration options and the original state (in case you are going to do some system modification
 as part of the start step).
 
+If a parameter of type [file](parameter-types.md#file) is defined, the request will be a multipart request. The first part will contain a JSON defined by
+PrepareActionRequestBody (part='request'). The following will be the files with the name of the parameter as key (part='example-parameter').
+
 #### Example
 
 ```json

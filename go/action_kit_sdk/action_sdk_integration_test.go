@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"syscall"
@@ -43,6 +44,10 @@ func Test_SDK(t *testing.T) {
 		{
 			Name: "should run a simple action",
 			Fn:   testcaseSimple,
+		},
+		{
+			Name: "should run an action with file upload",
+			Fn:   testcaseWithFileUpload,
 		},
 		{
 			Name: "should stop actions on USR1 signal",
@@ -103,6 +108,31 @@ func testcaseSimple(t *testing.T, op ActionOperations) {
 
 	op.stop(t, state)
 	op.assertCall(t, "Stop", toExampleState(state))
+}
+
+func testcaseWithFileUpload(t *testing.T, op ActionOperations) {
+	state := op.prepareWithFileUpload(t)
+	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
+
+	filename := toExampleState(state).InputFile
+	fileContent, err := os.ReadFile(filename)
+	require.NoError(t, err)
+	assert.Equal(t, "This is a test file", string(fileContent[:]))
+
+	state = op.start(t, state)
+	op.assertCall(t, "Start", toExampleState(state))
+
+	state = op.status(t, state)
+	op.assertCall(t, "Status", toExampleState(state))
+
+	op.queryMetrics(t)
+	op.assertCall(t, "QueryMetrics")
+
+	op.stop(t, state)
+	op.assertCall(t, "Stop", toExampleState(state))
+
+	_, err = os.Stat(filename)
+	assert.True(t, os.IsNotExist(err))
 }
 
 func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
@@ -180,6 +210,58 @@ func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
 	require.NoError(t, err)
 	bodyReader := bytes.NewReader(jsonBody)
 	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), "application/json", bodyReader)
+	require.NoError(t, err)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	var response action_kit_api.PrepareResult
+	err = json.Unmarshal(body, &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, "This is a test Message from Prepare", (*response.Messages)[0].Message)
+	assert.Equal(t, "10s", response.State["Duration"])
+	assert.Equal(t, "Prepare", response.State["TestStep"])
+	assert.Len(t, *response.Metrics, 1)
+	assert.Len(t, *response.Artifacts, 1)
+
+	executionIds, err := statePersister.GetExecutionIds(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, executionIds, 1)
+
+	state, err := statePersister.GetState(context.Background(), executionIds[0])
+	require.NoError(t, err)
+	assert.Equal(t, "Prepare", (*state).State["TestStep"])
+
+	return response.State
+}
+
+func (op *ActionOperations) prepareWithFileUpload(t *testing.T) action_kit_api.ActionState {
+	prepareBody := action_kit_api.PrepareActionRequestBody{
+		ExecutionId: op.executionId,
+		Target: &action_kit_api.Target{
+			Name: "bookinfo",
+			Attributes: map[string][]string{
+				"k8s.namespace":    {"default"},
+				"k8s.cluster-name": {"minikube"},
+			},
+		},
+		Config: map[string]interface{}{
+			"duration":  "10s",
+			"inputFile": "file::1234567890",
+		},
+	}
+	jsonBody, err := json.Marshal(prepareBody)
+	require.NoError(t, err)
+
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+	partRequest, err := writer.CreateFormField("request")
+	require.NoError(t, err)
+	partRequest.Write(jsonBody)
+	partFile, err := writer.CreateFormFile("inputFile", "test.txt")
+	require.NoError(t, err)
+	partFile.Write([]byte("This is a test file"))
+	writer.Close()
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), writer.FormDataContentType(), &buffer)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)

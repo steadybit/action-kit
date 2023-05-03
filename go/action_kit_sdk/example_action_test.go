@@ -20,8 +20,14 @@ type ExampleAction struct {
 }
 
 type ExampleState struct {
-	Duration string
-	TestStep string
+	Duration  string
+	InputFile string
+	TestStep  string
+}
+
+type ExampleConfig struct {
+	Duration  string
+	InputFile string
 }
 
 func NewExampleAction(calls chan<- Call) Action[ExampleState] {
@@ -52,8 +58,34 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 		Id:          "ExampleActionId",
 		Description: "This is an Example Action",
 		Kind:        action_kit_api.Other,
-		Prepare:     action_kit_api.MutatingEndpointReference{},
-		Start:       action_kit_api.MutatingEndpointReference{},
+		Parameters: []action_kit_api.ActionParameter{
+			{
+				Name:         "duration",
+				Label:        "Duration",
+				Type:         action_kit_api.Duration,
+				DefaultValue: extutil.Ptr("10s"),
+			},
+			{
+				Name:     "inputFile",
+				Label:    "Input File",
+				Type:     action_kit_api.File,
+				Required: extutil.Ptr(true),
+				AcceptedFileTypes: extutil.Ptr([]string{
+					".txt",
+				}),
+			},
+			{
+				Name:     "inputFile2",
+				Label:    "Input File 2 (optional)",
+				Type:     action_kit_api.File,
+				Required: extutil.Ptr(false),
+				AcceptedFileTypes: extutil.Ptr([]string{
+					".txt",
+				}),
+			},
+		},
+		Prepare: action_kit_api.MutatingEndpointReference{},
+		Start:   action_kit_api.MutatingEndpointReference{},
 		Status: &action_kit_api.MutatingEndpointReferenceWithCallInterval{
 			CallInterval: extutil.Ptr("1s"),
 		},
@@ -69,7 +101,12 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 }
 func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	action.calls <- Call{"Prepare", []interface{}{state, request}}
-	state.Duration = request.Config["duration"].(string)
+	var config ExampleConfig
+	if err := extconversion.Convert(request.Config, &config); err != nil {
+		return nil, err
+	}
+	state.Duration = config.Duration
+	state.InputFile = config.InputFile
 	state.TestStep = "Prepare"
 	return &action_kit_api.PrepareResult{
 		Artifacts: &action_kit_api.Artifacts{

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Handle `file` parameters: Download files from the platform, store them in a temporary directory and pass the path to the action in the PrepareActionRequest.
+
 ## 1.1.0
 
 - QueryMetricsRequestBody was missing in QueryMetrics-interface
