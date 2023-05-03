@@ -289,8 +289,8 @@ type ExecutionContext struct {
 	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account
 	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
 
-	// CIDRs and Ports that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
-	RestrictedCIDRs *[]RestrictedCIDR `json:"restrictedCIDRs,omitempty"`
+	// Endpoints that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
+	RestrictedEndpoints *[]RestrictedEndpoint `json:"restrictedEndpoints,omitempty"`
 }
 
 // You can use an explicit/fixed parameter option for a known / finite set of options that never change.
@@ -419,21 +419,21 @@ type QueryMetricsResult struct {
 	Metrics  *Metrics  `json:"metrics,omitempty"`
 }
 
-// RestrictedCIDR defines model for RestrictedCIDR.
-type RestrictedCIDR struct {
+// RestrictedEndpoint defines model for RestrictedEndpoint.
+type RestrictedEndpoint struct {
 	// A CIDR that is used to restrict the target selection to a specific network.
 	Cidr string `json:"cidr"`
 
-	// The name of the protected CIDR.
+	// The name of the protected Endpoint. For reference/debugging purposes only.
 	Name string `json:"name"`
 
-	// The maximum port number that is allowed to be used for the CIDR.
+	// The maximum port number that is allowed to be used for the Endpoint.
 	PortMax int `json:"portMax"`
 
-	// The minimum port number that is allowed to be used for the CIDR.
+	// The minimum port number that is allowed to be used for the Endpoint.
 	PortMin int `json:"portMin"`
 
-	// The URL of the protected CIDR.
+	// The URL of the protected Endpoint.
 	Url string `json:"url"`
 }
 

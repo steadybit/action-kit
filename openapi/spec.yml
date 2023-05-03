@@ -466,27 +466,27 @@ components:
       anyOf:
         - $ref: '#/components/schemas/ExplicitParameterOption'
         - $ref: '#/components/schemas/ParameterOptionsFromTargetAttribute'
-    RestrictedCIDR:
+    RestrictedEndpoint:
       type: object
       properties:
         name:
           type: string
           description: >-
-              The name of the protected CIDR.
+              The name of the protected Endpoint. For reference/debugging purposes only.
         url:
           type: string
           description: >-
-              The URL of the protected CIDR.
+              The URL of the protected Endpoint.
         portMin:
           type: integer
           description: >-
-            The minimum port number that is allowed to be used for the CIDR.
+            The minimum port number that is allowed to be used for the Endpoint.
           minimum: 0
           maximum: 65535
         portMax:
             type: integer
             description: >-
-                The maximum port number that is allowed to be used for the CIDR.
+                The maximum port number that is allowed to be used for the Endpoint.
             minimum: 0
             maximum: 65535
         cidr:
@@ -649,12 +649,12 @@ components:
             The AWS account ID of the agent that is executing the action.
             This is only set when the action is executed on an AWS
             account
-        restrictedCIDRs:
+        restrictedEndpoints:
           type: array
           items:
-            $ref: '#/components/schemas/RestrictedCIDR'
+            $ref: '#/components/schemas/RestrictedEndpoint'
           description: >-
-            CIDRs and Ports that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
+            Endpoints that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
     ActionState:
       title: Action State
       description: >-

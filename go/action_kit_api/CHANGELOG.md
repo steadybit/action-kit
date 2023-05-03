@@ -2,7 +2,7 @@
 
 ## 2.6.0
 
-- change `restrictedUrls` to []RestrictedCIDRs
+- change `restrictedUrls` to []RestrictedEndpoint
 
 ## 2.5.2
 
