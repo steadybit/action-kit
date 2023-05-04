@@ -38,7 +38,7 @@ func (n *Iperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  extutil.Ptr("Iperf"),
+					Name:  extutil.Ptr("iperf"),
 					Image: extutil.Ptr("networkstatic/iperf3:latest"),
 					Args:  []string{"-s", "-p", "5201"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
@@ -86,7 +86,7 @@ func (n *Iperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("Iperf"),
+					Name:    extutil.Ptr("iperf"),
 					Image:   extutil.Ptr("networkstatic/iperf3:latest"),
 					Command: []string{"sleep", "infinity"},
 				},
@@ -102,11 +102,11 @@ func (n *Iperf) Deploy(name string) error {
 }
 
 func (n *Iperf) Target() (*action_kit_api.Target, error) {
-	return NewContainerTarget(n.Minikube, n.ServerPod, "Iperf")
+	return NewContainerTarget(n.Minikube, n.ServerPod, "iperf")
 }
 
 func (n *Iperf) MeasurePackageLoss() (float64, error) {
-	out, err := n.Minikube.Exec(n.ClientPod, "Iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
+	out, err := n.Minikube.Exec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s", err, out)
 	}
@@ -133,7 +133,7 @@ func (n *Iperf) Delete() error {
 }
 
 func (n *Iperf) MeasureBandwidth() (float64, error) {
-	out, err := n.Minikube.Exec(n.ClientPod, "Iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--bitrate=500M", "--no-delay", "--json")
+	out, err := n.Minikube.Exec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--bitrate=500M", "--no-delay", "--json")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s", err, out)
 	}

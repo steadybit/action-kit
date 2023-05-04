@@ -87,8 +87,8 @@ func (n *Netperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("Netperf"),
-					Image:   extutil.Ptr("networkstatic/Netperf:latest"),
+					Name:    extutil.Ptr("netperf"),
+					Image:   extutil.Ptr("networkstatic/netperf:latest"),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -128,9 +128,9 @@ func (n *Netperf) MeasureLatency() (time.Duration, error) {
 func (n *Netperf) run(test string, args ...string) (string, error) {
 	var out string
 	var err error
-	cmd := append([]string{"Netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
+	cmd := append([]string{"netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
 	for attempt := 0; attempt < 5; attempt++ {
-		out, err = n.Minikube.Exec(n.ClientPod, "Netperf", cmd...)
+		out, err = n.Minikube.Exec(n.ClientPod, "netperf", cmd...)
 		if err == nil {
 			break
 		} else {

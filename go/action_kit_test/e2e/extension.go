@@ -15,6 +15,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/extension-kit/extconversion"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"os/exec"
 	"time"
@@ -23,6 +24,7 @@ import (
 type Extension struct {
 	client *resty.Client
 	stop   func() error
+	pod    metav1.Object
 }
 
 func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target, error) {
@@ -38,14 +40,14 @@ func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target
 	return nil, fmt.Errorf("discovery not found: %s", targetId)
 }
 
-func (e *Extension) RunAction(actionId string, target action_kit_api.Target, config interface{}) (ActionExecution, error) {
+func (e *Extension) RunAction(actionId string, target action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
 	actions, err := e.describeActions()
 	if err != nil {
 		return ActionExecution{}, fmt.Errorf("failed to get action descriptions: %w", err)
 	}
 	for _, action := range actions {
 		if action.Id == actionId {
-			return e.execAction(action, target, config)
+			return e.execAction(action, target, config, executionContext)
 		}
 	}
 	return ActionExecution{}, fmt.Errorf("action not found: %s", actionId)
