@@ -155,7 +155,7 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort unint16, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	imageName := ""
