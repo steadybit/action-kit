@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
-	"github.com/steadybit/extension-container/pkg/container/types"
-	"github.com/steadybit/extension-container/pkg/extcontainer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -96,9 +94,9 @@ func waitForContainerStatusUsingContainerEngine(m *Minikube, containerId string,
 }
 
 func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (string, error) {
-	if strings.HasPrefix(containerId, string(types.RuntimeDocker)) {
+	if strings.HasPrefix(containerId, string(RuntimeDocker)) {
 		var outb bytes.Buffer
-		cmd := m.exec("sudo docker", "inspect", "-f='{{.State.Status}}'", extcontainer.RemovePrefix(containerId))
+		cmd := m.exec("sudo docker", "inspect", "-f='{{.State.Status}}'", RemovePrefix(containerId))
 		cmd.Stdout = &outb
 		if err := cmd.Run(); err != nil {
 			return "", err
@@ -106,7 +104,7 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 		return strings.TrimSpace(outb.String()), nil
 	}
 
-	if strings.HasPrefix(containerId, string(types.RuntimeContainerd)) {
+	if strings.HasPrefix(containerId, string(RuntimeContainerd)) {
 		var outb bytes.Buffer
 		cmd := m.exec("sudo ctr", "--namespace=k8s.io", "tasks", "list")
 		cmd.Stdout = &outb
@@ -116,7 +114,7 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 
 		for _, line := range strings.Split(outb.String(), "\n") {
 			fields := strings.Fields(line)
-			if len(fields) >= 3 && fields[0] == extcontainer.RemovePrefix(containerId) {
+			if len(fields) >= 3 && fields[0] == RemovePrefix(containerId) {
 				return strings.ToLower(fields[2]), nil
 			}
 		}

@@ -12,7 +12,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/extension-container/pkg/container/types"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -42,7 +41,7 @@ var (
 )
 
 type Minikube struct {
-	runtime types.Runtime
+	runtime Runtime
 	profile string
 	stdout  io.Writer
 	stderr  io.Writer
@@ -52,7 +51,7 @@ type Minikube struct {
 	clientConfig *rest.Config
 }
 
-func newMinikube(runtime types.Runtime) *Minikube {
+func newMinikube(runtime Runtime) *Minikube {
 	profile := "e2e-" + string(runtime)
 	stdout := prefixWriter{prefix: "🧊", w: os.Stdout}
 	stderr := prefixWriter{prefix: "🧊", w: os.Stderr}
@@ -102,7 +101,7 @@ func (m *Minikube) Config() *rest.Config {
 	return m.clientConfig
 }
 
-func (m *Minikube) Runtime() types.Runtime {
+func (m *Minikube) Runtime() Runtime {
 	return m.runtime
 }
 
@@ -156,7 +155,7 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []types.Runtime, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, runtimes []Runtime, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	imageName := ""
