@@ -356,7 +356,7 @@ func logMessages(messages *action_kit_api.Messages) {
 	}
 }
 
-func startExtension(minikube *Minikube, image string) (*Extension, error) {
+func startExtension(minikube *Minikube, image string, extensionPort uint16) (*Extension, error) {
 	if err := minikube.LoadImage(image); err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func startExtension(minikube *Minikube, image string) (*Extension, error) {
 		}
 	}
 
-	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), 8080, stopFwdCh)
+	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), extensionPort, stopFwdCh)
 	if err != nil {
 		_ = stop()
 		return nil, err

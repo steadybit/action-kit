@@ -155,7 +155,7 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []Runtime, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort unint16, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	imageName := ""
@@ -188,7 +188,7 @@ func WithMinikube(t *testing.T, runtimes []Runtime, testCases []WithMinikubeTest
 			}
 
 			wg.Wait()
-			extension, err := startExtension(minikube, imageName)
+			extension, err := startExtension(minikube, imageName, extensionPort)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
 
