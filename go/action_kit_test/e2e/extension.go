@@ -14,10 +14,7 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/extension-kit/extconversion"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"os/exec"
 	"time"
 )
 
@@ -357,92 +354,4 @@ func logMessages(messages *action_kit_api.Messages) {
 		}
 		event.Msg(msg.Message)
 	}
-}
-
-func startExtension(minikube *Minikube, image string, extensionPort uint16, extensionName string, k8sName string, helmPath string) (*Extension, error) {
-	if err := minikube.LoadImage(image); err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
-	out, err := exec.CommandContext(ctx,
-		"helm",
-		"install",
-		"--kube-context", minikube.Profile,
-		"--namespace=default",
-		"--wait",
-		"--set", fmt.Sprintf("container.runtime=%s", minikube.Runtime),
-		"--set", fmt.Sprintf("image.name=%s", image),
-		"--set", "image.pullPolicy=Never",
-		extensionName,
-		helmPath,
-	).CombinedOutput()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to install helm chart: %s: %s", err, out)
-	}
-
-	tailCtx, tailCancel := context.WithCancel(context.Background())
-	stopFwdCh := make(chan struct{})
-	stop := func() error {
-		tailCancel()
-		close(stopFwdCh)
-		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, extensionName).CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("failed to uninstall helm chart: %s: %s", err, out)
-		}
-		return nil
-	}
-
-	ctx, waitCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer waitCancel()
-	var pods []corev1.Pod
-	for {
-		select {
-		case <-ctx.Done():
-			_ = stop()
-			return nil, fmt.Errorf("extension pods did not start in time")
-		case <-time.After(200 * time.Millisecond):
-		}
-
-		pods, err = minikube.ListPods(ctx, "default", "app.kubernetes.io/name=" + k8sName)
-		if err != nil {
-			_ = stop()
-			return nil, err
-		}
-
-		for _, pod := range pods {
-			if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 30*time.Second); err != nil {
-				_ = stop()
-				return nil, err
-			}
-			go minikube.TailLog(tailCtx, pod.GetObjectMeta())
-		}
-		if len(pods) > 0 {
-			break
-		}
-	}
-
-	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), extensionPort, stopFwdCh)
-	if err != nil {
-		_ = stop()
-		return nil, err
-	}
-
-	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
-	client := resty.New().SetBaseURL(address)
-	log.Info().Msgf("extension is available at %s", address)
-	return &Extension{client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
-}
-
-func createExtensionContainer(containerName string) (string, error) {
-	cmd := exec.Command("make", "container")
-	cmd.Dir = ".."
-	cmd.Stdout = &prefixWriter{prefix: "⚒️", w: os.Stdout}
-	cmd.Stderr = &prefixWriter{prefix: "⚒️", w: os.Stdout}
-
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return "docker.io/library/" + containerName, nil
 }

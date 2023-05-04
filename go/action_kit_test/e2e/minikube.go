@@ -42,6 +42,7 @@ var (
 
 type Minikube struct {
 	Runtime Runtime
+	Driver  string
 	Profile string
 	Stdout  io.Writer
 	Stderr  io.Writer
@@ -51,13 +52,14 @@ type Minikube struct {
 	ClientConfig *rest.Config
 }
 
-func newMinikube(runtime Runtime) *Minikube {
+func newMinikube(runtime Runtime, driver string) *Minikube {
 	profile := "e2e-" + string(runtime)
 	stdout := prefixWriter{prefix: "🧊", w: os.Stdout}
 	stderr := prefixWriter{prefix: "🧊", w: os.Stderr}
 
 	return &Minikube{
 		Runtime: runtime,
+		Driver:  driver,
 		Profile: profile,
 		Stdout:  &stdout,
 		Stderr:  &stderr,
@@ -68,8 +70,13 @@ func (m *Minikube) start() error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
 
-	args := []string{"start", "--keep-context", fmt.Sprintf("--container-runtime=%s", string(m.Runtime))}
-	if m.Runtime == "cri-o" {
+	args := []string{"start",
+		"--keep-context",
+		fmt.Sprintf("--container-runtime=%s", string(m.Runtime)),
+		fmt.Sprintf("--driver=%s", m.Driver),
+	}
+
+	if m.Runtime == "cri-o" && m.Driver == "docker" {
 		args = append(args, "--cni=bridge")
 	}
 
@@ -156,25 +163,42 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extensionName string, k8sName string, helmPath string, testCases []WithMinikubeTestCase) {
+type ExtensionFactory interface {
+	CreateImage() error
+	Start(minikube *Minikube) (*Extension, error)
+}
+
+type MinikubeOpts struct {
+	Runtimes []Runtime
+	Driver   string
+}
+
+var DefaultMiniKubeOpts = MinikubeOpts{
+	Runtimes: []Runtime{RuntimeDocker},
+	Driver:   "docker",
+}
+
+func WithDefaultMinikube(t *testing.T, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
+	WithMinikube(t, DefaultMiniKubeOpts, ext, testCases)
+}
+
+func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	imageName := ""
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		s, err := createExtensionContainer(extensionName)
+		err := ext.CreateImage()
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
-		imageName = s
 		wg.Done()
 	}()
 
-	for _, runtime := range runtimes {
+	for _, runtime := range mOpts.Runtimes {
 		t.Run(string(runtime), func(t *testing.T) {
 
-			minikube := newMinikube(runtime)
+			minikube := newMinikube(runtime, mOpts.Driver)
 			_ = minikube.delete()
 			err := minikube.start()
 			if err != nil {
@@ -189,7 +213,7 @@ func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extens
 			}
 
 			wg.Wait()
-			extension, err := startExtension(minikube, imageName, extensionPort, extensionName, k8sName, helmPath)
+			extension, err := ext.Start(minikube)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
 
