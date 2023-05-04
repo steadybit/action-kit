@@ -64,11 +64,11 @@ func newMinikube(runtime Runtime) *Minikube {
 	}
 }
 
-func (m *Minikube) start() error {
+func (m *Minikube) start(extensionPort uint16) error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
 
-	args := []string{"start", "--keep-context", fmt.Sprintf("--container-runtime=%s", string(m.Runtime)), "--ports=8080"}
+	args := []string{"start", "--keep-context", fmt.Sprintf("--container-runtime=%s", string(m.Runtime)), "--ports=" + string(extensionPort)}
 	if m.Runtime == "cri-o" {
 		args = append(args, "--cni=bridge")
 	}
@@ -145,7 +145,7 @@ func (m *Minikube) command(arg ...string) *exec.Cmd {
 }
 
 func (m *Minikube) commandContext(ctx context.Context, arg ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "Minikube", append([]string{"-p", m.Profile}, arg...)...)
+	cmd := exec.CommandContext(ctx, "minikube", append([]string{"-p", m.Profile}, arg...)...)
 	cmd.Stdout = m.Stdout
 	cmd.Stderr = m.Stderr
 	return cmd
@@ -176,7 +176,7 @@ func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extens
 
 			minikube := newMinikube(runtime)
 			_ = minikube.delete()
-			err := minikube.start()
+			err := minikube.start(extensionPort)
 			if err != nil {
 				log.Fatal().Msgf("failed to start Minikube: %v", err)
 			}
