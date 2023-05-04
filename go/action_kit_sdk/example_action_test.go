@@ -6,6 +6,7 @@ package action_kit_sdk
 import (
 	"context"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/extutil"
 )
@@ -103,7 +104,7 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 	action.calls <- Call{"Prepare", []interface{}{state, request}}
 	var config ExampleConfig
 	if err := extconversion.Convert(request.Config, &config); err != nil {
-		return nil, err
+		return nil, extension_kit.ToError("Failed to unmarshal the config.", err)
 	}
 	state.Duration = config.Duration
 	state.InputFile = config.InputFile
