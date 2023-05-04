@@ -24,7 +24,7 @@ import (
 type Extension struct {
 	client *resty.Client
 	stop   func() error
-	pod    metav1.Object
+	Pod    metav1.Object
 }
 
 func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target, error) {
@@ -432,7 +432,7 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16, exte
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
 	log.Info().Msgf("extension is available at %s", address)
-	return &Extension{client: client, stop: stop, pod: pods[0].GetObjectMeta()}, nil
+	return &Extension{client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
 }
 
 func createExtensionContainer() (string, error) {
