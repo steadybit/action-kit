@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string, psargs string) {
+func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string, psargs *string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -32,8 +32,8 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 
 		case <-time.After(200 * time.Millisecond):
 			args := "-opid,comm"
-			if psargs != "" {
-				args = args + " " + psargs
+			if psargs != nil && *psargs != "" {
+				args = args + " " + *psargs
 			}
 			out, err := m.Exec(pod, containername, "ps", args)
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
