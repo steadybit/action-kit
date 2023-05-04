@@ -99,7 +99,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		}
 
 		for _, pod := range pods {
-			if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 30*time.Second); err != nil {
+			if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
 				_ = stop()
 				return nil, err
 			}

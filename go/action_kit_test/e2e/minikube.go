@@ -334,7 +334,7 @@ func (m *Minikube) CreatePod(pod *acorev1.PodApplyConfiguration) (metav1.Object,
 	if err != nil {
 		return nil, err
 	}
-	if err = m.WaitForPodPhase(applied.GetObjectMeta(), corev1.PodRunning, 30*time.Second); err != nil {
+	if err = m.WaitForPodPhase(applied.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
 		return nil, err
 	}
 	return applied.GetObjectMeta(), nil
