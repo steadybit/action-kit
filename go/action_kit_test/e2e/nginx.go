@@ -15,13 +15,13 @@ import (
 )
 
 type Nginx struct {
-	minikube *Minikube
+	Minikube *Minikube
 	Pod      metav1.Object
 	Service  metav1.Object
 }
 
 func (n *Nginx) Deploy(podName string) error {
-	pod, err := n.minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -51,7 +51,7 @@ func (n *Nginx) Deploy(podName string) error {
 	}
 	n.Pod = pod
 
-	service, err := n.minikube.CreateService(&acorev1.ServiceApplyConfiguration{
+	service, err := n.Minikube.CreateService(&acorev1.ServiceApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Service"),
 			APIVersion: extutil.Ptr("v1"),
@@ -79,11 +79,11 @@ func (n *Nginx) Deploy(podName string) error {
 }
 
 func (n *Nginx) Target() (*action_kit_api.Target, error) {
-	return NewContainerTarget(n.minikube, n.Pod, "nginx")
+	return NewContainerTarget(n.Minikube, n.Pod, "nginx")
 }
 
 func (n *Nginx) IsReachable() error {
-	client, err := n.minikube.NewRestClientForService(n.Service)
+	client, err := n.Minikube.NewRestClientForService(n.Service)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (n *Nginx) IsReachable() error {
 }
 
 func (n *Nginx) CanReach(url string) error {
-	out, err := n.minikube.Exec(n.Pod, "nginx", "curl", "--max-time", "2", url)
+	out, err := n.Minikube.Exec(n.Pod, "nginx", "curl", "--max-time", "2", url)
 	if err != nil {
 		return fmt.Errorf("%s: %s", err, out)
 	}
@@ -106,12 +106,12 @@ func (n *Nginx) CanReach(url string) error {
 }
 
 func (n *Nginx) ContainerStatus() (*corev1.ContainerStatus, error) {
-	return GetContainerStatus(n.minikube, n.Pod, "nginx")
+	return GetContainerStatus(n.Minikube, n.Pod, "nginx")
 }
 
 func (n *Nginx) Delete() error {
 	return errors.Join(
-		n.minikube.DeletePod(n.Pod),
-		n.minikube.DeleteService(n.Service),
+		n.Minikube.DeletePod(n.Pod),
+		n.Minikube.DeleteService(n.Service),
 	)
 }

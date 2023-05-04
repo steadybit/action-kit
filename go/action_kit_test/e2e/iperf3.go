@@ -16,16 +16,16 @@ import (
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-type iperf struct {
-	minikube  *Minikube
+type Iperf struct {
+	Minikube  *Minikube
 	ServerPod metav1.Object
 	ClientPod metav1.Object
 	ServerIp  string
 }
 
-func (n *iperf) Deploy(name string) error {
+func (n *Iperf) Deploy(name string) error {
 	serverPodName := fmt.Sprintf("%s-server", name)
-	pod, err := n.minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -38,7 +38,7 @@ func (n *iperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  extutil.Ptr("iperf"),
+					Name:  extutil.Ptr("Iperf"),
 					Image: extutil.Ptr("networkstatic/iperf3:latest"),
 					Args:  []string{"-s", "-p", "5201"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
@@ -65,7 +65,7 @@ func (n *iperf) Deploy(name string) error {
 		return err
 	}
 
-	describe, err := n.minikube.GetPod(pod)
+	describe, err := n.Minikube.GetPod(pod)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (n *iperf) Deploy(name string) error {
 	n.ServerPod = pod
 
 	clientPodName := fmt.Sprintf("%s-client", name)
-	pod, err = n.minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	pod, err = n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -86,7 +86,7 @@ func (n *iperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("iperf"),
+					Name:    extutil.Ptr("Iperf"),
 					Image:   extutil.Ptr("networkstatic/iperf3:latest"),
 					Command: []string{"sleep", "infinity"},
 				},
@@ -101,12 +101,12 @@ func (n *iperf) Deploy(name string) error {
 	return nil
 }
 
-func (n *iperf) Target() (*action_kit_api.Target, error) {
-	return NewContainerTarget(n.minikube, n.ServerPod, "iperf")
+func (n *Iperf) Target() (*action_kit_api.Target, error) {
+	return NewContainerTarget(n.Minikube, n.ServerPod, "Iperf")
 }
 
-func (n *iperf) MeasurePackageLoss() (float64, error) {
-	out, err := n.minikube.Exec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
+func (n *Iperf) MeasurePackageLoss() (float64, error) {
+	out, err := n.Minikube.Exec(n.ClientPod, "Iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s", err, out)
 	}
@@ -124,16 +124,16 @@ func (n *iperf) MeasurePackageLoss() (float64, error) {
 	return lost.(float64), nil
 }
 
-func (n *iperf) Delete() error {
+func (n *Iperf) Delete() error {
 	return errors.Join(
-		n.minikube.DeletePod(n.ServerPod),
-		n.minikube.DeletePod(n.ClientPod),
+		n.Minikube.DeletePod(n.ServerPod),
+		n.Minikube.DeletePod(n.ClientPod),
 	)
 
 }
 
-func (n *iperf) MeasureBandwidth() (float64, error) {
-	out, err := n.minikube.Exec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--bitrate=500M", "--no-delay", "--json")
+func (n *Iperf) MeasureBandwidth() (float64, error) {
+	out, err := n.Minikube.Exec(n.ClientPod, "Iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--bitrate=500M", "--no-delay", "--json")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s", err, out)
 	}

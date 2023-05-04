@@ -17,16 +17,16 @@ import (
 	"time"
 )
 
-type netperf struct {
-	minikube  *Minikube
+type Netperf struct {
+	Minikube  *Minikube
 	ServerPod metav1.Object
 	ClientPod metav1.Object
 	ServerIp  string
 }
 
-func (n *netperf) Deploy(name string) error {
+func (n *Netperf) Deploy(name string) error {
 	serverPodName := fmt.Sprintf("%s-server", name)
-	pod, err := n.minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -66,7 +66,7 @@ func (n *netperf) Deploy(name string) error {
 		return err
 	}
 
-	describe, err := n.minikube.GetPod(pod)
+	describe, err := n.Minikube.GetPod(pod)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (n *netperf) Deploy(name string) error {
 	n.ServerIp = describe.Status.PodIP
 
 	clientPodName := fmt.Sprintf("%s-client", name)
-	pod, err = n.minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	pod, err = n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -87,8 +87,8 @@ func (n *netperf) Deploy(name string) error {
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("netperf"),
-					Image:   extutil.Ptr("networkstatic/netperf:latest"),
+					Name:    extutil.Ptr("Netperf"),
+					Image:   extutil.Ptr("networkstatic/Netperf:latest"),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -102,11 +102,11 @@ func (n *netperf) Deploy(name string) error {
 	return nil
 }
 
-func (n *netperf) Target() (*action_kit_api.Target, error) {
-	return NewContainerTarget(n.minikube, n.ServerPod, "netserver")
+func (n *Netperf) Target() (*action_kit_api.Target, error) {
+	return NewContainerTarget(n.Minikube, n.ServerPod, "netserver")
 }
 
-func (n *netperf) MeasureLatency() (time.Duration, error) {
+func (n *Netperf) MeasureLatency() (time.Duration, error) {
 	out, err := n.run("TCP_RR", "-P5000", "-r", "1,1", "-o", "mean_latency")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s", err, out)
@@ -125,12 +125,12 @@ func (n *netperf) MeasureLatency() (time.Duration, error) {
 	return duration, nil
 }
 
-func (n *netperf) run(test string, args ...string) (string, error) {
+func (n *Netperf) run(test string, args ...string) (string, error) {
 	var out string
 	var err error
-	cmd := append([]string{"netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
+	cmd := append([]string{"Netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
 	for attempt := 0; attempt < 5; attempt++ {
-		out, err = n.minikube.Exec(n.ClientPod, "netperf", cmd...)
+		out, err = n.Minikube.Exec(n.ClientPod, "Netperf", cmd...)
 		if err == nil {
 			break
 		} else {
@@ -142,10 +142,10 @@ func (n *netperf) run(test string, args ...string) (string, error) {
 	}
 	return out, err
 }
-func (n *netperf) Delete() error {
+func (n *Netperf) Delete() error {
 	return errors.Join(
-		n.minikube.DeletePod(n.ServerPod),
-		n.minikube.DeletePod(n.ClientPod),
+		n.Minikube.DeletePod(n.ServerPod),
+		n.Minikube.DeletePod(n.ClientPod),
 	)
 
 }

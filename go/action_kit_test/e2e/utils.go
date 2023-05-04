@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func assertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string) {
+func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -71,7 +71,7 @@ func GetContainerStatus(m *Minikube, pod metav1.Object, containername string) (*
 	return nil, errors.New("container not found")
 }
 
-func waitForContainerStatusUsingContainerEngine(m *Minikube, containerId string, wantedStatus string) error {
+func WaitForContainerStatusUsingContainerEngine(m *Minikube, containerId string, wantedStatus string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -124,7 +124,7 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 	return "", fmt.Errorf("unsupported container runtime")
 }
 
-func pollForTarget(ctx context.Context, e *Extension, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
+func PollForTarget(ctx context.Context, e *Extension, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
 	var lastErr error
 	for {
 		select {
@@ -145,7 +145,7 @@ func pollForTarget(ctx context.Context, e *Extension, predicate func(target disc
 	}
 }
 
-func hasAttribute(target discovery_kit_api.Target, key, value string) bool {
+func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 	for _, v := range target.Attributes[key] {
 		if v == value {
 			return true
