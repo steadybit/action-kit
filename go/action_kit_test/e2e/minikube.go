@@ -156,14 +156,14 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extensionName string, helmPath string, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extensionName string, k8sName string, helmPath string, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	imageName := ""
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		s, err := createExtensionContainer()
+		s, err := createExtensionContainer(extensionName)
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
@@ -189,7 +189,7 @@ func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extens
 			}
 
 			wg.Wait()
-			extension, err := startExtension(minikube, imageName, extensionPort, extensionName, helmPath)
+			extension, err := startExtension(minikube, imageName, extensionPort, extensionName, k8sName, helmPath)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
 

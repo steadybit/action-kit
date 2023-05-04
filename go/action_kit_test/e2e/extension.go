@@ -359,7 +359,7 @@ func logMessages(messages *action_kit_api.Messages) {
 	}
 }
 
-func startExtension(minikube *Minikube, image string, extensionPort uint16, extensionName string, helmPath string) (*Extension, error) {
+func startExtension(minikube *Minikube, image string, extensionPort uint16, extensionName string, k8sName string, helmPath string) (*Extension, error) {
 	if err := minikube.LoadImage(image); err != nil {
 		return nil, err
 	}
@@ -387,7 +387,7 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16, exte
 	stop := func() error {
 		tailCancel()
 		close(stopFwdCh)
-		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, "extension-container").CombinedOutput()
+		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, extensionName).CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("failed to uninstall helm chart: %s: %s", err, out)
 		}
@@ -405,7 +405,7 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16, exte
 		case <-time.After(200 * time.Millisecond):
 		}
 
-		pods, err = minikube.ListPods(ctx, "default", "app.kubernetes.io/name=steadybit-extension-container")
+		pods, err = minikube.ListPods(ctx, "default", "app.kubernetes.io/name=" + k8sName)
 		if err != nil {
 			_ = stop()
 			return nil, err
@@ -435,7 +435,7 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16, exte
 	return &Extension{client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
 }
 
-func createExtensionContainer() (string, error) {
+func createExtensionContainer(containerName string) (string, error) {
 	cmd := exec.Command("make", "container")
 	cmd.Dir = ".."
 	cmd.Stdout = &prefixWriter{prefix: "⚒️", w: os.Stdout}
@@ -444,5 +444,5 @@ func createExtensionContainer() (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
-	return "docker.io/library/extension-container", nil
+	return "docker.io/library/" + containerName, nil
 }
