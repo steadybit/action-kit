@@ -163,10 +163,10 @@ func (a *ActionExecution) Cancel() error {
 	return nil
 }
 
-func (e *Extension) execAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}) (ActionExecution, error) {
+func (e *Extension) execAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
 	executionId := uuid.New()
 
-	state, duration, err := e.prepareAction(action, target, config, executionId)
+	state, duration, err := e.prepareAction(action, target, config, executionId, executionContext)
 	if err != nil {
 		return ActionExecution{}, err
 	}
@@ -225,11 +225,12 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target a
 	}, nil
 }
 
-func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}, executionId uuid.UUID) (action_kit_api.ActionState, time.Duration, error) {
+func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext) (action_kit_api.ActionState, time.Duration, error) {
 	var duration time.Duration
 	prepareBody := action_kit_api.PrepareActionRequestBody{
-		ExecutionId: executionId,
-		Target:      &target,
+		ExecutionId:      executionId,
+		Target:           &target,
+		ExecutionContext: executionContext,
 	}
 	if err := extconversion.Convert(config, &prepareBody.Config); err != nil {
 		return nil, duration, fmt.Errorf("failed to convert config: %w", err)
@@ -245,11 +246,11 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 		return nil, duration, fmt.Errorf("failed to prepare action: %w", err)
 	}
 	logMessages(prepareResult.Messages)
-	if !res.IsSuccess() {
-		return nil, duration, fmt.Errorf("failed to prepare action: %d", res.StatusCode())
-	}
 	if prepareResult.Error != nil {
 		return nil, duration, fmt.Errorf("action failed: %v", *prepareResult.Error)
+	}
+	if !res.IsSuccess() {
+		return nil, duration, fmt.Errorf("failed to prepare action: %d", res.StatusCode())
 	}
 
 	return prepareResult.State, duration, nil
@@ -358,7 +359,7 @@ func logMessages(messages *action_kit_api.Messages) {
 	}
 }
 
-func startExtension(minikube *Minikube, image string, extensionPort uint16) (*Extension, error) {
+func startExtension(minikube *Minikube, image string, extensionPort uint16, extensionName string, helmPath string) (*Extension, error) {
 	if err := minikube.LoadImage(image); err != nil {
 		return nil, err
 	}
@@ -373,8 +374,8 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16) (*Ex
 		"--set", fmt.Sprintf("container.runtime=%s", minikube.Runtime),
 		"--set", fmt.Sprintf("image.name=%s", image),
 		"--set", "image.pullPolicy=Never",
-		"extension-container",
-		"../charts/steadybit-extension-container",
+		extensionName,
+		helmPath,
 	).CombinedOutput()
 
 	if err != nil {
@@ -431,7 +432,7 @@ func startExtension(minikube *Minikube, image string, extensionPort uint16) (*Ex
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
 	log.Info().Msgf("extension is available at %s", address)
-	return &Extension{client: client, stop: stop}, nil
+	return &Extension{client: client, stop: stop, pod: pods[0].GetObjectMeta()}, nil
 }
 
 func createExtensionContainer() (string, error) {

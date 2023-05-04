@@ -124,6 +124,7 @@ func (m *Minikube) waitForDefaultServiceaccount() error {
 func (m *Minikube) delete() error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
+	log.Info().Msg("Deleting Minikube")
 	return m.command("delete").Run()
 }
 
@@ -155,7 +156,7 @@ type WithMinikubeTestCase struct {
 	Test func(t *testing.T, minikube *Minikube, e *Extension)
 }
 
-func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, extensionName string, helmPath string, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	imageName := ""
@@ -188,7 +189,7 @@ func WithMinikube(t *testing.T, runtimes []Runtime, extensionPort uint16, testCa
 			}
 
 			wg.Wait()
-			extension, err := startExtension(minikube, imageName, extensionPort)
+			extension, err := startExtension(minikube, imageName, extensionPort, extensionName, helmPath)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
 

@@ -32,11 +32,38 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 
 		case <-time.After(200 * time.Millisecond):
 			out, err := m.Exec(pod, containername, "ps", "-opid,comm")
+			//out, err := m.Exec(pod, containername, "ps", "-opid,comm", "-A")
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
 
 			for _, line := range strings.Split(out, "\n") {
 				fields := strings.Fields(line)
 				if len(fields) >= 2 && fields[1] == comm {
+					return
+				}
+			}
+			lastOutput = out
+		}
+	}
+}
+
+func AssertProcessNOTRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	lastOutput := ""
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-time.After(200 * time.Millisecond):
+			out, err := m.Exec(pod, containername, "ps", "-opid,comm", "-A")
+			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
+
+			for _, line := range strings.Split(out, "\n") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 && fields[1] == comm {
+					assert.Fail(t, "process found", "process %s found in container %s/%s.\n%s", comm, pod.GetName(), containername, lastOutput)
 					return
 				}
 			}
@@ -124,14 +151,14 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 	return "", fmt.Errorf("unsupported container runtime")
 }
 
-func PollForTarget(ctx context.Context, e *Extension, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
+func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
 	var lastErr error
 	for {
 		select {
 		case <-ctx.Done():
 			return discovery_kit_api.Target{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
 		case <-time.After(200 * time.Millisecond):
-			targets, err := e.DiscoverTargets("container")
+			targets, err := e.DiscoverTargets(targetId)
 			if err != nil {
 				lastErr = err
 				continue
