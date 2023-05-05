@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -37,14 +38,24 @@ func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target
 	return nil, fmt.Errorf("discovery not found: %s", targetId)
 }
 
-func (e *Extension) RunAction(actionId string, target action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
+func (e *Extension) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
+	return e.RunActionWithFiles(actionId, target, config, executionContext, nil)
+}
+
+type File struct {
+	ParameterName string
+	FileName      string
+	Content       []byte
+}
+
+func (e *Extension) RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
 	actions, err := e.describeActions()
 	if err != nil {
 		return ActionExecution{}, fmt.Errorf("failed to get action descriptions: %w", err)
 	}
 	for _, action := range actions {
 		if action.Id == actionId {
-			return e.execAction(action, target, config, executionContext)
+			return e.execAction(action, target, config, executionContext, &files)
 		}
 	}
 	return ActionExecution{}, fmt.Errorf("action not found: %s", actionId)
@@ -160,10 +171,10 @@ func (a *ActionExecution) Cancel() error {
 	return nil
 }
 
-func (e *Extension) execAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
+func (e *Extension) execAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files *[]File) (ActionExecution, error) {
 	executionId := uuid.New()
 
-	state, duration, err := e.prepareAction(action, target, config, executionId, executionContext)
+	state, duration, err := e.prepareAction(action, target, config, executionId, executionContext, files)
 	if err != nil {
 		return ActionExecution{}, err
 	}
@@ -222,11 +233,11 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target a
 	}, nil
 }
 
-func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext) (action_kit_api.ActionState, time.Duration, error) {
+func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext, files *[]File) (action_kit_api.ActionState, time.Duration, error) {
 	var duration time.Duration
 	prepareBody := action_kit_api.PrepareActionRequestBody{
 		ExecutionId:      executionId,
-		Target:           &target,
+		Target:           target,
 		ExecutionContext: executionContext,
 	}
 	if err := extconversion.Convert(config, &prepareBody.Config); err != nil {
@@ -238,7 +249,29 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 	}
 
 	var prepareResult action_kit_api.PrepareResult
-	res, err := e.client.R().SetBody(prepareBody).SetResult(&prepareResult).Execute(string(action.Prepare.Method), action.Prepare.Path)
+	var res *resty.Response
+	var err error
+	if files == nil {
+		res, err = e.client.R().
+			SetBody(prepareBody).
+			SetResult(&prepareResult).
+			Execute(string(action.Prepare.Method), action.Prepare.Path)
+	} else {
+		prepareBodyJson, err := e.client.JSONMarshal(prepareBody)
+		if err != nil {
+			return nil, duration, fmt.Errorf("failed to marshall prepare request action: %w", err)
+		}
+		request := e.client.R().
+			SetMultipartFormData(map[string]string{
+				"request": string(prepareBodyJson),
+			}).
+			SetResult(&prepareResult)
+		for _, file := range *files {
+			request.SetMultipartField(file.ParameterName, file.FileName, "application/octet-stream", bytes.NewReader(file.Content))
+		}
+		res, err = request.Execute(string(action.Prepare.Method), action.Prepare.Path)
+	}
+
 	if err != nil {
 		return nil, duration, fmt.Errorf("failed to prepare action: %w", err)
 	}
