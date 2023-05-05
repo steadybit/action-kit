@@ -55,7 +55,7 @@ func (e *Extension) RunActionWithFiles(actionId string, target *action_kit_api.T
 	}
 	for _, action := range actions {
 		if action.Id == actionId {
-			return e.execAction(action, target, config, executionContext, &files)
+			return e.execAction(action, target, config, executionContext, files)
 		}
 	}
 	return ActionExecution{}, fmt.Errorf("action not found: %s", actionId)
@@ -171,7 +171,7 @@ func (a *ActionExecution) Cancel() error {
 	return nil
 }
 
-func (e *Extension) execAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files *[]File) (ActionExecution, error) {
+func (e *Extension) execAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
 	executionId := uuid.New()
 
 	state, duration, err := e.prepareAction(action, target, config, executionId, executionContext, files)
@@ -233,7 +233,7 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 	}, nil
 }
 
-func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext, files *[]File) (action_kit_api.ActionState, time.Duration, error) {
+func (e *Extension) prepareAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext, files []File) (action_kit_api.ActionState, time.Duration, error) {
 	var duration time.Duration
 	prepareBody := action_kit_api.PrepareActionRequestBody{
 		ExecutionId:      executionId,
@@ -251,7 +251,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 	var prepareResult action_kit_api.PrepareResult
 	var res *resty.Response
 	var err error
-	if files == nil {
+	if len(files) == 0 {
 		res, err = e.client.R().
 			SetBody(prepareBody).
 			SetResult(&prepareResult).
@@ -266,7 +266,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 				"request": string(prepareBodyJson),
 			}).
 			SetResult(&prepareResult)
-		for _, file := range *files {
+		for _, file := range files {
 			request.SetMultipartField(file.ParameterName, file.FileName, "application/octet-stream", bytes.NewReader(file.Content))
 		}
 		res, err = request.Execute(string(action.Prepare.Method), action.Prepare.Path)
