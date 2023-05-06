@@ -206,7 +206,7 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 			}
 			defer func() { _ = minikube.delete() }()
 
-			t.Parallel()
+			//t.Parallel()
 
 			if err := minikube.waitForDefaultServiceaccount(); err != nil {
 				t.Fatal("Serviceaccount didn't show up", err)
@@ -325,6 +325,10 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 		return "", nil, fmt.Errorf("timed out to tunnel service")
 	case err = <-chErr:
 		cancel()
+		if err == nil {
+			url, err := m.GetClusterIpServiceURL(service)
+			return url, func() {}, err
+		}
 		return "", nil, fmt.Errorf("failed to tunnel service: %w", err)
 	}
 }
@@ -481,4 +485,39 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 	for scanner.Scan() {
 		fmt.Printf("📦%s\n", scanner.Text())
 	}
+}
+
+func (m *Minikube) GetClusterIpServiceURL(service metav1.Object) (string, error) {
+	svc, err := m.GetClient().CoreV1().Services(service.GetNamespace()).Get(context.Background(), service.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	if svc.Spec.ClusterIP == "" {
+		return "", fmt.Errorf("service %s/%s has no ClusterIP", service.GetNamespace(), service.GetName())
+	}
+
+	if len(svc.Spec.Ports) == 0 {
+		return "", fmt.Errorf("service %s/%s has no ports defined", service.GetNamespace(), service.GetName())
+	}
+
+	cmd := m.command("ip")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("could not get minikube ip: %s: %s", err, out)
+	}
+	clusterIp := strings.TrimSpace(string(out))
+
+	for _, port := range svc.Spec.Ports {
+		if port.Name == "https" {
+			return fmt.Sprintf("https://%s:%d", clusterIp, port.Port), nil
+		}
+		if port.Name == "http" {
+			return fmt.Sprintf("http://%s:%d", clusterIp, port.Port), nil
+		}
+	}
+
+	return fmt.Sprintf("http://%s:%d", clusterIp, svc.Spec.Ports[0].Port), nil
 }
