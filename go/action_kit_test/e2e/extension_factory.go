@@ -33,18 +33,21 @@ func (h *HelmExtensionFactory) CreateImage() error {
 }
 
 func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
-	if h.ImageName == "" {
-		h.ImageName = fmt.Sprintf("docker.io/library/%s", h.Name)
+	imageName := fmt.Sprintf("docker.io/library/%s", h.Name)
+	if h.ImageName != "" {
+		imageName = h.ImageName
 	}
 
-	if h.ChartPath == "" {
-		h.ChartPath = fmt.Sprintf("../charts/steadybit-%s", h.Name)
+	chartPath := fmt.Sprintf("../charts/steadybit-%s", h.Name)
+	if h.ChartPath != "" {
+		chartPath = h.ChartPath
 	}
-	if h.PodLabelSelector == "" {
-		h.PodLabelSelector = fmt.Sprintf("app.kubernetes.io/name=steadybit-%s", h.Name)
+	podLabelSelector := fmt.Sprintf("app.kubernetes.io/name=steadybit-%s", h.Name)
+	if h.PodLabelSelector != "" {
+		podLabelSelector = h.PodLabelSelector
 	}
 
-	if err := minikube.LoadImage(h.ImageName); err != nil {
+	if err := minikube.LoadImage(imageName); err != nil {
 		return nil, err
 	}
 
@@ -53,14 +56,14 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		"--kube-context", minikube.Profile,
 		"--namespace=default",
 		"--wait",
-		"--set", fmt.Sprintf("image.name=%s", h.ImageName),
+		"--set", fmt.Sprintf("image.name=%s", imageName),
 		"--set", "image.pullPolicy=Never",
 	}
 
 	if h.ExtraArgs != nil {
 		args = append(args, h.ExtraArgs(minikube)...)
 	}
-	args = append(args, h.Name, h.ChartPath)
+	args = append(args, h.Name, chartPath)
 
 	ctx := context.Background()
 	out, err := exec.CommandContext(ctx, "helm", args...).CombinedOutput()
@@ -92,7 +95,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		case <-time.After(200 * time.Millisecond):
 		}
 
-		pods, err = minikube.ListPods(ctx, "default", h.PodLabelSelector)
+		pods, err = minikube.ListPods(ctx, "default", podLabelSelector)
 		if err != nil {
 			_ = stop()
 			return nil, err
