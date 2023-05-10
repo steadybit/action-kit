@@ -12,6 +12,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
@@ -35,7 +36,7 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 			var err error
 			if showAll {
 				out, err = m.Exec(pod, containername, "ps", "-opid,comm", "-A")
-			}else {
+			} else {
 				out, err = m.Exec(pod, containername, "ps", "-opid,comm")
 			}
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
@@ -184,4 +185,21 @@ func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 		}
 	}
 	return false
+}
+
+func AssertLogContains(t *testing.T, ctx context.Context, m *Minikube, pod metav1.Object, log string) {
+	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{}).Stream(ctx)
+	if err != nil {
+		assert.Fail(t, "Failed to read logs from pod")
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		assert.Fail(t, "Failed to read logs from pod (copy)")
+	}
+	if !strings.Contains(buf.String(), log) {
+		assert.Fail(t, "Failed to find log line: "+log)
+	}
 }
