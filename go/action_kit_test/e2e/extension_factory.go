@@ -122,5 +122,5 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
 	log.Info().Msgf("extension is available at %s", address)
-	return &Extension{client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
+	return &Extension{Client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
 }

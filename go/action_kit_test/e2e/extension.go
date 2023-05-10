@@ -20,7 +20,7 @@ import (
 )
 
 type Extension struct {
-	client *resty.Client
+	Client *resty.Client
 	stop   func() error
 	Pod    metav1.Object
 }
@@ -63,7 +63,7 @@ func (e *Extension) RunActionWithFiles(actionId string, target *action_kit_api.T
 
 func (e *Extension) listDiscoveries() (discovery_kit_api.DiscoveryList, error) {
 	var list discovery_kit_api.DiscoveryList
-	res, err := e.client.R().SetResult(&list).Get("/")
+	res, err := e.Client.R().SetResult(&list).Get("/")
 	if err != nil {
 		return list, fmt.Errorf("failed to get discovery list: %w", err)
 	}
@@ -92,7 +92,7 @@ func (e *Extension) describeDiscoveries() ([]discovery_kit_api.DiscoveryDescript
 
 func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpointReference) (discovery_kit_api.DiscoveryDescription, error) {
 	var description discovery_kit_api.DiscoveryDescription
-	res, err := e.client.R().SetResult(&description).Execute(string(endpoint.Method), endpoint.Path)
+	res, err := e.Client.R().SetResult(&description).Execute(string(endpoint.Method), endpoint.Path)
 	if err != nil {
 		return description, fmt.Errorf("failed to get discovery description: %w", err)
 	}
@@ -104,7 +104,7 @@ func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpo
 
 func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescription) ([]discovery_kit_api.Target, error) {
 	var targets discovery_kit_api.DiscoveredTargets
-	res, err := e.client.R().SetResult(&targets).Execute(string(discovery.Discover.Method), discovery.Discover.Path)
+	res, err := e.Client.R().SetResult(&targets).Execute(string(discovery.Discover.Method), discovery.Discover.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover targets: %w", err)
 	}
@@ -116,7 +116,7 @@ func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescrip
 
 func (e *Extension) listActions() (action_kit_api.ActionList, error) {
 	var list action_kit_api.ActionList
-	res, err := e.client.R().SetResult(&list).Get("/")
+	res, err := e.Client.R().SetResult(&list).Get("/")
 	if err != nil {
 		return list, fmt.Errorf("failed to get action list: %w", err)
 	}
@@ -145,7 +145,7 @@ func (e *Extension) describeActions() ([]action_kit_api.ActionDescription, error
 
 func (e *Extension) describeAction(action action_kit_api.DescribingEndpointReference) (action_kit_api.ActionDescription, error) {
 	var description action_kit_api.ActionDescription
-	res, err := e.client.R().SetResult(&description).Execute(string(action.Method), action.Path)
+	res, err := e.Client.R().SetResult(&description).Execute(string(action.Method), action.Path)
 	if err != nil {
 		return description, fmt.Errorf("failed to get action description: %w", err)
 	}
@@ -252,16 +252,16 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 	var res *resty.Response
 	var err error
 	if len(files) == 0 {
-		res, err = e.client.R().
+		res, err = e.Client.R().
 			SetBody(prepareBody).
 			SetResult(&prepareResult).
 			Execute(string(action.Prepare.Method), action.Prepare.Path)
 	} else {
-		prepareBodyJson, err := e.client.JSONMarshal(prepareBody)
+		prepareBodyJson, err := e.Client.JSONMarshal(prepareBody)
 		if err != nil {
 			return nil, duration, fmt.Errorf("failed to marshall prepare request action: %w", err)
 		}
-		request := e.client.R().
+		request := e.Client.R().
 			SetMultipartFormData(map[string]string{
 				"request": string(prepareBodyJson),
 			}).
@@ -292,7 +292,7 @@ func (e *Extension) startAction(action action_kit_api.ActionDescription, executi
 		State:       state,
 	}
 	var startResult action_kit_api.StartResult
-	res, err := e.client.R().SetBody(startBody).SetResult(&startResult).Execute(string(action.Start.Method), action.Start.Path)
+	res, err := e.Client.R().SetBody(startBody).SetResult(&startResult).Execute(string(action.Start.Method), action.Start.Path)
 	if err != nil {
 		return state, fmt.Errorf("failed to start action: %w", err)
 	}
@@ -322,7 +322,7 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 				State:       state,
 			}
 			var statusResult action_kit_api.StatusResult
-			res, err := e.client.R().SetBody(statusBody).SetResult(&statusResult).Execute(string(action.Status.Method), action.Status.Path)
+			res, err := e.Client.R().SetBody(statusBody).SetResult(&statusResult).Execute(string(action.Status.Method), action.Status.Path)
 			if err != nil {
 				return state, fmt.Errorf("failed to get action status: %w", err)
 			}
@@ -351,7 +351,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 		State:       state,
 	}
 	var stopResult action_kit_api.StopResult
-	res, err := e.client.R().SetBody(stopBody).SetResult(&stopResult).Execute(string(action.Stop.Method), action.Stop.Path)
+	res, err := e.Client.R().SetBody(stopBody).SetResult(&stopResult).Execute(string(action.Stop.Method), action.Stop.Path)
 	if err != nil {
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
