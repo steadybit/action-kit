@@ -257,7 +257,8 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 			SetResult(&prepareResult).
 			Execute(string(action.Prepare.Method), action.Prepare.Path)
 	} else {
-		prepareBodyJson, err := e.Client.JSONMarshal(prepareBody)
+		var prepareBodyJson []byte
+		prepareBodyJson, err = e.Client.JSONMarshal(prepareBody)
 		if err != nil {
 			return nil, duration, fmt.Errorf("failed to marshall prepare request action: %w", err)
 		}
