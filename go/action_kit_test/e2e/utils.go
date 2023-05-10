@@ -187,7 +187,10 @@ func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 	return false
 }
 
-func AssertLogContains(t *testing.T, ctx context.Context, m *Minikube, pod metav1.Object, log string) {
+func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, log string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{}).Stream(ctx)
 	if err != nil {
 		assert.Fail(t, "Failed to read logs from pod")
