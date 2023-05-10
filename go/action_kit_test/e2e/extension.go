@@ -15,6 +15,8 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/extension-kit/extconversion"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 )
@@ -92,7 +94,7 @@ func (e *Extension) describeDiscoveries() ([]discovery_kit_api.DiscoveryDescript
 
 func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpointReference) (discovery_kit_api.DiscoveryDescription, error) {
 	var description discovery_kit_api.DiscoveryDescription
-	res, err := e.Client.R().SetResult(&description).Execute(string(endpoint.Method), endpoint.Path)
+	res, err := e.Client.R().SetResult(&description).Execute(cases.Upper(language.English).String(string(endpoint.Method)), endpoint.Path)
 	if err != nil {
 		return description, fmt.Errorf("failed to get discovery description: %w", err)
 	}
@@ -104,7 +106,7 @@ func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpo
 
 func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescription) ([]discovery_kit_api.Target, error) {
 	var targets discovery_kit_api.DiscoveredTargets
-	res, err := e.Client.R().SetResult(&targets).Execute(string(discovery.Discover.Method), discovery.Discover.Path)
+	res, err := e.Client.R().SetResult(&targets).Execute(cases.Upper(language.English).String(string(discovery.Discover.Method)), discovery.Discover.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover targets: %w", err)
 	}
@@ -145,7 +147,7 @@ func (e *Extension) describeActions() ([]action_kit_api.ActionDescription, error
 
 func (e *Extension) describeAction(action action_kit_api.DescribingEndpointReference) (action_kit_api.ActionDescription, error) {
 	var description action_kit_api.ActionDescription
-	res, err := e.Client.R().SetResult(&description).Execute(string(action.Method), action.Path)
+	res, err := e.Client.R().SetResult(&description).Execute(cases.Upper(language.English).String(string(action.Method)), action.Path)
 	if err != nil {
 		return description, fmt.Errorf("failed to get action description: %w", err)
 	}
@@ -255,7 +257,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 		res, err = e.Client.R().
 			SetBody(prepareBody).
 			SetResult(&prepareResult).
-			Execute(string(action.Prepare.Method), action.Prepare.Path)
+			Execute(cases.Upper(language.English).String(string(action.Prepare.Method)), action.Prepare.Path)
 	} else {
 		var prepareBodyJson []byte
 		prepareBodyJson, err = e.Client.JSONMarshal(prepareBody)
@@ -270,7 +272,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 		for _, file := range files {
 			request.SetMultipartField(file.ParameterName, file.FileName, "application/octet-stream", bytes.NewReader(file.Content))
 		}
-		res, err = request.Execute(string(action.Prepare.Method), action.Prepare.Path)
+		res, err = request.Execute(cases.Upper(language.English).String(string(action.Prepare.Method)), action.Prepare.Path)
 	}
 
 	if err != nil {
@@ -293,7 +295,7 @@ func (e *Extension) startAction(action action_kit_api.ActionDescription, executi
 		State:       state,
 	}
 	var startResult action_kit_api.StartResult
-	res, err := e.Client.R().SetBody(startBody).SetResult(&startResult).Execute(string(action.Start.Method), action.Start.Path)
+	res, err := e.Client.R().SetBody(startBody).SetResult(&startResult).Execute(cases.Upper(language.English).String(string(action.Start.Method)), action.Start.Path)
 	if err != nil {
 		return state, fmt.Errorf("failed to start action: %w", err)
 	}
@@ -323,7 +325,7 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 				State:       state,
 			}
 			var statusResult action_kit_api.StatusResult
-			res, err := e.Client.R().SetBody(statusBody).SetResult(&statusResult).Execute(string(action.Status.Method), action.Status.Path)
+			res, err := e.Client.R().SetBody(statusBody).SetResult(&statusResult).Execute(cases.Upper(language.English).String(string(action.Status.Method)), action.Status.Path)
 			if err != nil {
 				return state, fmt.Errorf("failed to get action status: %w", err)
 			}
@@ -352,7 +354,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 		State:       state,
 	}
 	var stopResult action_kit_api.StopResult
-	res, err := e.Client.R().SetBody(stopBody).SetResult(&stopResult).Execute(string(action.Stop.Method), action.Stop.Path)
+	res, err := e.Client.R().SetBody(stopBody).SetResult(&stopResult).Execute(cases.Upper(language.English).String(string(action.Stop.Method)), action.Stop.Path)
 	if err != nil {
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
