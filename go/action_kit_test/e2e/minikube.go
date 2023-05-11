@@ -53,6 +53,7 @@ type Minikube struct {
 
 	tunnelOnce   sync.Once
 	cancelTunnel context.CancelFunc
+	tunnelErr    error
 }
 
 func newMinikube(runtime Runtime, driver string) *Minikube {
@@ -86,6 +87,8 @@ func (m *Minikube) start() error {
 	if err := m.command(args...).Run(); err != nil {
 		return err
 	}
+
+	_ = m.setupTunnel()
 
 	return nil
 }
@@ -332,7 +335,7 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 	case err = <-chErr:
 		cancel()
 		if err == nil {
-			url, err := m.GetServicExternalIp(service)
+			url, err := m.GetServiceClusterIpUrl(service)
 			return url, func() {}, err
 		}
 		return "", nil, fmt.Errorf("failed to tunnel service: %w", err)
@@ -493,7 +496,7 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 	}
 }
 
-func (m *Minikube) GetServicExternalIp(service metav1.Object) (string, error) {
+func (m *Minikube) GetServiceClusterIpUrl(service metav1.Object) (string, error) {
 	err := m.setupTunnel()
 	if err != nil {
 		return "", err
@@ -504,8 +507,8 @@ func (m *Minikube) GetServicExternalIp(service metav1.Object) (string, error) {
 		return "", err
 	}
 
-	if len(svc.Spec.ExternalIPs) == 0 {
-		return "", fmt.Errorf("service %s/%s has no ExternalIp", service.GetNamespace(), service.GetName())
+	if svc.Spec.ClusterIP == "" {
+		return "", fmt.Errorf("service %s/%s has no ClusterIP", service.GetNamespace(), service.GetName())
 	}
 
 	if len(svc.Spec.Ports) == 0 {
@@ -522,14 +525,14 @@ func (m *Minikube) GetServicExternalIp(service metav1.Object) (string, error) {
 
 	for _, port := range svc.Spec.Ports {
 		if port.Name == "https" {
-			return fmt.Sprintf("https://%s:%d", svc.Spec.ExternalIPs[0], port.Port), nil
+			return fmt.Sprintf("https://%s:%d", svc.Spec.ClusterIP, port.Port), nil
 		}
 		if port.Name == "http" {
-			return fmt.Sprintf("http://%s:%d", svc.Spec.ExternalIPs[0], port.Port), nil
+			return fmt.Sprintf("http://%s:%d", svc.Spec.ClusterIP, port.Port), nil
 		}
 	}
 
-	return fmt.Sprintf("http://%s:%d", svc.Spec.ExternalIPs[0], svc.Spec.Ports[0].Port), nil
+	return fmt.Sprintf("http://%s:%d", svc.Spec.ClusterIP, svc.Spec.Ports[0].Port), nil
 }
 
 func (m *Minikube) setupTunnel() (err error) {
@@ -537,8 +540,8 @@ func (m *Minikube) setupTunnel() (err error) {
 		m.tunnelOnce.Do(func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			m.cancelTunnel = cancel
-			err = m.commandContext(ctx, "tunnel").Start()
+			m.tunnelErr = m.commandContext(ctx, "tunnel").Start()
 		})
 	}
-	return nil
+	return m.tunnelErr
 }
