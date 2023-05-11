@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/rs/zerolog v1.29.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.5.1
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.0
-	github.com/steadybit/extension-kit v1.7.9
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.6.0
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.2
+	github.com/steadybit/extension-kit v1.7.15
 )
 
 require (
