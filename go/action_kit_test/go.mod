@@ -11,6 +11,7 @@ require (
 	github.com/steadybit/extension-kit v1.7.15
 	github.com/stretchr/testify v1.8.2
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
+	golang.org/x/text v0.9.0
 	k8s.io/api v0.27.1
 	k8s.io/apimachinery v0.27.1
 	k8s.io/client-go v0.27.1
@@ -44,7 +45,6 @@ require (
 	golang.org/x/oauth2 v0.4.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
