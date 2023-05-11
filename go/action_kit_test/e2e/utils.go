@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/extension-kit/extutil"
@@ -188,23 +189,37 @@ func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 	return false
 }
 
-func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, log string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: extutil.Ptr(int64(180))}).Stream(ctx)
-	if err != nil {
-		assert.Fail(t, "Failed to read logs from pod")
-	}
-	defer func() { _ = podLogs.Close() }()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		assert.Fail(t, "Failed to read logs from pod (copy)")
-	}
-	podLogString := buf.String()
-	if !strings.Contains(podLogString, log) {
-		assert.Fail(t, fmt.Sprintf("Failed to find log '%s' in log of size %d", log, len(podLogString)))
+	var seconds *int64
+	seconds = extutil.Ptr(int64(180))
+	for {
+		select {
+		case <-ctx.Done():
+			assert.Fail(t, fmt.Sprintf("Failed to find log '%s'", expectedLog))
+		case <-time.After(1000 * time.Millisecond):
+			func() {
+				logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer logCancel()
+				podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: seconds}).Stream(logCtx)
+				if err != nil {
+					assert.Fail(t, "Failed to read logs from pod", err)
+				}
+				defer func() { _ = podLogs.Close() }()
+				buf := new(bytes.Buffer)
+				_, err = io.Copy(buf, podLogs)
+				if err != nil {
+					assert.Fail(t, "Failed to read logs from pod (copy)")
+				}
+				podLogString := buf.String()
+				log.Info().Msgf("Try to find log for '%s' in %d bytes", expectedLog, len(podLogString))
+				if strings.Contains(podLogString, expectedLog) {
+					log.Info().Msg("Found log!")
+					return
+				}
+			}()
+		}
 	}
 }
