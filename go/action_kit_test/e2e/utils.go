@@ -193,35 +193,42 @@ func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var seconds *int64
-	seconds = extutil.Ptr(int64(180))
+	var sinceSeconds *int64
+	sinceSeconds = extutil.Ptr(int64(180))
 	for {
 		select {
 		case <-ctx.Done():
 			assert.Fail(t, fmt.Sprintf("Failed to find log '%s'", expectedLog))
 		case <-time.After(1000 * time.Millisecond):
-			func() {
-				logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer logCancel()
-				podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: seconds}).Stream(logCtx)
-				//after first try only look for last 5 seconds
-				seconds = extutil.Ptr(int64(5))
-				if err != nil {
-					assert.Fail(t, "Failed to read logs from pod", err)
-				}
-				defer func() { _ = podLogs.Close() }()
-				buf := new(bytes.Buffer)
-				_, err = io.Copy(buf, podLogs)
-				if err != nil {
-					assert.Fail(t, "Failed to read logs from pod (copy)")
-				}
-				podLogString := buf.String()
-				log.Info().Msgf("Try to find log for '%s' in %d bytes", expectedLog, len(podLogString))
-				if strings.Contains(podLogString, expectedLog) {
-					log.Info().Msg("Found log!")
-					return
-				}
-			}()
+			found := findLog(m, pod, expectedLog, sinceSeconds)
+			if found {
+				return
+			}
+			//after first try only look for last 5 seconds
+			sinceSeconds = extutil.Ptr(int64(5))
 		}
 	}
+}
+
+func findLog(m *Minikube, pod metav1.Object, expectedLog string, seconds *int64) bool {
+	logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer logCancel()
+	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: seconds}).Stream(logCtx)
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read logs from pod")
+	}
+	defer func() { _ = podLogs.Close() }()
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read logs from pod (copy)")
+	}
+	podLogString := buf.String()
+	log.Info().Msgf("Try to find log for '%s' in %d bytes", expectedLog, len(podLogString))
+	if strings.Contains(podLogString, expectedLog) {
+		log.Info().Msg("Found log!")
+		return true
+	}
+	return false
 }
