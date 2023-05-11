@@ -61,6 +61,7 @@ func (n *Nginx) Deploy(podName string) error {
 			Labels: map[string]string{"app": podName},
 		},
 		Spec: &acorev1.ServiceSpecApplyConfiguration{
+			Type:     extutil.Ptr(corev1.ServiceTypeLoadBalancer),
 			Selector: n.Pod.GetLabels(),
 			Ports: []acorev1.ServicePortApplyConfiguration{
 				{

@@ -26,9 +26,11 @@ func (h *HelmExtensionFactory) CreateImage() error {
 	cmd.Stdout = &prefixWriter{prefix: "⚒️", w: os.Stdout}
 	cmd.Stderr = &prefixWriter{prefix: "⚒️", w: os.Stdout}
 
+	start := time.Now()
 	if err := cmd.Run(); err != nil {
 		return err
 	}
+	log.Info().TimeDiff("duration", time.Now(), start).Msg("extension image created")
 	return nil
 }
 
@@ -47,9 +49,11 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		podLabelSelector = h.PodLabelSelector
 	}
 
+	start := time.Now()
 	if err := minikube.LoadImage(imageName); err != nil {
 		return nil, err
 	}
+	log.Info().TimeDiff("duration", time.Now(), start).Msg("extension image loaded")
 
 	args := []string{
 		"install",
@@ -65,9 +69,9 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	}
 	args = append(args, h.Name, chartPath)
 
+	start = time.Now()
 	ctx := context.Background()
 	out, err := exec.CommandContext(ctx, "helm", args...).CombinedOutput()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to install helm chart: %s: %s", err, out)
 	}
@@ -121,6 +125,6 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
-	log.Info().Msgf("extension is available at %s", address)
+	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %s", address)
 	return &Extension{Client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
 }
