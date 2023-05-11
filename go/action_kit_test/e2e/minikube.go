@@ -194,7 +194,6 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
-		log.Info().Msg("e")
 		wg.Done()
 	}()
 
