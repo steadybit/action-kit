@@ -204,6 +204,8 @@ func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog
 				logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer logCancel()
 				podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: seconds}).Stream(logCtx)
+				//after first try only look for last 5 seconds
+				seconds = extutil.Ptr(int64(5))
 				if err != nil {
 					assert.Fail(t, "Failed to read logs from pod", err)
 				}
