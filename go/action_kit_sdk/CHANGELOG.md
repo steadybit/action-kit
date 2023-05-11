@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+ 
+- Fix Status-Endpoint registration and check for Status-Endpoint if TimeControl "Internal" is used
+
 ## 1.1.1
 
 - Handle `file` parameters: Download files from the platform, store them in a temporary directory and pass the path to the action in the PrepareActionRequest.

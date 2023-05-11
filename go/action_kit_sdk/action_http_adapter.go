@@ -231,9 +231,8 @@ func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *ActionHttpAdapter[T]) HasStatus() bool {
-	// If the action has a stop,  we augment a status endpoint. It is used to report stops by extension.
-	_, ok := a.action.(ActionWithStop[T])
-	return ok || a.HasStop()
+	_, ok := a.action.(ActionWithStatus[T])
+	return ok
 }
 
 func (a *ActionHttpAdapter[T]) HandleStatus(w http.ResponseWriter, r *http.Request, body []byte) {

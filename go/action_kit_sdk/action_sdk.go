@@ -171,7 +171,8 @@ func RegisterAction[T any](a Action[T]) {
 	exthttp.RegisterHttpHandler(adapter.rootPath, adapter.HandleGetDescription)
 	exthttp.RegisterHttpHandler(adapter.description.Prepare.Path, adapter.HandlePrepare)
 	exthttp.RegisterHttpHandler(adapter.description.Start.Path, adapter.HandleStart)
-	if adapter.HasStatus() {
+	if adapter.HasStatus() || adapter.HasStop() {
+		// If the action has a stop,  we augment a status endpoint. It is used to report stops by extension.
 		exthttp.RegisterHttpHandler(adapter.description.Status.Path, adapter.HandleStatus)
 	}
 	if adapter.HasStop() {
