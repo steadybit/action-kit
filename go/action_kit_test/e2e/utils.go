@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
+	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -191,18 +192,19 @@ func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, log string)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{}).Stream(ctx)
+	podLogs, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{SinceSeconds: extutil.Ptr(int64(180))}).Stream(ctx)
 	if err != nil {
 		assert.Fail(t, "Failed to read logs from pod")
 	}
-	defer podLogs.Close()
+	defer func() { _ = podLogs.Close() }()
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
 		assert.Fail(t, "Failed to read logs from pod (copy)")
 	}
-	if !strings.Contains(buf.String(), log) {
-		assert.Fail(t, "Failed to find log line: "+log)
+	podLogString := buf.String()
+	if !strings.Contains(podLogString, log) {
+		assert.Fail(t, fmt.Sprintf("Failed to find log '%s' in log of size %d", log, len(podLogString)))
 	}
 }
