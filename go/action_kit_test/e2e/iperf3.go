@@ -134,6 +134,8 @@ func (n *Iperf) MeasurePackageLoss() (float64, error) {
 }
 
 func (n *Iperf) AssertPackageLoss(t *testing.T, expected float64, maxDelta float64) {
+	t.Helper()
+
 	min := expected - maxDelta
 	max := expected + maxDelta
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
@@ -169,6 +171,8 @@ func (n *Iperf) MeasureBandwidth() (float64, error) {
 }
 
 func (n *Iperf) AssertBandwidth(t *testing.T, expected float64, maxDelta float64) {
+	t.Helper()
+
 	min := expected - maxDelta
 	max := expected + maxDelta
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {

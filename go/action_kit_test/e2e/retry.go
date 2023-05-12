@@ -19,6 +19,8 @@ type R struct {
 }
 
 func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) bool {
+	t.Helper()
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		r := &R{Attempt: attempt, log: &bytes.Buffer{}}
 

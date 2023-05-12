@@ -103,6 +103,8 @@ func (n *Nginx) IsReachable() error {
 }
 
 func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
+	t.Helper()
+
 	client, err := n.Minikube.NewRestClientForService(n.Service)
 	require.NoError(t, err)
 	defer client.Close()
@@ -128,6 +130,8 @@ func (n *Nginx) CanReach(url string) error {
 }
 
 func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
+	t.Helper()
+
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if expected && err != nil {
@@ -141,6 +145,8 @@ func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
 }
 
 func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) {
+	t.Helper()
+
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if err == nil {

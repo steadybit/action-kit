@@ -127,6 +127,8 @@ func (n *Netperf) MeasureLatency() (time.Duration, error) {
 }
 
 func (n *Netperf) AssertLatency(t *testing.T, expected time.Duration, maxDelta time.Duration) {
+	t.Helper()
+
 	min := expected - maxDelta
 	max := expected + maxDelta
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
