@@ -114,7 +114,7 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 			_, _ = fmt.Fprintf(r.log, "expected nginx to be reachble, but was not: %s", err)
 		} else if !expected && err == nil {
 			r.failed = true
-			_, _ = fmt.Fprintf(r.log, "expecte nginx not to be reachble, but was")
+			_, _ = fmt.Fprintf(r.log, "expected nginx not to be reachble, but was")
 		}
 	})
 }
