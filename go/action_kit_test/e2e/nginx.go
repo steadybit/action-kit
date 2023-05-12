@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	"strings"
+	"testing"
+	"time"
 )
 
 type Nginx struct {
@@ -98,12 +102,55 @@ func (n *Nginx) IsReachable() error {
 	return nil
 }
 
+func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
+	client, err := n.Minikube.NewRestClientForService(n.Service)
+	require.NoError(t, err)
+	defer client.Close()
+
+	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+		_, err = client.R().Get("/")
+		if expected && err != nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expected nginx to be reachble, but was not: %s", err)
+		} else if !expected && err == nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expecte nginx not to be reachble, but was")
+		}
+	})
+}
+
 func (n *Nginx) CanReach(url string) error {
 	out, err := n.Minikube.Exec(n.Pod, "nginx", "curl", "--max-time", "2", url)
 	if err != nil {
 		return fmt.Errorf("%s: %s", err, out)
 	}
 	return nil
+}
+
+func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
+	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+		err := n.CanReach(url)
+		if expected && err != nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expected '%s' to be reachble from nginx, but was not: %s", url, err)
+		} else if !expected && err == nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expecte '%s' not to be reachble from nginx, but was", url)
+		}
+	})
+}
+
+func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) {
+	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+		err := n.CanReach(url)
+		if err == nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, but was", url)
+		} else if !strings.Contains(err.Error(), errContains) {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, with error containing '%s', but was '%s'", url, errContains, err)
+		}
+	})
 }
 
 func (n *Nginx) ContainerStatus() (*corev1.ContainerStatus, error) {

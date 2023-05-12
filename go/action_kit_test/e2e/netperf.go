@@ -14,6 +14,7 @@ import (
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -123,6 +124,22 @@ func (n *Netperf) MeasureLatency() (time.Duration, error) {
 	}
 	duration := time.Duration(latency) * time.Microsecond
 	return duration, nil
+}
+
+func (n *Netperf) AssertLatency(t *testing.T, expected time.Duration, maxDelta time.Duration) {
+	min := expected - maxDelta
+	max := expected + maxDelta
+	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+		latency, err := n.MeasureLatency()
+		if err != nil {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "failed to measure package latency: %s", err)
+		}
+		if latency < min || latency > max {
+			r.failed = true
+			_, _ = fmt.Fprintf(r.log, "package latency %s is not in expected range [%s, %s]", latency, min, max)
+		}
+	})
 }
 
 func (n *Netperf) run(test string, args ...string) (string, error) {

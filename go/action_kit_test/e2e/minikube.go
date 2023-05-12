@@ -44,8 +44,8 @@ type Minikube struct {
 	Runtime Runtime
 	Driver  string
 	Profile string
-	stdout io.Writer
-	stderr io.Writer
+	stdout  io.Writer
+	stderr  io.Writer
 
 	clientOnce   sync.Once
 	Client       *kubernetes.Clientset
@@ -276,7 +276,7 @@ func (m *Minikube) NewRestClientForService(service metav1.Object) (*ServiceClien
 
 	client := resty.New()
 	client.SetBaseURL(url)
-	client.SetTimeout(5 * time.Second)
+	client.SetTimeout(3 * time.Second)
 
 	return &ServiceClient{
 		Client: *client,
