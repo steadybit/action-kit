@@ -44,8 +44,8 @@ type Minikube struct {
 	Runtime Runtime
 	Driver  string
 	Profile string
-	Stdout  io.Writer
-	Stderr  io.Writer
+	stdout io.Writer
+	stderr io.Writer
 
 	clientOnce   sync.Once
 	Client       *kubernetes.Clientset
@@ -61,8 +61,8 @@ func newMinikube(runtime Runtime, driver string) *Minikube {
 		Runtime: runtime,
 		Driver:  driver,
 		Profile: profile,
-		Stdout:  &stdout,
-		Stderr:  &stderr,
+		stdout:  &stdout,
+		stderr:  &stderr,
 	}
 }
 
@@ -155,8 +155,8 @@ func (m *Minikube) command(arg ...string) *exec.Cmd {
 
 func (m *Minikube) commandContext(ctx context.Context, arg ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "minikube", append([]string{"-p", m.Profile}, arg...)...)
-	cmd.Stdout = m.Stdout
-	cmd.Stderr = m.Stderr
+	cmd.Stdout = m.stdout
+	cmd.Stderr = m.stderr
 	return cmd
 }
 
@@ -302,7 +302,7 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 				return
 			}
 			line := scanner.Text()
-			_, _ = m.Stdout.Write([]byte(line))
+			_, _ = m.stdout.Write([]byte(line))
 			if strings.HasPrefix(line, "http") {
 				chUrl <- line
 				return
@@ -433,7 +433,7 @@ func (m *Minikube) PortForward(pod metav1.Object, remotePort uint16, stopCh <-ch
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, req.URL())
 
 	readyCh := make(chan struct{})
-	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf("0:%d", remotePort)}, stopCh, readyCh, m.Stdout, m.Stderr)
+	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf("0:%d", remotePort)}, stopCh, readyCh, m.stdout, m.stderr)
 	if err != nil {
 		return 0, err
 	}
