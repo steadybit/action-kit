@@ -24,8 +24,8 @@ type Nginx struct {
 	Service  metav1.Object
 }
 
-func (n *Nginx) Deploy(podName string) error {
-	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
+func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfiguration)) error {
+	cfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -49,7 +49,13 @@ func (n *Nginx) Deploy(podName string) error {
 			},
 		},
 		Status: nil,
-	})
+	}
+
+	for _, fn := range opts {
+		fn(cfg)
+	}
+
+	pod, err := n.Minikube.CreatePod(cfg)
 	if err != nil {
 		return err
 	}

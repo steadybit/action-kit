@@ -25,9 +25,9 @@ type Netperf struct {
 	ServerIp  string
 }
 
-func (n *Netperf) Deploy(name string) error {
+func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfiguration, client *acorev1.PodApplyConfiguration)) error {
 	serverPodName := fmt.Sprintf("%s-server", name)
-	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -62,20 +62,10 @@ func (n *Netperf) Deploy(name string) error {
 			},
 		},
 		Status: nil,
-	})
-	if err != nil {
-		return err
 	}
-
-	describe, err := n.Minikube.GetPod(pod)
-	if err != nil {
-		return err
-	}
-	n.ServerPod = pod
-	n.ServerIp = describe.Status.PodIP
 
 	clientPodName := fmt.Sprintf("%s-client", name)
-	pod, err = n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	clientCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -95,11 +85,29 @@ func (n *Netperf) Deploy(name string) error {
 			},
 		},
 		Status: nil,
-	})
+	}
+
+	for _, fn := range opts {
+		fn(serverCfg, clientCfg)
+	}
+
+	serverPod, err := n.Minikube.CreatePod(serverCfg)
 	if err != nil {
 		return err
 	}
-	n.ClientPod = pod
+
+	describe, err := n.Minikube.GetPod(serverPod)
+	if err != nil {
+		return err
+	}
+	n.ServerPod = serverPod
+	n.ServerIp = describe.Status.PodIP
+
+	clientPod, err := n.Minikube.CreatePod(clientCfg)
+	if err != nil {
+		return err
+	}
+	n.ClientPod = clientPod
 	return nil
 }
 
@@ -126,11 +134,10 @@ func (n *Netperf) MeasureLatency() (time.Duration, error) {
 	return duration, nil
 }
 
-func (n *Netperf) AssertLatency(t *testing.T, expected time.Duration, maxDelta time.Duration) {
+func (n *Netperf) AssertLatency(t *testing.T, min time.Duration, max time.Duration) {
 	t.Helper()
 
-	min := expected - maxDelta
-	max := expected + maxDelta
+	measurements := make([]time.Duration, 0, 5)
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
 		latency, err := n.MeasureLatency()
 		if err != nil {
@@ -139,7 +146,8 @@ func (n *Netperf) AssertLatency(t *testing.T, expected time.Duration, maxDelta t
 		}
 		if latency < min || latency > max {
 			r.failed = true
-			_, _ = fmt.Fprintf(r.log, "package latency %s is not in expected range [%s, %s]", latency, min, max)
+			measurements = append(measurements, latency)
+			_, _ = fmt.Fprintf(r.log, "package latency %v is not in expected range [%s, %s]", measurements, min, max)
 		}
 	})
 }

@@ -25,9 +25,9 @@ type Iperf struct {
 	ServerIp  string
 }
 
-func (n *Iperf) Deploy(name string) error {
+func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfiguration, client *acorev1.PodApplyConfiguration)) error {
 	serverPodName := fmt.Sprintf("%s-server", name)
-	pod, err := n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -62,20 +62,10 @@ func (n *Iperf) Deploy(name string) error {
 			},
 		},
 		Status: nil,
-	})
-	if err != nil {
-		return err
 	}
-
-	describe, err := n.Minikube.GetPod(pod)
-	if err != nil {
-		return err
-	}
-	n.ServerIp = describe.Status.PodIP
-	n.ServerPod = pod
 
 	clientPodName := fmt.Sprintf("%s-client", name)
-	pod, err = n.Minikube.CreatePod(&acorev1.PodApplyConfiguration{
+	clientCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
 			Kind:       extutil.Ptr("Pod"),
 			APIVersion: extutil.Ptr("v1"),
@@ -95,11 +85,29 @@ func (n *Iperf) Deploy(name string) error {
 			},
 		},
 		Status: nil,
-	})
+	}
+
+	for _, fn := range opts {
+		fn(serverCfg, clientCfg)
+	}
+
+	serverPod, err := n.Minikube.CreatePod(serverCfg)
 	if err != nil {
 		return err
 	}
-	n.ClientPod = pod
+
+	describe, err := n.Minikube.GetPod(serverPod)
+	if err != nil {
+		return err
+	}
+	n.ServerIp = describe.Status.PodIP
+	n.ServerPod = serverPod
+
+	clientPod, err := n.Minikube.CreatePod(clientCfg)
+	if err != nil {
+		return err
+	}
+	n.ClientPod = clientPod
 	return nil
 }
 
@@ -133,11 +141,10 @@ func (n *Iperf) MeasurePackageLoss() (float64, error) {
 	return lost.(float64), nil
 }
 
-func (n *Iperf) AssertPackageLoss(t *testing.T, expected float64, maxDelta float64) {
+func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 	t.Helper()
 
-	min := expected - maxDelta
-	max := expected + maxDelta
+	measurements := make([]float64, 0, 5)
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
 		loss, err := n.MeasurePackageLoss()
 		if err != nil {
@@ -146,7 +153,8 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, expected float64, maxDelta float
 		}
 		if loss < min || loss > max {
 			r.failed = true
-			_, _ = fmt.Fprintf(r.log, "package loss %f is not in expected range [%f, %f]", loss, min, max)
+			measurements = append(measurements, loss)
+			_, _ = fmt.Fprintf(r.log, "package loss %v is not in expected range [%f, %f]", measurements, min, max)
 		}
 	})
 }
@@ -170,20 +178,20 @@ func (n *Iperf) MeasureBandwidth() (float64, error) {
 	return bps.(float64) / 1_000_000, nil
 }
 
-func (n *Iperf) AssertBandwidth(t *testing.T, expected float64, maxDelta float64) {
+func (n *Iperf) AssertBandwidth(t *testing.T, min float64, max float64) {
 	t.Helper()
 
-	min := expected - maxDelta
-	max := expected + maxDelta
+	measurements := make([]float64, 0, 5)
 	Retry(t, 5, 500*time.Millisecond, func(r *R) {
-		loss, err := n.MeasureBandwidth()
+		bandwidth, err := n.MeasureBandwidth()
 		if err != nil {
 			r.failed = true
-			_, _ = fmt.Fprintf(r.log, "failed to measure bandwidth loss: %s", err)
+			_, _ = fmt.Fprintf(r.log, "failed to measure bandwidth bandwidth: %s", err)
 		}
-		if loss < min || loss > max {
+		if bandwidth < min || bandwidth > max {
 			r.failed = true
-			_, _ = fmt.Fprintf(r.log, "bandwidth %f is not in expected range [%f, %f]", loss, min, max)
+			measurements = append(measurements, bandwidth)
+			_, _ = fmt.Fprintf(r.log, "bandwidth %f is not in expected range [%f, %f]", measurements, min, max)
 		}
 	})
 }
