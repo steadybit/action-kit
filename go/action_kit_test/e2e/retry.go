@@ -14,7 +14,7 @@ type R struct {
 	// The number of current attempt.
 	Attempt int
 
-	failed bool
+	Failed bool
 	log    *bytes.Buffer
 }
 
@@ -26,7 +26,7 @@ func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) boo
 
 		f(r)
 
-		if !r.failed {
+		if !r.Failed {
 			return true
 		}
 

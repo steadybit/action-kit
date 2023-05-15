@@ -118,10 +118,10 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		_, err = client.R().Get("/")
 		if expected && err != nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expected nginx to be reachble, but was not: %s", err)
 		} else if !expected && err == nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expected nginx not to be reachble, but was")
 		}
 	})
@@ -141,10 +141,10 @@ func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if expected && err != nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expected '%s' to be reachble from nginx, but was not: %s", url, err)
 		} else if !expected && err == nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expecte '%s' not to be reachble from nginx, but was", url)
 		}
 	})
@@ -156,10 +156,10 @@ func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) 
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if err == nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, but was", url)
 		} else if !strings.Contains(err.Error(), errContains) {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, with error containing '%s', but was '%s'", url, errContains, err)
 		}
 	})

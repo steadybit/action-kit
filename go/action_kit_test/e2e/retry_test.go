@@ -32,7 +32,7 @@ func TestRetry(t *testing.T) {
 				maxAttempts: 3,
 				sleep:       1 * time.Millisecond,
 				f: func(r *R) {
-					r.failed = false
+					r.Failed = false
 				},
 			},
 			want: true,
@@ -44,9 +44,9 @@ func TestRetry(t *testing.T) {
 				sleep:       1 * time.Millisecond,
 				f: func(r *R) {
 					count++
-					r.failed = true
+					r.Failed = true
 					if count == 2 {
-						r.failed = false
+						r.Failed = false
 					}
 				},
 			},

@@ -148,11 +148,11 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		loss, err := n.MeasurePackageLoss()
 		if err != nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "failed to measure package loss: %s", err)
 		}
 		if loss < min || loss > max {
-			r.failed = true
+			r.Failed = true
 			measurements = append(measurements, loss)
 			_, _ = fmt.Fprintf(r.log, "package loss %v is not in expected range [%f, %f]", measurements, min, max)
 		}
@@ -185,11 +185,11 @@ func (n *Iperf) AssertBandwidth(t *testing.T, min float64, max float64) {
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		bandwidth, err := n.MeasureBandwidth()
 		if err != nil {
-			r.failed = true
+			r.Failed = true
 			_, _ = fmt.Fprintf(r.log, "failed to measure bandwidth bandwidth: %s", err)
 		}
 		if bandwidth < min || bandwidth > max {
-			r.failed = true
+			r.Failed = true
 			measurements = append(measurements, bandwidth)
 			_, _ = fmt.Fprintf(r.log, "bandwidth %f is not in expected range [%f, %f]", measurements, min, max)
 		}
