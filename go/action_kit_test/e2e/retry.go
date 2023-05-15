@@ -15,14 +15,14 @@ type R struct {
 	Attempt int
 
 	Failed bool
-	log    *bytes.Buffer
+	Log    *bytes.Buffer
 }
 
 func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) bool {
 	t.Helper()
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		r := &R{Attempt: attempt, log: &bytes.Buffer{}}
+		r := &R{Attempt: attempt, Log: &bytes.Buffer{}}
 
 		f(r)
 
@@ -31,7 +31,7 @@ func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) boo
 		}
 
 		if attempt == maxAttempts {
-			t.Fatalf("failed after %d attempts: %s", attempt, r.log.String())
+			t.Fatalf("failed after %d attempts: %s", attempt, r.Log.String())
 		}
 
 		time.Sleep(sleep)

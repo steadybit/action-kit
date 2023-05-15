@@ -142,12 +142,12 @@ func (n *Netperf) AssertLatency(t *testing.T, min time.Duration, max time.Durati
 		latency, err := n.MeasureLatency()
 		if err != nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "failed to measure package latency: %s", err)
+			_, _ = fmt.Fprintf(r.Log, "failed to measure package latency: %s", err)
 		}
 		if latency < min || latency > max {
 			r.Failed = true
 			measurements = append(measurements, latency)
-			_, _ = fmt.Fprintf(r.log, "package latency %v is not in expected range [%s, %s]", measurements, min, max)
+			_, _ = fmt.Fprintf(r.Log, "package latency %v is not in expected range [%s, %s]", measurements, min, max)
 		}
 	})
 }

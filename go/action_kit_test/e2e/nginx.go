@@ -119,10 +119,10 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 		_, err = client.R().Get("/")
 		if expected && err != nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expected nginx to be reachble, but was not: %s", err)
+			_, _ = fmt.Fprintf(r.Log, "expected nginx to be reachble, but was not: %s", err)
 		} else if !expected && err == nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expected nginx not to be reachble, but was")
+			_, _ = fmt.Fprintf(r.Log, "expected nginx not to be reachble, but was")
 		}
 	})
 }
@@ -142,10 +142,10 @@ func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
 		err := n.CanReach(url)
 		if expected && err != nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expected '%s' to be reachble from nginx, but was not: %s", url, err)
+			_, _ = fmt.Fprintf(r.Log, "expected '%s' to be reachble from nginx, but was not: %s", url, err)
 		} else if !expected && err == nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expecte '%s' not to be reachble from nginx, but was", url)
+			_, _ = fmt.Fprintf(r.Log, "expecte '%s' not to be reachble from nginx, but was", url)
 		}
 	})
 }
@@ -157,10 +157,10 @@ func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) 
 		err := n.CanReach(url)
 		if err == nil {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, but was", url)
+			_, _ = fmt.Fprintf(r.Log, "expected '%s' not to be reachble from nginx, but was", url)
 		} else if !strings.Contains(err.Error(), errContains) {
 			r.Failed = true
-			_, _ = fmt.Fprintf(r.log, "expected '%s' not to be reachble from nginx, with error containing '%s', but was '%s'", url, errContains, err)
+			_, _ = fmt.Fprintf(r.Log, "expected '%s' not to be reachble from nginx, with error containing '%s', but was '%s'", url, errContains, err)
 		}
 	})
 }
