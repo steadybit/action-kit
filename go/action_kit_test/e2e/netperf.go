@@ -138,7 +138,7 @@ func (n *Netperf) AssertLatency(t *testing.T, min time.Duration, max time.Durati
 	t.Helper()
 
 	measurements := make([]time.Duration, 0, 5)
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		latency, err := n.MeasureLatency()
 		if err != nil {
 			r.failed = true

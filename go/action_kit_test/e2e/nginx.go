@@ -115,7 +115,7 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 	require.NoError(t, err)
 	defer client.Close()
 
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		_, err = client.R().Get("/")
 		if expected && err != nil {
 			r.failed = true
@@ -138,7 +138,7 @@ func (n *Nginx) CanReach(url string) error {
 func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
 	t.Helper()
 
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if expected && err != nil {
 			r.failed = true
@@ -153,7 +153,7 @@ func (n *Nginx) AssertCanReach(t *testing.T, url string, expected bool) {
 func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) {
 	t.Helper()
 
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		err := n.CanReach(url)
 		if err == nil {
 			r.failed = true

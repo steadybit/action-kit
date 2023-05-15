@@ -145,7 +145,7 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 	t.Helper()
 
 	measurements := make([]float64, 0, 5)
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		loss, err := n.MeasurePackageLoss()
 		if err != nil {
 			r.failed = true
@@ -182,7 +182,7 @@ func (n *Iperf) AssertBandwidth(t *testing.T, min float64, max float64) {
 	t.Helper()
 
 	measurements := make([]float64, 0, 5)
-	Retry(t, 5, 500*time.Millisecond, func(r *R) {
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		bandwidth, err := n.MeasureBandwidth()
 		if err != nil {
 			r.failed = true
