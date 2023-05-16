@@ -44,21 +44,22 @@ const (
 
 // Defines values for ActionParameterType.
 const (
-	Bitrate     ActionParameterType = "bitrate"
-	Boolean     ActionParameterType = "boolean"
-	Duration    ActionParameterType = "duration"
-	File        ActionParameterType = "file"
-	Header      ActionParameterType = "header"
-	Integer     ActionParameterType = "integer"
-	KeyValue    ActionParameterType = "key_value"
-	Password    ActionParameterType = "password"
-	Percentage  ActionParameterType = "percentage"
-	Separator   ActionParameterType = "separator"
-	String      ActionParameterType = "string"
-	String1     ActionParameterType = "string[]"
-	StringArray ActionParameterType = "string_array"
-	Textarea    ActionParameterType = "textarea"
-	Url         ActionParameterType = "url"
+	Bitrate         ActionParameterType = "bitrate"
+	Boolean         ActionParameterType = "boolean"
+	Duration        ActionParameterType = "duration"
+	File            ActionParameterType = "file"
+	Header          ActionParameterType = "header"
+	Integer         ActionParameterType = "integer"
+	KeyValue        ActionParameterType = "key_value"
+	Password        ActionParameterType = "password"
+	Percentage      ActionParameterType = "percentage"
+	Separator       ActionParameterType = "separator"
+	StressngWorkers ActionParameterType = "stressng-workers"
+	String          ActionParameterType = "string"
+	String1         ActionParameterType = "string[]"
+	StringArray     ActionParameterType = "string_array"
+	Textarea        ActionParameterType = "textarea"
+	Url             ActionParameterType = "url"
 )
 
 // Defines values for DescribingEndpointReferenceMethod.

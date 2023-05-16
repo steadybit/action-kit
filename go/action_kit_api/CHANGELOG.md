@@ -1,6 +1,10 @@
 # Changelog
 
-## 2.6.0
+## 2.6.1
+
+- add `stressng-worker` to parameter type
+
+- ## 2.6.0
 
 - change `restrictedUrls` to []RestrictedEndpoint
 

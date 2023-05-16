@@ -19,6 +19,7 @@ Supported parameter types:
   * [`separator`](#separator)
   * [`header`](#header)
   * [`bitrate`](#bitrate)
+  * [`stressng-workers`](#stressng-workers)
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
@@ -518,5 +519,44 @@ Defines a bitrate with value and unit E.g.:
 ```json
 {
   "activateOrder66": null
+}
+```
+
+
+## `stressng-workers`
+
+Defines how many workers should be used for stressng
+* 0: all cpu cores
+* >0: number of workers
+
+<img src="img/parameters/stressng-workers.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a stressng-workers parameter looks like. Depicting a textual label and a toggle component." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "workers",
+  "label": "Stress-ng Workters",
+  "type": "stressng-workers",
+  "defaultValue": "0"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+
+##### With a Value
+```json
+{
+  "worker": 0
+}
+```
+
+##### Without a Value
+
+```json
+{
+  "worker": null
 }
 ```
