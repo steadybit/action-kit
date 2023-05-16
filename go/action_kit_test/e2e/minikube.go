@@ -44,16 +44,12 @@ type Minikube struct {
 	Runtime Runtime
 	Driver  string
 	Profile string
-	Stdout  io.Writer
-	Stderr  io.Writer
+	stdout  io.Writer
+	stderr  io.Writer
 
 	clientOnce   sync.Once
 	Client       *kubernetes.Clientset
 	ClientConfig *rest.Config
-
-	tunnelOnce   sync.Once
-	cancelTunnel context.CancelFunc
-	tunnelErr    error
 }
 
 func newMinikube(runtime Runtime, driver string) *Minikube {
@@ -65,8 +61,8 @@ func newMinikube(runtime Runtime, driver string) *Minikube {
 		Runtime: runtime,
 		Driver:  driver,
 		Profile: profile,
-		Stdout:  &stdout,
-		Stderr:  &stderr,
+		stdout:  &stdout,
+		stderr:  &stderr,
 	}
 }
 
@@ -84,11 +80,11 @@ func (m *Minikube) start() error {
 		args = append(args, "--cni=bridge")
 	}
 
+	start := time.Now()
 	if err := m.command(args...).Run(); err != nil {
 		return err
 	}
-
-	_ = m.setupTunnel()
+	log.Info().TimeDiff("duration", time.Now(), start).Msg("minikube started")
 
 	return nil
 }
@@ -118,7 +114,7 @@ func (m *Minikube) GetRuntime() Runtime {
 	return m.Runtime
 }
 
-func (m *Minikube) waitForDefaultServiceaccount() error {
+func (m *Minikube) waitForDefaultServiceAccount() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -138,9 +134,6 @@ func (m *Minikube) delete() error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
 	log.Info().Msg("Deleting Minikube")
-	if m.cancelTunnel != nil {
-		m.cancelTunnel()
-	}
 	return m.command("delete").Run()
 }
 
@@ -162,8 +155,8 @@ func (m *Minikube) command(arg ...string) *exec.Cmd {
 
 func (m *Minikube) commandContext(ctx context.Context, arg ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "minikube", append([]string{"-p", m.Profile}, arg...)...)
-	cmd.Stdout = m.Stdout
-	cmd.Stderr = m.Stderr
+	cmd.Stdout = m.stdout
+	cmd.Stderr = m.stderr
 	return cmd
 }
 
@@ -217,8 +210,8 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 
 			//t.Parallel()
 
-			if err := minikube.waitForDefaultServiceaccount(); err != nil {
-				t.Fatal("Serviceaccount didn't show up", err)
+			if err := minikube.waitForDefaultServiceAccount(); err != nil {
+				t.Fatal("service account didn't show up", err)
 			}
 
 			wg.Wait()
@@ -309,7 +302,7 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 				return
 			}
 			line := scanner.Text()
-			_, _ = m.Stdout.Write([]byte(line))
+			_, _ = m.stdout.Write([]byte(line))
 			if strings.HasPrefix(line, "http") {
 				chUrl <- line
 				return
@@ -335,8 +328,7 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 	case err = <-chErr:
 		cancel()
 		if err == nil {
-			url, err := m.GetServiceClusterIpUrl(service)
-			return url, func() {}, err
+			return "", nil, errors.New("no tunnel url for service present")
 		}
 		return "", nil, fmt.Errorf("failed to tunnel service: %w", err)
 	}
@@ -441,7 +433,7 @@ func (m *Minikube) PortForward(pod metav1.Object, remotePort uint16, stopCh <-ch
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, req.URL())
 
 	readyCh := make(chan struct{})
-	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf("0:%d", remotePort)}, stopCh, readyCh, m.Stdout, m.Stderr)
+	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf("0:%d", remotePort)}, stopCh, readyCh, m.stdout, m.stderr)
 	if err != nil {
 		return 0, err
 	}
@@ -494,54 +486,4 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 	for scanner.Scan() {
 		fmt.Printf("📦%s\n", scanner.Text())
 	}
-}
-
-func (m *Minikube) GetServiceClusterIpUrl(service metav1.Object) (string, error) {
-	err := m.setupTunnel()
-	if err != nil {
-		return "", err
-	}
-
-	svc, err := m.GetClient().CoreV1().Services(service.GetNamespace()).Get(context.Background(), service.GetName(), metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	if svc.Spec.ClusterIP == "" {
-		return "", fmt.Errorf("service %s/%s has no ClusterIP", service.GetNamespace(), service.GetName())
-	}
-
-	if len(svc.Spec.Ports) == 0 {
-		return "", fmt.Errorf("service %s/%s has no ports defined", service.GetNamespace(), service.GetName())
-	}
-
-	cmd := m.command("ip")
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("could not get minikube ip: %s: %s", err, out)
-	}
-
-	for _, port := range svc.Spec.Ports {
-		if port.Name == "https" {
-			return fmt.Sprintf("https://%s:%d", svc.Spec.ClusterIP, port.Port), nil
-		}
-		if port.Name == "http" {
-			return fmt.Sprintf("http://%s:%d", svc.Spec.ClusterIP, port.Port), nil
-		}
-	}
-
-	return fmt.Sprintf("http://%s:%d", svc.Spec.ClusterIP, svc.Spec.Ports[0].Port), nil
-}
-
-func (m *Minikube) setupTunnel() (err error) {
-	if m.cancelTunnel == nil {
-		m.tunnelOnce.Do(func() {
-			ctx, cancel := context.WithCancel(context.Background())
-			m.cancelTunnel = cancel
-			m.tunnelErr = m.commandContext(ctx, "tunnel").Start()
-		})
-	}
-	return m.tunnelErr
 }
