@@ -644,6 +644,10 @@ components:
         The execution context contains information about the current execution
         of the action.
       properties:
+        agentPid:
+          type: integer
+          description: >-
+            The process ID of the agent that is executing the action.
         agentAwsAccountId:
           type: string
           description: >-
