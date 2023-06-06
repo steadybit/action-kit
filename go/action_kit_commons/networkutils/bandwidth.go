@@ -5,8 +5,6 @@ package networkutils
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"io"
 	"strings"
 )
 
@@ -16,11 +14,11 @@ type LimitBandwidthOpts struct {
 	Interfaces []string
 }
 
-func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) (io.Reader, error) {
+func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *LimitBandwidthOpts) TcCommands(mode Mode) (io.Reader, error) {
+func (o *LimitBandwidthOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, ifc := range o.Interfaces {
@@ -33,9 +31,8 @@ func (o *LimitBandwidthOpts) TcCommands(mode Mode) (io.Reader, error) {
 		}
 		cmds = append(cmds, filterCmds...)
 	}
-
-	log.Debug().Strs("commands", cmds).Msg("generated tc commands")
-	return toReader(cmds, mode)
+	reorderForMode(cmds, mode)
+	return cmds, nil
 }
 
 func (o *LimitBandwidthOpts) String() string {

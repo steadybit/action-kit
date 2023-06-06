@@ -6,7 +6,6 @@ package networkutils
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -30,8 +29,8 @@ var (
 )
 
 type Opts interface {
-	IpCommands(family Family, mode Mode) (io.Reader, error)
-	TcCommands(mode Mode) (io.Reader, error)
+	IpCommands(family Family, mode Mode) ([]string, error)
+	TcCommands(mode Mode) ([]string, error)
 	String() string
 }
 
