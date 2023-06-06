@@ -5,8 +5,6 @@ package networkutils
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"io"
 	"strings"
 )
 
@@ -14,7 +12,7 @@ type BlackholeOpts struct {
 	Filter
 }
 
-func (o *BlackholeOpts) IpCommands(family Family, mode Mode) (io.Reader, error) {
+func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, nwp := range o.Include {
@@ -44,12 +42,11 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) (io.Reader, error) 
 		cmds = append(cmds, fmt.Sprintf("rule %s to %s dport %s table main", mode, net.String(), portRange.String()))
 		cmds = append(cmds, fmt.Sprintf("rule %s from %s sport %s table main", mode, net.String(), portRange.String()))
 	}
-
-	log.Debug().Strs("commands", cmds).Str("family", string(family)).Msg("generated ip commands")
-	return toReader(cmds, mode)
+	reorderForMode(cmds, mode)
+	return cmds, nil
 }
 
-func (o *BlackholeOpts) TcCommands(_ Mode) (io.Reader, error) {
+func (o *BlackholeOpts) TcCommands(_ Mode) ([]string, error) {
 	return nil, nil
 }
 

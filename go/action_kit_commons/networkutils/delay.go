@@ -5,8 +5,6 @@ package networkutils
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"io"
 	"strings"
 	"time"
 )
@@ -18,11 +16,11 @@ type DelayOpts struct {
 	Interfaces []string
 }
 
-func (o *DelayOpts) IpCommands(_ Family, _ Mode) (io.Reader, error) {
+func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *DelayOpts) TcCommands(mode Mode) (io.Reader, error) {
+func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, ifc := range o.Interfaces {
@@ -35,9 +33,8 @@ func (o *DelayOpts) TcCommands(mode Mode) (io.Reader, error) {
 		}
 		cmds = append(cmds, filterCmds...)
 	}
-
-	log.Debug().Strs("commands", cmds).Msg("generated tc commands")
-	return toReader(cmds, mode)
+	reorderForMode(cmds, mode)
+	return cmds, nil
 }
 
 func (o *DelayOpts) String() string {
