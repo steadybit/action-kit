@@ -190,7 +190,11 @@ func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 }
 
 func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	AssertLogContainsWithTimeout(t, m, pod, expectedLog, 30*time.Second)
+}
+
+func AssertLogContainsWithTimeout(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var sinceSeconds *int64
@@ -199,7 +203,8 @@ func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog
 		select {
 		case <-ctx.Done():
 			assert.Fail(t, fmt.Sprintf("Failed to find log '%s'", expectedLog))
-		case <-time.After(1000 * time.Millisecond):
+			return
+		case <-time.After(2000 * time.Millisecond):
 			found := findLog(m, pod, expectedLog, sinceSeconds)
 			if found {
 				return
