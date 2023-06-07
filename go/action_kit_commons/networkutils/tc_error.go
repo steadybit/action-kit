@@ -23,6 +23,7 @@ var (
 		strings.ToLower("Error: Failed to find qdisc with specified classid."),
 		strings.ToLower("Error: Parent Qdisc doesn't exists."),
 		strings.ToLower("Error: Invalid handle."),
+		strings.ToLower("Cannot find device"),
 	}
 )
 
