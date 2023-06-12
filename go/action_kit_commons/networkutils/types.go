@@ -4,7 +4,6 @@
 package networkutils
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -58,24 +57,24 @@ func (p *PortRange) String() string {
 func ParsePortRange(raw string) (PortRange, error) {
 	parts := strings.Split(raw, "-")
 	if len(parts) > 2 {
-		return PortRange{}, errors.New("invalid port range")
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 	}
 
 	from, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return PortRange{}, err
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 	}
 
 	to := from
 	if len(parts) == 2 && parts[1] != "" {
 		to, err = strconv.Atoi(parts[1])
 		if err != nil {
-			return PortRange{}, err
+			return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 		}
 	}
 
 	if from < 1 || to > 65534 || from > to {
-		return PortRange{}, errors.New("invalid port range")
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": not in range 1-65534", raw)
 	}
 
 	return PortRange{From: uint16(from), To: uint16(to)}, nil
