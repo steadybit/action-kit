@@ -224,6 +224,15 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 					tc.Test(t, minikube, extension)
 				})
 			}
+
+			_, err = extension.Client.R().SetOutput("covmeta.1").Get("/coverage/meta")
+			if err != nil {
+				log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints?")
+			}
+			_, err = extension.Client.R().SetOutput("covcounters.1.1.1").Get("/coverage/counters")
+			if err != nil {
+				log.Info().Err(err).Msg("failed to get coverage counters. Did you compile with `-cover`? Did you add the coverage endpoints?")
+			}
 		})
 	}
 }

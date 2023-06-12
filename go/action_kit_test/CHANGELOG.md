@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- try to download coverage data from extensions after e2e tests
+
 ## 1.0.2
 
 - fix: AssertLogContains produces endless loop if timeout reached

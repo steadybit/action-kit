@@ -14,9 +14,11 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
 	"golang.org/x/sys/unix"
+	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
+	"runtime/coverage"
 	"sync"
 	"syscall"
 	"time"
@@ -161,6 +163,28 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 				Err(err).
 				Msg("failed deleting persisted state")
 		}
+	}
+}
+
+// RegisterCoverageEndpoints registers two endpoints which get called by action_kit_test to retrieve coverage data.
+func RegisterCoverageEndpoints() {
+	exthttp.RegisterHttpHandler("/coverage/meta", handleCoverageMeta)
+	exthttp.RegisterHttpHandler("/coverage/counters", handleCoverageCounters)
+}
+
+func handleCoverageMeta(w http.ResponseWriter, _ *http.Request, _ []byte) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(200)
+	if err := coverage.WriteMeta(w); err != nil {
+		log.Err(err).Msgf("Failed to write coverage meta data.")
+	}
+}
+
+func handleCoverageCounters(w http.ResponseWriter, _ *http.Request, _ []byte) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(200)
+	if err := coverage.WriteCounters(w); err != nil {
+		log.Err(err).Msgf("Failed to write coverage counters data.")
 	}
 }
 

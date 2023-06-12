@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Added endpoints to fetch coverage results
+
 ## 1.1.2
  
 - Fix Status-Endpoint registration and check for Status-Endpoint if TimeControl "Internal" is used
