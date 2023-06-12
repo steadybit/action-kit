@@ -5,6 +5,7 @@ package networkutils
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -20,6 +21,14 @@ func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 
 func (o *LimitBandwidthOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
+
+	expression, err := regexp.Compile("^[0-7]bit$")
+	if err != nil {
+		return nil, err
+	}
+	if expression.MatchString(o.Bandwidth) {
+		return nil, fmt.Errorf("TC does not support rate settings below 8bit/s. (%s)", o.Bandwidth)
+	}
 
 	for _, ifc := range o.Interfaces {
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: htb default 30", mode, ifc))

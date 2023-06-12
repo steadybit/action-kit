@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- Error message for `tc` and rate settings below `8bit/s` 
+
 ## 1.0.2
 
 - Ignore "Cannot find device" tc error on delete

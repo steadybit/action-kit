@@ -20,6 +20,18 @@ func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "bandwidth less then 8bit not supported",
+			opts: LimitBandwidthOpts{
+				Bandwidth:  "1bit",
+				Interfaces: []string{"eth0"},
+			},
+			wantAdd: []byte(`
+`),
+			wantDel: []byte(`
+`),
+			wantErr: true,
+		},
+		{
 			name: "bandwidth",
 			opts: LimitBandwidthOpts{
 				Filter: Filter{
