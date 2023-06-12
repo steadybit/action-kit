@@ -225,15 +225,31 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 				})
 			}
 
-			_, err = extension.Client.R().SetOutput("covmeta.1").Get("/coverage/meta")
-			if err != nil {
-				log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints?")
-			}
-			_, err = extension.Client.R().SetOutput("covcounters.1.1.1").Get("/coverage/counters")
-			if err != nil {
-				log.Info().Err(err).Msg("failed to get coverage counters. Did you compile with `-cover`? Did you add the coverage endpoints?")
-			}
+			processCoverage(extension, runtime)
 		})
+	}
+}
+
+func processCoverage(extension *Extension, runtime Runtime) {
+	if _, err := extension.Client.R().SetOutput("covmeta.1").Get("/coverage/meta"); err != nil {
+		log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints ('action_kit_sdk.RegisterCoverageEndpoints()')?")
+		return
+	}
+	if _, err := extension.Client.R().SetOutput("covcounters.1.1.1").Get("/coverage/counters"); err != nil {
+		log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints ('action_kit_sdk.RegisterCoverageEndpoints()')?")
+		return
+	}
+	if err := exec.Command("go", "tool", "covdata", "textfmt", "-i", ".", "-o", fmt.Sprintf("e2e-coverage-%s.out", runtime)).Run(); err != nil {
+		log.Info().Err(err).Msg("failed to convert coverage data.")
+		return
+	}
+	if err := exec.Command("rm", "covmeta.1").Run(); err != nil {
+		log.Info().Err(err).Msg("failed to clean up coverage meta data.")
+		return
+	}
+	if err := exec.Command("rm", "covcounters.1.1.1").Run(); err != nil {
+		log.Info().Err(err).Msg("failed to clean up coverage counters data.")
+		return
 	}
 }
 

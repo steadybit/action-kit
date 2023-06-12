@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- convert coverage data to support sonarqube
+
 ## 1.0.3
 
 - try to download coverage data from extensions after e2e tests
