@@ -5,20 +5,21 @@ import (
 	"net"
 )
 
-func GetOwnIPs() []string {
+func GetOwnIPs() []net.IP {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get network interfaces")
-		return []string{}
+		return nil
 	}
-	resultIP4s := make([]string, 0)
+
+	resultIP4s := make([]net.IP, 0)
 	for _, i := range ifaces {
 		addrs, err := i.Addrs()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get addresses")
 			break
 		}
-		// handle err
+
 		for _, addr := range addrs {
 			var ip net.IP
 			switch v := addr.(type) {
@@ -27,9 +28,8 @@ func GetOwnIPs() []string {
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			// process IP address
-			if !ip.IsLoopback() && ip.String() != "" && ip.String() != "<nil>" {
-				resultIP4s = append(resultIP4s, ip.String())
+			if !ip.IsLoopback() && len(ip) > 0 && !ip.Equal(net.IPv4zero) {
+				resultIP4s = append(resultIP4s, ip)
 			}
 		}
 	}

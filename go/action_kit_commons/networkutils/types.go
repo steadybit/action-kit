@@ -85,13 +85,12 @@ type NetWithPortRange struct {
 	PortRange PortRange
 }
 
-func IpToNet(ips []string) []net.IPNet {
+func IpToNet(ips []net.IP) []net.IPNet {
 	var nets []net.IPNet
 	for _, ip := range ips {
-		addr := net.ParseIP(ip)
-		if v4 := addr.To4(); v4 != nil {
+		if v4 := ip.To4(); v4 != nil {
 			nets = append(nets, net.IPNet{IP: v4, Mask: net.CIDRMask(32, 32)})
-		} else if v6 := addr.To16(); v6 != nil {
+		} else if v6 := ip.To16(); v6 != nil {
 			nets = append(nets, net.IPNet{IP: v6, Mask: net.CIDRMask(128, 128)})
 		}
 	}
