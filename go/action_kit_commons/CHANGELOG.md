@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- Add utilty to resolve hostnames using dig
+
 ## 1.0.3
 
 - Error message for `tc` and rate settings below `8bit/s` 
