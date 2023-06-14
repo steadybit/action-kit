@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+- export method for executing ssh command
+- incorrect handling of failure from status
+
 ## 1.0.4
 
 - convert coverage data to support sonarqube

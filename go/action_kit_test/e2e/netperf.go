@@ -157,7 +157,7 @@ func (n *Netperf) run(test string, args ...string) (string, error) {
 	var err error
 	cmd := append([]string{"netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
 	for attempt := 0; attempt < 5; attempt++ {
-		out, err = n.Minikube.Exec(n.ClientPod, "netperf", cmd...)
+		out, err = n.Minikube.PodExec(n.ClientPod, "netperf", cmd...)
 		if err == nil {
 			break
 		} else {

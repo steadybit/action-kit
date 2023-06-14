@@ -141,7 +141,7 @@ func (m *Minikube) cp(src, dst string) error {
 	return m.command(m.Profile, "cp", src, dst).Run()
 }
 
-func (m *Minikube) exec(arg ...string) *exec.Cmd {
+func (m *Minikube) SshExec(arg ...string) *exec.Cmd {
 	return m.command(append([]string{"ssh", "--"}, arg...)...)
 }
 
@@ -415,7 +415,12 @@ func (m *Minikube) DeleteService(service metav1.Object) error {
 	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
 }
 
+// Deprecated: Please use PodExec instead
 func (m *Minikube) Exec(pod metav1.Object, containername string, cmd ...string) (string, error) {
+	return m.PodExec(pod, containername, cmd...)
+}
+
+func (m *Minikube) PodExec(pod metav1.Object, containername string, cmd ...string) (string, error) {
 	req := m.GetClient().CoreV1().RESTClient().Post().
 		Namespace(pod.GetNamespace()).
 		Resource("pods").

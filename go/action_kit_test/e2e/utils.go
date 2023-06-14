@@ -37,9 +37,9 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 			var out string
 			var err error
 			if showAll {
-				out, err = m.Exec(pod, containername, "ps", "-opid,comm", "-A")
+				out, err = m.PodExec(pod, containername, "ps", "-opid,comm", "-A")
 			} else {
-				out, err = m.Exec(pod, containername, "ps", "-opid,comm")
+				out, err = m.PodExec(pod, containername, "ps", "-opid,comm")
 			}
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
 
@@ -65,7 +65,7 @@ func AssertProcessNOTRunningInContainer(t *testing.T, m *Minikube, pod metav1.Ob
 			return
 
 		case <-time.After(200 * time.Millisecond):
-			out, err := m.Exec(pod, containername, "ps", "-opid,comm", "-A")
+			out, err := m.PodExec(pod, containername, "ps", "-opid,comm", "-A")
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
 
 			for _, line := range strings.Split(out, "\n") {
@@ -131,7 +131,7 @@ func WaitForContainerStatusUsingContainerEngine(m *Minikube, containerId string,
 func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (string, error) {
 	if strings.HasPrefix(containerId, string(RuntimeDocker)) {
 		var outb bytes.Buffer
-		cmd := m.exec("sudo docker", "inspect", "-f='{{.State.Status}}'", RemovePrefix(containerId))
+		cmd := m.SshExec("sudo docker", "inspect", "-f='{{.State.Status}}'", RemovePrefix(containerId))
 		cmd.Stdout = &outb
 		if err := cmd.Run(); err != nil {
 			return "", err
@@ -141,7 +141,7 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 
 	if strings.HasPrefix(containerId, string(RuntimeContainerd)) {
 		var outb bytes.Buffer
-		cmd := m.exec("sudo ctr", "--namespace=k8s.io", "tasks", "list")
+		cmd := m.SshExec("sudo ctr", "--namespace=k8s.io", "tasks", "list")
 		cmd.Stdout = &outb
 		if err := cmd.Run(); err != nil {
 			return "", err
