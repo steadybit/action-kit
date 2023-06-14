@@ -217,15 +217,19 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 		if action.Stop != nil {
 			stopErr := e.stopAction(action, executionId, state)
 			if stopErr != nil {
-				ch <- errors.Join(err, stopErr)
+				err = errors.Join(err, stopErr)
 			} else {
 				log.Info().Str("actionId", action.Id).Msg("Action stopped")
 			}
-		} else {
-			ch <- err
 		}
 
-		log.Info().Str("actionId", action.Id).Msg("Action ended")
+		if err != nil {
+			log.Warn().Str("actionId", action.Id).Err(err).Msg("Action ended with error")
+			ch <- err
+		} else {
+			log.Info().Str("actionId", action.Id).Msg("Action ended")
+		}
+
 		close(ch)
 	}()
 
@@ -329,15 +333,17 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 			if err != nil {
 				return state, fmt.Errorf("failed to get action status: %w", err)
 			}
-			logMessages(statusResult.Messages)
-			if statusResult.Error != nil {
-				return state, fmt.Errorf("action failed: %v", *statusResult.Error)
-			}
 			if !res.IsSuccess() {
 				return nil, fmt.Errorf("failed to get action state: HTTP %d %s", res.StatusCode(), string(res.Body()))
 			}
+
+			logMessages(statusResult.Messages)
+
 			if statusResult.State != nil {
 				state = *statusResult.State
+			}
+			if statusResult.Error != nil {
+				return state, fmt.Errorf("action failed: %v", *statusResult.Error)
 			}
 
 			log.Info().Str("actionId", action.Id).Bool("completed", statusResult.Completed).Msg("Action status")
