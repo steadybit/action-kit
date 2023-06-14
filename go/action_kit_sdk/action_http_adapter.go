@@ -250,7 +250,7 @@ func (a *ActionHttpAdapter[T]) HandleStatus(w http.ResponseWriter, r *http.Reque
 			Completed: true,
 			Error: &action_kit_api.ActionKitError{
 				Title:  fmt.Sprintf("Action was stopped by extension: %s", stopEvent.reason),
-				Status: extutil.Ptr(action_kit_api.Failed),
+				Status: extutil.Ptr(action_kit_api.Errored),
 			},
 		})
 		return

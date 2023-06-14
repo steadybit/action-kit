@@ -146,7 +146,7 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 
 	statusResult := op.statusResult(t, state)
 	require.NotNil(t, statusResult.Error)
-	assert.Equal(t, action_kit_api.Failed, *statusResult.Error.Status)
+	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 	assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
 }
 
@@ -160,7 +160,7 @@ func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
 
 	statusResult := op.statusResult(t, state)
 	require.NotNil(t, statusResult.Error)
-	assert.Equal(t, action_kit_api.Failed, *statusResult.Error.Status)
+	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 	assert.Equal(t, "Action was stopped by extension: heartbeat timeout", statusResult.Error.Title)
 }
 
@@ -256,11 +256,11 @@ func (op *ActionOperations) prepareWithFileUpload(t *testing.T) action_kit_api.A
 	writer := multipart.NewWriter(&buffer)
 	partRequest, err := writer.CreateFormField("request")
 	require.NoError(t, err)
-	partRequest.Write(jsonBody)
+	_, _ = partRequest.Write(jsonBody)
 	partFile, err := writer.CreateFormFile("inputFile", "test.txt")
 	require.NoError(t, err)
-	partFile.Write([]byte("This is a test file"))
-	writer.Close()
+	_, _ = partFile.Write([]byte("This is a test file"))
+	_ = writer.Close()
 	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), writer.FormDataContentType(), &buffer)
 	require.NoError(t, err)
 	body, err := io.ReadAll(res.Body)

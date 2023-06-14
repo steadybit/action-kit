@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.4
+
+- report extension shutdown as error and not as failure
+
 ## 1.1.3
 
 - Added endpoints to fetch coverage results
