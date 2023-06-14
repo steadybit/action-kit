@@ -415,6 +415,7 @@ func (m *Minikube) DeleteService(service metav1.Object) error {
 	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
 }
 
+// Exec executes a command in a container of a pod
 // Deprecated: Please use PodExec instead
 func (m *Minikube) Exec(pod metav1.Object, containername string, cmd ...string) (string, error) {
 	return m.PodExec(pod, containername, cmd...)
