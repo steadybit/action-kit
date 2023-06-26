@@ -4,9 +4,7 @@
 package networkutils
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -30,8 +28,8 @@ var (
 )
 
 type Opts interface {
-	IpCommands(family Family, mode Mode) (io.Reader, error)
-	TcCommands(mode Mode) (io.Reader, error)
+	IpCommands(family Family, mode Mode) ([]string, error)
+	TcCommands(mode Mode) ([]string, error)
 	String() string
 }
 
@@ -59,24 +57,24 @@ func (p *PortRange) String() string {
 func ParsePortRange(raw string) (PortRange, error) {
 	parts := strings.Split(raw, "-")
 	if len(parts) > 2 {
-		return PortRange{}, errors.New("invalid port range")
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 	}
 
 	from, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return PortRange{}, err
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 	}
 
 	to := from
 	if len(parts) == 2 && parts[1] != "" {
 		to, err = strconv.Atoi(parts[1])
 		if err != nil {
-			return PortRange{}, err
+			return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
 		}
 	}
 
 	if from < 1 || to > 65534 || from > to {
-		return PortRange{}, errors.New("invalid port range")
+		return PortRange{}, fmt.Errorf("invalid port range \"%s\": not in range 1-65534", raw)
 	}
 
 	return PortRange{From: uint16(from), To: uint16(to)}, nil
@@ -87,13 +85,12 @@ type NetWithPortRange struct {
 	PortRange PortRange
 }
 
-func IpToNet(ips []string) []net.IPNet {
+func IpToNet(ips []net.IP) []net.IPNet {
 	var nets []net.IPNet
 	for _, ip := range ips {
-		addr := net.ParseIP(ip)
-		if v4 := addr.To4(); v4 != nil {
+		if v4 := ip.To4(); v4 != nil {
 			nets = append(nets, net.IPNet{IP: v4, Mask: net.CIDRMask(32, 32)})
-		} else if v6 := addr.To16(); v6 != nil {
+		} else if v6 := ip.To16(); v6 != nil {
 			nets = append(nets, net.IPNet{IP: v6, Mask: net.CIDRMask(128, 128)})
 		}
 	}

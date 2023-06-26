@@ -141,7 +141,7 @@ func (m *Minikube) cp(src, dst string) error {
 	return m.command(m.Profile, "cp", src, dst).Run()
 }
 
-func (m *Minikube) exec(arg ...string) *exec.Cmd {
+func (m *Minikube) SshExec(arg ...string) *exec.Cmd {
 	return m.command(append([]string{"ssh", "--"}, arg...)...)
 }
 
@@ -224,7 +224,32 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 					tc.Test(t, minikube, extension)
 				})
 			}
+
+			processCoverage(extension, runtime)
 		})
+	}
+}
+
+func processCoverage(extension *Extension, runtime Runtime) {
+	if _, err := extension.Client.R().SetOutput("covmeta.1").Get("/coverage/meta"); err != nil {
+		log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints ('action_kit_sdk.RegisterCoverageEndpoints()')?")
+		return
+	}
+	if _, err := extension.Client.R().SetOutput("covcounters.1.1.1").Get("/coverage/counters"); err != nil {
+		log.Info().Err(err).Msg("failed to get coverage meta. Did you compile with `-cover`? Did you add the coverage endpoints ('action_kit_sdk.RegisterCoverageEndpoints()')?")
+		return
+	}
+	if err := exec.Command("go", "tool", "covdata", "textfmt", "-i", ".", "-o", fmt.Sprintf("e2e-coverage-%s.out", runtime)).Run(); err != nil {
+		log.Info().Err(err).Msg("failed to convert coverage data.")
+		return
+	}
+	if err := exec.Command("rm", "covmeta.1").Run(); err != nil {
+		log.Info().Err(err).Msg("failed to clean up coverage meta data.")
+		return
+	}
+	if err := exec.Command("rm", "covcounters.1.1.1").Run(); err != nil {
+		log.Info().Err(err).Msg("failed to clean up coverage counters data.")
+		return
 	}
 }
 
@@ -390,7 +415,13 @@ func (m *Minikube) DeleteService(service metav1.Object) error {
 	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
 }
 
+// Exec executes a command in a container of a pod
+// Deprecated: Please use PodExec instead
 func (m *Minikube) Exec(pod metav1.Object, containername string, cmd ...string) (string, error) {
+	return m.PodExec(pod, containername, cmd...)
+}
+
+func (m *Minikube) PodExec(pod metav1.Object, containername string, cmd ...string) (string, error) {
 	req := m.GetClient().CoreV1().RESTClient().Post().
 		Namespace(pod.GetNamespace()).
 		Resource("pods").

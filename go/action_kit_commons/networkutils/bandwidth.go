@@ -5,8 +5,7 @@ package networkutils
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"io"
+	"regexp"
 	"strings"
 )
 
@@ -16,12 +15,20 @@ type LimitBandwidthOpts struct {
 	Interfaces []string
 }
 
-func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) (io.Reader, error) {
+func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *LimitBandwidthOpts) TcCommands(mode Mode) (io.Reader, error) {
+func (o *LimitBandwidthOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
+
+	expression, err := regexp.Compile("^[0-7]bit$")
+	if err != nil {
+		return nil, err
+	}
+	if expression.MatchString(o.Bandwidth) {
+		return nil, fmt.Errorf("TC does not support rate settings below 8bit/s. (%s)", o.Bandwidth)
+	}
 
 	for _, ifc := range o.Interfaces {
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: htb default 30", mode, ifc))
@@ -33,9 +40,8 @@ func (o *LimitBandwidthOpts) TcCommands(mode Mode) (io.Reader, error) {
 		}
 		cmds = append(cmds, filterCmds...)
 	}
-
-	log.Debug().Strs("commands", cmds).Msg("generated tc commands")
-	return toReader(cmds, mode)
+	reorderForMode(cmds, mode)
+	return cmds, nil
 }
 
 func (o *LimitBandwidthOpts) String() string {

@@ -20,6 +20,18 @@ func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "bandwidth less then 8bit not supported",
+			opts: LimitBandwidthOpts{
+				Bandwidth:  "1bit",
+				Interfaces: []string{"eth0"},
+			},
+			wantAdd: []byte(`
+`),
+			wantDel: []byte(`
+`),
+			wantErr: true,
+		},
+		{
 			name: "bandwidth",
 			opts: LimitBandwidthOpts{
 				Filter: Filter{
@@ -87,14 +99,14 @@ qdisc del dev eth0 root handle 1: htb default 30
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(gotAdd, tt.wantAdd))
+			assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 
 			gotDel, err := tt.opts.TcCommands(ModeDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(gotDel, tt.wantDel))
+			assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 		})
 	}
 }

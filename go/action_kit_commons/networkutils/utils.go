@@ -10,31 +10,16 @@ import (
 	"strings"
 )
 
-func toReader(lines []string, mode Mode) (io.Reader, error) {
-	if len(lines) == 0 {
-		return nil, nil
-	}
-
-	sb := strings.Builder{}
-
-	if mode == ModeAdd {
-		for _, statement := range lines {
-			_, err := fmt.Fprintf(&sb, "%s\n", statement)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		for i := len(lines) - 1; i >= 0; i-- {
-			statement := lines[i]
-			_, err := fmt.Fprintf(&sb, "%s\n", statement)
-			if err != nil {
-				return nil, err
-			}
+func reorderForMode(cmds []string, mode Mode) {
+	if mode == ModeDelete {
+		for i, j := 0, len(cmds)-1; i < j; i, j = i+1, j-1 {
+			cmds[i], cmds[j] = cmds[j], cmds[i]
 		}
 	}
+}
 
-	return strings.NewReader(sb.String()), nil
+func ToReader(strs []string) io.Reader {
+	return strings.NewReader(fmt.Sprintf("%s\n", strings.Join(strs, "\n")))
 }
 
 func getFamily(net net.IPNet) (Family, error) {

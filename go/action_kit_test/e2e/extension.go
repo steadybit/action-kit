@@ -217,15 +217,19 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 		if action.Stop != nil {
 			stopErr := e.stopAction(action, executionId, state)
 			if stopErr != nil {
-				ch <- errors.Join(err, stopErr)
+				err = errors.Join(err, stopErr)
 			} else {
 				log.Info().Str("actionId", action.Id).Msg("Action stopped")
 			}
-		} else {
-			ch <- err
 		}
 
-		log.Info().Str("actionId", action.Id).Msg("Action ended")
+		if err != nil {
+			log.Warn().Str("actionId", action.Id).Err(err).Msg("Action ended with error")
+			ch <- err
+		} else {
+			log.Info().Str("actionId", action.Id).Msg("Action ended")
+		}
+
 		close(ch)
 	}()
 
@@ -283,7 +287,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 		return nil, duration, fmt.Errorf("action failed: %v", *prepareResult.Error)
 	}
 	if !res.IsSuccess() {
-		return nil, duration, fmt.Errorf("failed to prepare action: %d", res.StatusCode())
+		return nil, duration, fmt.Errorf("failed to prepare action: HTTP %d %s", res.StatusCode(), string(res.Body()))
 	}
 
 	return prepareResult.State, duration, nil
@@ -301,7 +305,7 @@ func (e *Extension) startAction(action action_kit_api.ActionDescription, executi
 	}
 	logMessages(startResult.Messages)
 	if !res.IsSuccess() {
-		return state, fmt.Errorf("failed to start action: %d", res.StatusCode())
+		return nil, fmt.Errorf("failed to start action: HTTP %d %s", res.StatusCode(), string(res.Body()))
 	}
 	if startResult.State != nil {
 		state = *startResult.State
@@ -329,10 +333,12 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 			if err != nil {
 				return state, fmt.Errorf("failed to get action status: %w", err)
 			}
-			logMessages(statusResult.Messages)
 			if !res.IsSuccess() {
-				return state, fmt.Errorf("failed to get action status: %d", res.StatusCode())
+				return nil, fmt.Errorf("failed to get action state: HTTP %d %s", res.StatusCode(), string(res.Body()))
 			}
+
+			logMessages(statusResult.Messages)
+
 			if statusResult.State != nil {
 				state = *statusResult.State
 			}
@@ -360,7 +366,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 	}
 	logMessages(stopResult.Messages)
 	if !res.IsSuccess() {
-		return fmt.Errorf("failed to stop action: %d", res.StatusCode())
+		return fmt.Errorf("failed to stop action: HTTP %d %s", res.StatusCode(), string(res.Body()))
 	}
 	if stopResult.Error != nil {
 		return fmt.Errorf("action failed: %v", *stopResult.Error)
