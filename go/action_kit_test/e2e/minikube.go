@@ -168,6 +168,10 @@ type WithMinikubeTestCase struct {
 type ExtensionFactory interface {
 	CreateImage() error
 	Start(minikube *Minikube) (*Extension, error)
+	BeforeAll(t *testing.T, m *Minikube, e *Extension) error
+	BeforeEach(t *testing.T, m *Minikube, e *Extension) error
+	AfterAll(t *testing.T, m *Minikube, e *Extension) error
+	AfterEach(t *testing.T, m *Minikube, e *Extension) error
 }
 
 type MinikubeOpts struct {
@@ -218,11 +222,22 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 			extension, err := ext.Start(minikube)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
-
+			if err := ext.BeforeAll(t, minikube, extension); err != nil {
+				t.Fatal("Before all failed", err)
+			}
 			for _, tc := range testCases {
 				t.Run(tc.Name, func(t *testing.T) {
+					if err := ext.BeforeEach(t, minikube, extension); err != nil {
+						t.Fatal("Before each failed", err)
+					}
 					tc.Test(t, minikube, extension)
+					if err := ext.AfterEach(t, minikube, extension); err != nil {
+						t.Fatal("After each failed", err)
+					}
 				})
+			}
+			if err := ext.AfterAll(t, minikube, extension); err != nil {
+				t.Fatal("After all failed", err)
 			}
 
 			processCoverage(extension, runtime)

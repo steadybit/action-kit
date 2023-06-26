@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"os"
 	"os/exec"
+	"testing"
 	"time"
 )
 
@@ -18,6 +19,10 @@ type HelmExtensionFactory struct {
 	ChartPath        string
 	PodLabelSelector string
 	ExtraArgs        func(minikube *Minikube) []string
+	BeforeAllFunc    func(t *testing.T, m *Minikube, e *Extension) error
+	BeforeEachFunc   func(t *testing.T, m *Minikube, e *Extension) error
+	AfterAllFunc    func(t *testing.T, m *Minikube, e *Extension) error
+	AfterEachFunc   func(t *testing.T, m *Minikube, e *Extension) error
 }
 
 func (h *HelmExtensionFactory) CreateImage() error {
@@ -127,4 +132,32 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	client := resty.New().SetBaseURL(address)
 	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %s", address)
 	return &Extension{Client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
+}
+
+func (h *HelmExtensionFactory) BeforeAll(t *testing.T, m *Minikube, e *Extension) error {
+	if h.BeforeAllFunc == nil {
+		return nil
+	}
+	return h.BeforeAllFunc(t, m, e)
+}
+
+func (h *HelmExtensionFactory) BeforeEach(t *testing.T, m *Minikube, e *Extension) error {
+	if h.BeforeEachFunc == nil {
+		return nil
+	}
+	return h.BeforeEachFunc(t, m, e)
+}
+
+func (h *HelmExtensionFactory) AfterAll(t *testing.T, m *Minikube, e *Extension) error {
+	if h.AfterAllFunc == nil {
+		return nil
+	}
+	return h.AfterAllFunc(t, m, e)
+}
+
+func (h *HelmExtensionFactory) AfterEach(t *testing.T, m *Minikube, e *Extension) error {
+	if h.AfterEachFunc == nil {
+		return nil
+	}
+	return h.AfterEachFunc(t, m, e)
 }
