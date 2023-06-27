@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- add e2e before and after hooks
+
 ## 1.0.5
 
 - export method for executing ssh command
