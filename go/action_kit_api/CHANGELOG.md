@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.2
+
+- add agentPid to ExecutionContext
+
 ## 2.6.1
 
 - add `stressng-worker` to parameter type

@@ -290,6 +290,9 @@ type ExecutionContext struct {
 	// The AWS account ID of the agent that is executing the action. This is only set when the action is executed on an AWS account
 	AgentAwsAccountId *string `json:"agentAwsAccountId,omitempty"`
 
+	// The process ID of the agent that is executing the action.
+	AgentPid *int `json:"agentPid,omitempty"`
+
 	// Endpoints that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
 	RestrictedEndpoints *[]RestrictedEndpoint `json:"restrictedEndpoints,omitempty"`
 }
