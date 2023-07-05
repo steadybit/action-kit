@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.3
+
+- add Experiment-Kex, Execution-ID and URIs to ExecutionContext
+
 ## 2.6.2
 
 - add agentPid to ExecutionContext

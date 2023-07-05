@@ -293,6 +293,18 @@ type ExecutionContext struct {
 	// The process ID of the agent that is executing the action.
 	AgentPid *int `json:"agentPid,omitempty"`
 
+	// The execution ID of the current execution.
+	ExecutionId *int `json:"executionId,omitempty"`
+
+	// The execution URI of the current execution.
+	ExecutionUri *string `json:"executionUri,omitempty"`
+
+	// The experiment key of the experiment that is currently being executed.
+	ExperimentKey *string `json:"experimentKey,omitempty"`
+
+	// The experiment URI of the experiment that is currently being executed.
+	ExperimentUri *string `json:"experimentUri,omitempty"`
+
 	// Endpoints that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
 	RestrictedEndpoints *[]RestrictedEndpoint `json:"restrictedEndpoints,omitempty"`
 }
@@ -904,5 +916,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface {}
-type Widget interface {}
+type ParameterOption interface{}
+type Widget interface{}

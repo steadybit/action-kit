@@ -660,6 +660,22 @@ components:
             $ref: '#/components/schemas/RestrictedEndpoint'
           description: >-
             Endpoints that are used by the agent (e.g to communicate with extensions and platform). These Connections shall not be affected by actions / attacks.
+        experimentKey:
+          type: string
+          description: >-
+            The experiment key of the experiment that is currently being executed.
+        experimentUri:
+          type: string
+          description: >-
+              The experiment URI of the experiment that is currently being executed.
+        executionId:
+          type: integer
+          description: >-
+            The execution ID of the current execution.
+        executionUri:
+          type: string
+          description: >-
+              The execution URI of the current execution.
     ActionState:
       title: Action State
       description: >-
