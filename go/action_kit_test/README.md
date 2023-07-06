@@ -61,8 +61,18 @@ The module contains a helper to download the coverage data from the extension ho
 If you like to use this feature, you need to:
 
 - Compile the extension for the e2e test with the following flags: `-cover`
-  - For example by adding `ADDITIONAL_BUILD_PARAMS` as an arg to your `Dockerfile`
-  - and adding the parameter to the `Makefile`'s `container` target: `docker build --build-arg ADDITIONAL_BUILD_PARAMS="-cover" -t extension-foo:latest .`
+  - For example by adding `ADDITIONAL_BUILD_PARAMS` as an arg to your `Dockerfile`. Example:
+    ```
+    RUN go build \
+    -ldflags="\
+    -X 'github.com/steadybit/extension-kit/extbuild.ExtensionName=${NAME}' \
+    -X 'github.com/steadybit/extension-kit/extbuild.Version=${VERSION}' \
+    -X 'github.com/steadybit/extension-kit/extbuild.Revision=${REVISION}'" \
+    -o ./extension \
+    ${ADDITIONAL_BUILD_PARAMS}
+    ```
+    - also add the Param as an ARG in your Dockerfile: `ARG ADDITIONAL_BUILD_PARAMS`
+  - add the parameter to the `Makefile`'s `container` target: `docker build --build-arg ADDITIONAL_BUILD_PARAMS="-cover" -t extension-foo:latest .`
 - Add endpoints to your extension which allows the e2e-test-runtime to download the coverage data: `action_kit_sdk.RegisterCoverageEndpoints()`
 - Add the new coverage-output to the `sonar-project.properties`: Example `sonar.go.coverage.reportPaths=coverage.out,e2e/e2e-coverage-docker.out`
 - Add the new coverage-output to `.gitignore`
