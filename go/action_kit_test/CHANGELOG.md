@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- get logs of failing pods during startup (don't use `--wait` for `helm install`, instead poll pods and grab logs manually)
+
 ## 1.0.6
 
 - add e2e before and after hooks

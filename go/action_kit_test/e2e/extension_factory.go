@@ -21,8 +21,8 @@ type HelmExtensionFactory struct {
 	ExtraArgs        func(minikube *Minikube) []string
 	BeforeAllFunc    func(t *testing.T, m *Minikube, e *Extension) error
 	BeforeEachFunc   func(t *testing.T, m *Minikube, e *Extension) error
-	AfterAllFunc    func(t *testing.T, m *Minikube, e *Extension) error
-	AfterEachFunc   func(t *testing.T, m *Minikube, e *Extension) error
+	AfterAllFunc     func(t *testing.T, m *Minikube, e *Extension) error
+	AfterEachFunc    func(t *testing.T, m *Minikube, e *Extension) error
 }
 
 func (h *HelmExtensionFactory) CreateImage() error {
@@ -64,7 +64,6 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		"install",
 		"--kube-context", minikube.Profile,
 		"--namespace=default",
-		"--wait",
 		"--set", fmt.Sprintf("image.name=%s", imageName),
 		"--set", "image.pullPolicy=Never",
 	}
@@ -75,16 +74,15 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	args = append(args, h.Name, chartPath)
 
 	start = time.Now()
-	ctx := context.Background()
-	out, err := exec.CommandContext(ctx, "helm", args...).CombinedOutput()
+	ctxHelm := context.Background()
+	out, err := exec.CommandContext(ctxHelm, "helm", args...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to install helm chart: %s: %s", err, out)
 	}
+	log.Info().TimeDiff("duration", time.Now(), start).Msg("helm chart installed (without waiting for pods to start)")
 
-	tailCtx, tailCancel := context.WithCancel(context.Background())
 	stopFwdCh := make(chan struct{})
 	stop := func() error {
-		tailCancel()
 		close(stopFwdCh)
 		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, h.Name).CombinedOutput()
 		if err != nil {
@@ -93,44 +91,52 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		return nil
 	}
 
-	ctx, waitCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer waitCancel()
+	start = time.Now()
+	ctxWaitForPods, waitForPodsCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer waitForPodsCancel()
 	var pods []corev1.Pod
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ctxWaitForPods.Done():
 			_ = stop()
 			return nil, fmt.Errorf("extension pods did not start in time")
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(1 * time.Second):
 		}
 
-		pods, err = minikube.ListPods(ctx, "default", podLabelSelector)
+		pods, err = minikube.ListPods(ctxWaitForPods, "default", podLabelSelector)
 		if err != nil {
 			_ = stop()
 			return nil, err
 		}
 
-		for _, pod := range pods {
-			if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
-				_ = stop()
-				return nil, err
-			}
-			go minikube.TailLog(tailCtx, pod.GetObjectMeta())
-		}
 		if len(pods) > 0 {
 			break
 		}
 	}
+	log.Info().TimeDiff("duration", time.Now(), start).Int("pods", len(pods)).Msg("got list of pods")
+
+	start = time.Now()
+	tailCtx, tailCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer tailCancel()
+	for _, pod := range pods {
+		if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
+			minikube.TailLog(tailCtx, pod.GetObjectMeta())
+			_ = stop()
+			return nil, err
+		}
+		minikube.TailLog(tailCtx, pod.GetObjectMeta())
+	}
+	log.Info().TimeDiff("duration", time.Now(), start).Msg("pods are in running state")
 
 	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), h.Port, stopFwdCh)
 	if err != nil {
 		_ = stop()
 		return nil, err
 	}
-
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
 	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %s", address)
+
 	return &Extension{Client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
 }
 
