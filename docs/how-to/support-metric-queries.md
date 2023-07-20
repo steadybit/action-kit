@@ -115,27 +115,27 @@ func Query(ctx context.Context, body []byte) (*action_kit_api.QueryMetricsResult
 	var request action_kit_api.QueryMetricsRequestBody
 	err := json.Unmarshal(body, &request)
 	if err != nil {
-		return nil, extutil.Ptr(extension_kit.ToError("Failed to parse request body", err))
+		return nil, extension_kit.ToError("Failed to parse request body", err)
 	}
 
 	instance, err := extinstance.FindInstanceByName(request.Target.Name)
 	if err != nil {
-		return nil, extutil.Ptr(extension_kit.ToError(fmt.Sprintf("Failed to find Prometheus instance named '%s'", request.Target.Name), err))
+		return nil, extension_kit.ToError(fmt.Sprintf("Failed to find Prometheus instance named '%s'", request.Target.Name), err)
 	}
 
 	client, err := instance.GetApiClient()
 	if err != nil {
-		return nil, extutil.Ptr(extension_kit.ToError("Failed to initialize Prometheus API client", err))
+		return nil, extension_kit.ToError("Failed to initialize Prometheus API client", err)
 	}
 
 	query := request.Config["query"]
 	if query == nil {
-		return nil, extutil.Ptr(extension_kit.ToError("No PromQL query defined", nil))
+		return nil, extension_kit.ToError("No PromQL query defined", nil)
 	}
 
 	result, _, err := client.Query(ctx, query.(string), request.Timestamp)
 	if err != nil {
-		return nil, extutil.Ptr(extension_kit.ToError(fmt.Sprintf("Failed to execute Prometheus query against instance '%s' at timestamp %s with query '%s'",
+		return nil, extension_kit.ToError(fmt.Sprintf("Failed to execute Prometheus query against instance '%s' at timestamp %s with query '%s'",
 			request.Target.Name,
 			request.Timestamp,
 			query),
@@ -144,7 +144,7 @@ func Query(ctx context.Context, body []byte) (*action_kit_api.QueryMetricsResult
 
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return nil, extutil.Ptr(extension_kit.ToError("PromQL query returned unexpect result. Only vectors are supported as query results", nil))
+		return nil, extension_kit.ToError("PromQL query returned unexpect result. Only vectors are supported as query results", nil)
 	}
 
 	metrics := make([]action_kit_api.Metric, len(vector))

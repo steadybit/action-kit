@@ -72,12 +72,12 @@ In addition to what the action API docs mention, attacks will typically want to 
 	// Source: https://github.com/steadybit/extension-aws/blob/c3b268b28291024a8e4bed67fe765533367118d5/extec2/instance_attack_state.go#L94-L107
 	instanceId := request.Target.Attributes["aws-ec2.instance.id"]
 	if instanceId == nil || len(instanceId) == 0 {
-		return nil, extutil.Ptr(extension_kit.ToError("Target is missing the 'aws-ec2.instance.id' tag.", nil))
+		return nil, extension_kit.ToError("Target is missing the 'aws-ec2.instance.id' tag.", nil)
 	}
 
 	action := request.Config["action"]
 	if action == nil {
-		return nil, extutil.Ptr(extension_kit.ToError("Missing attack action parameter.", nil))
+		return nil, extension_kit.ToError("Missing attack action parameter.", nil)
 	}
 
 	return extutil.Ptr(InstanceStateChangeState{

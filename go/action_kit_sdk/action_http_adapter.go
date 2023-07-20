@@ -196,7 +196,7 @@ func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Reques
 		if extensionError, ok := err.(extension_kit.ExtensionError); ok {
 			exthttp.WriteError(w, extensionError)
 		} else {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to start.", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to start action.", err))
 		}
 		return
 	}
@@ -349,7 +349,7 @@ func (a *ActionHttpAdapter[T]) HandleStop(w http.ResponseWriter, r *http.Request
 		if isExtensionError {
 			exthttp.WriteError(w, extensionError)
 		} else {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to stop.", err))
+			exthttp.WriteError(w, extension_kit.ToError("Failed to stop action.", err))
 		}
 		return
 	}
