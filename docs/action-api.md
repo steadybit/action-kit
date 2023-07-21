@@ -162,6 +162,23 @@ Time control informs Steadybit about behavioral aspects of the action. At this m
   . Note that these actions require a parameter named `duration` with type `duration`.
 - Actions spanning an unknown amount of time, e.g., waiting for a service to roll over or for deployment to finish: `"timeControl": "INTERNAL"`
 
+### Timeout-based Safety Measures and Time Control
+
+As with every distributed system things can go wrong. And the steadybit agent and extensions is no exception.
+Steadybit has multiple safety measures in place to prevent causing uncontrolled harm to your system:
+
+##### Experiment Timeout
+The Platform calculates an estimation for the total experiment duration. If the experiment exceeds this duration by 15 minutes, it will be canceled.
+The estimate is updated while conducting the experiment and is computed by summing up the durations of the steps. 
+
+**Hint**: An action that doesn't specify a `duration` parameter but exceeds the timeout, will cause the experiment to be canceled.
+
+##### Step Start Timeout
+The Platform expects each step to start within three minutes. If your action takes longer than three minutes to start, the experiment will be canceled.
+
+##### Action SDK Heartbeats
+The Golang Action SDK will add a synthetic status callback if not present. It expects the status callback to be called periodically. If more than three calls are missed the extension will rollback all active actions on it's own.
+
 ### Hints and parameter hints
 
 Actions and action parameters can contain hints. These will be rendered inside the UI experiment editor. The following screenshot shows an action with a hint
