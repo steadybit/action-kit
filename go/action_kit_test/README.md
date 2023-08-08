@@ -46,7 +46,7 @@ func testStressCpu(t *testing.T, m *e2e.Minikube, e *e2e.Extension) {
 		CpuLoad  int `json:"cpuLoad"`
 		Workers  int `json:"workers"`
 	}{Duration: 50000, Workers: 0, CpuLoad: 50}
-	exec, err := e.RunAction("com.github.steadybit.extension_host.stress-cpu", getTarget(m), config, nil)
+	exec, err := e.RunAction("com.steadybit.extension_host.stress-cpu", getTarget(m), config, nil)
 	require.NoError(t, err)
     // ...
 	e2e.AssertProcessRunningInContainer(t, m, e.Pod, "steadybit-extension-host", "stress-ng", true)
