@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8
+
+- add method iperf testing
+- 
 ## 1.0.7
 
 - get logs of failing pods during startup (don't use `--wait` for `helm install`, instead poll pods and grab logs manually)
