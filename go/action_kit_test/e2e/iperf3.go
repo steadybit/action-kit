@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/yalp/jsonpath"
@@ -157,6 +158,31 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 			_, _ = fmt.Fprintf(r.Log, "package loss %v is not in expected range [%f, %f]", measurements, min, max)
 		}
 	})
+}
+
+func (n *Iperf) AssertPackageLossWithRetry(min float64, max float64, maxRetries int) bool {
+
+	measurements := make([]float64, 0, 5)
+	success := false
+	for i := 0; i < maxRetries; i++ {
+		loss, err := n.MeasurePackageLoss()
+		if err != nil {
+			success = false
+			log.Err(err).Msg("failed to measure package loss")
+			break
+		}
+		if loss < min || loss > max {
+			success = false
+			measurements = append(measurements, loss)
+		} else {
+			success = true
+			break
+		}
+	}
+	if !success {
+		log.Info().Msgf("package loss %v is not in expected range [%f, %f]", measurements, min, max)
+	}
+	return success
 }
 
 func (n *Iperf) MeasureBandwidth() (float64, error) {
