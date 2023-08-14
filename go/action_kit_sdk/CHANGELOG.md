@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5
+
+- Update to action-kit api 2.7.0
+
 ## 1.1.4
 
 - report extension shutdown as error and not as failure

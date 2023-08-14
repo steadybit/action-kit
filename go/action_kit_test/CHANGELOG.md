@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9
+
+- Update to action-kit api 2.7.0
+
 ## 1.0.8
 
 - add method iperf testing
