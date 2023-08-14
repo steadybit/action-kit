@@ -304,6 +304,8 @@ components:
           type: string
           description: Timestamp describing at which moment the value was observed.
           format: date-time
+        timestampSource:
+          $ref: '#/components/schemas/TimestampSource'
         name:
           type: string
           description: Metric name. You can alternatively encode the metric name as `__name__` within the metric property.
@@ -638,6 +640,14 @@ components:
       required:
         - name
         - attributes
+    TimestampSource:
+      type: string
+      enum:
+        - 'extension'
+        - 'other'
+      description: >-
+        Source of the timestamp. This is useful when the timestamp is retrieved from some other system.
+        If not specified or equals `extension` the agent will adjust the timestamp with an offset calculated from the response date header and the platform's current time.
     ExecutionContext:
       type: object
       description: >-

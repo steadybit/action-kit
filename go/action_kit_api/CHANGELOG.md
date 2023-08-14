@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.4
+
+- add timestampSource for metrics and log messages
+
 ## 2.6.3
 
 - add Experiment-Kex, Execution-ID and URIs to ExecutionContext
