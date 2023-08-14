@@ -250,7 +250,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 		return nil, duration, fmt.Errorf("failed to convert config: %w", err)
 	}
 
-	if action.TimeControl == action_kit_api.External {
+	if action.TimeControl == action_kit_api.TimeControlExternal {
 		duration = time.Duration(prepareBody.Config["duration"].(float64) * float64(time.Millisecond))
 	}
 
