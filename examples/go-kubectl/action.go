@@ -50,7 +50,7 @@ func (f *RolloutRestartAction) Describe() action_kit_api.ActionDescription {
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
 			TargetType: "kubernetes-deployment",
 		}),
-		TimeControl: action_kit_api.Internal,
+		TimeControl: action_kit_api.TimeControlInternal,
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Label:        "Wait for rollout completion",
