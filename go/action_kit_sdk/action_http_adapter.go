@@ -54,7 +54,7 @@ func NewActionHttpAdapter[T any](action Action[T]) *ActionHttpAdapter[T] {
 	if hasFileParameter && !adapter.HasStop() {
 		log.Fatal().Msgf("Actions using a parameter of type 'file' need to implement ActionWithStop.")
 	}
-	if description.TimeControl == action_kit_api.Internal && !adapter.HasStatus() {
+	if description.TimeControl == action_kit_api.TimeControlInternal && !adapter.HasStatus() {
 		log.Fatal().Msgf("Actions using TimeControl 'Internal' need to implement ActionWithStatus.")
 	}
 	return adapter

@@ -51,7 +51,7 @@ type Action[T any] interface {
 }
 type ActionWithStatus[T any] interface {
 	Action[T]
-	// Status is used to observe the current status of the action. This is called periodically by the action-kit if time control [action_kit_api.Internal] or [action_kit_api.External] is used.
+	// Status is used to observe the current status of the action. This is called periodically by the action-kit if time control [action_kit_api.TimeControlInternal] or [action_kit_api.TimeControlExternal] is used.
 	// [Details](https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#status)
 	Status(ctx context.Context, state *T) (*action_kit_api.StatusResult, error)
 }
