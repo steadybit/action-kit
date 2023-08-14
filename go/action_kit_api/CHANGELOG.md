@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.7.1
+
+- add timestampSource to Message
+
 ## 2.7.0
 
 As the previous version broke some enum names and generated very long ones, this release has breaking code changes and clean things up:

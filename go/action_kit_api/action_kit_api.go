@@ -341,7 +341,10 @@ type Message struct {
 	Level     *MessageLevel  `json:"level,omitempty"`
 	Message   string         `json:"message"`
 	Timestamp *time.Time     `json:"timestamp,omitempty"`
-	Type      *string        `json:"type,omitempty"`
+
+	// TimestampSource Source of the timestamp. This is useful when the timestamp is retrieved from some other system. If not specified or equals `extension` the agent will adjust the timestamp with an offset calculated from the response date header and the platform's current time.
+	TimestampSource *TimestampSource `json:"timestampSource,omitempty"`
+	Type            *string          `json:"type,omitempty"`
 }
 
 // MessageLevel defines model for Message.Level.
