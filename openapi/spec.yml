@@ -24,6 +24,16 @@ components:
           uniqueItems: true
       required:
         - actions
+    ActionKind:
+      type: string
+      enum:
+        - attack
+        - check
+        - load_test
+        - other
+      description: >-
+        Describes what kind of action this is. This is used to help users understand
+        and classify the various runnable actions that are part of an experiment.
     ActionKitError:
       title: Error
       description: >-
@@ -386,15 +396,7 @@ components:
             Description for end-users to help them understand what the action is
             doing.
         kind:
-          type: string
-          enum:
-            - attack
-            - check
-            - load_test
-            - other
-          description: >-
-            Describes what kind of action this is. This is used to help users understand
-            and classify the various runnable actions that are part of an experiment.
+          $ref: '#/components/schemas/ActionKind'
         category:
           type: string
           description: Used for categorization of the action within user interfaces.
@@ -412,18 +414,7 @@ components:
           description: >-
             Deprecated: use `TargetSelection.selectionTemplates` instead.
         timeControl:
-          type: string
-          enum:
-            - instantaneous
-            - internal
-            - external
-          description: >-
-            Actions can either be an instantaneous event, e.g., the restart of a
-            host, or an activity spanning over an unspecified duration. For
-            those actions having a duration, we differentiate between
-            internally, e.g., waiting for a deployment to finish, and
-            externally, e.g., waiting for a user-specified time to pass,
-            controlled durations.
+            $ref: '#/components/schemas/TimeControl'
         parameters:
           type: array
           description: >-
@@ -640,11 +631,24 @@ components:
       required:
         - name
         - attributes
+    TimeControl:
+      type: string
+      enum:
+        - instantaneous
+        - internal
+        - external
+      description: >-
+        Actions can either be an instantaneous event, e.g., the restart of a
+        host, or an activity spanning over an unspecified duration. For
+        those actions having a duration, we differentiate between
+        internally, e.g., waiting for a deployment to finish, and
+        externally, e.g., waiting for a user-specified time to pass,
+        controlled durations.
     TimestampSource:
       type: string
       enum:
         - 'extension'
-        - 'other'
+        - 'external'
       description: >-
         Source of the timestamp. This is useful when the timestamp is retrieved from some other system.
         If not specified or equals `extension` the agent will adjust the timestamp with an offset calculated from the response date header and the platform's current time.

@@ -89,7 +89,7 @@ func TestActionDescription(t *testing.T) {
 			}),
 		}),
 		Kind:        Attack,
-		TimeControl: ActionDescriptionTimeControlInternal,
+		TimeControl: TimeControlInternal,
 		Hint: Ptr(ActionHint{
 			Type:    HintInfo,
 			Content: "Some information",

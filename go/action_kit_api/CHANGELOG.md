@@ -1,6 +1,15 @@
 # Changelog
 
-## 2.6.4
+## 2.7.0
+
+As the previous version broke some enum names and generated very long ones, this release has breaking code changes and clean things up:
+
+ - Type `ActionDescriptionKind` was renamed to `ActionKind`
+ - Constant `Internal` was renamed to `TimeControlInternal`
+ - Constant `External` was renamed to `TimeControlExternal`
+ - Constant `Instantaneous` was renamed to `TimeControlInstantaneous`
+
+## 2.6.4 (don't use)
 
 - add timestampSource for metrics and log messages
 

@@ -16,25 +16,18 @@ const (
 	DISABLEHEARTBEAT ActionDescriptionAdditionalFlags = "DISABLE_HEARTBEAT"
 )
 
-// Defines values for ActionDescriptionKind.
-const (
-	Attack   ActionDescriptionKind = "attack"
-	Check    ActionDescriptionKind = "check"
-	LoadTest ActionDescriptionKind = "load_test"
-	Other    ActionDescriptionKind = "other"
-)
-
-// Defines values for ActionDescriptionTimeControl.
-const (
-	ActionDescriptionTimeControlExternal      ActionDescriptionTimeControl = "external"
-	ActionDescriptionTimeControlInstantaneous ActionDescriptionTimeControl = "instantaneous"
-	ActionDescriptionTimeControlInternal      ActionDescriptionTimeControl = "internal"
-)
-
 // Defines values for ActionHintType.
 const (
 	HintInfo    ActionHintType = "hint_info"
 	HintWarning ActionHintType = "hint_warning"
+)
+
+// Defines values for ActionKind.
+const (
+	Attack   ActionKind = "attack"
+	Check    ActionKind = "check"
+	LoadTest ActionKind = "load_test"
+	Other    ActionKind = "other"
 )
 
 // Defines values for ActionKitErrorStatus.
@@ -105,6 +98,13 @@ const (
 	None       TargetSelectionQuantityRestriction = "none"
 )
 
+// Defines values for TimeControl.
+const (
+	TimeControlExternal      TimeControl = "external"
+	TimeControlInstantaneous TimeControl = "instantaneous"
+	TimeControlInternal      TimeControl = "internal"
+)
+
 // Defines values for TimestampSource.
 const (
 	TimestampSourceExtension TimestampSource = "extension"
@@ -133,7 +133,7 @@ type ActionDescription struct {
 	Id string `json:"id"`
 
 	// Kind Describes what kind of action this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
-	Kind ActionDescriptionKind `json:"kind"`
+	Kind ActionKind `json:"kind"`
 
 	// Label A human-readable label for the action.
 	Label   string                `json:"label"`
@@ -166,7 +166,7 @@ type ActionDescription struct {
 	TargetType *string `json:"targetType,omitempty"`
 
 	// TimeControl Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
-	TimeControl ActionDescriptionTimeControl `json:"timeControl"`
+	TimeControl TimeControl `json:"timeControl"`
 
 	// Version The version of the action. Remember to increase the value everytime you update the definitions. The platform will ignore any definition changes with the same action version. We do recommend usage of semver strings.
 	Version string `json:"version"`
@@ -177,12 +177,6 @@ type ActionDescription struct {
 
 // ActionDescriptionAdditionalFlags defines model for ActionDescription.AdditionalFlags.
 type ActionDescriptionAdditionalFlags string
-
-// ActionDescriptionKind Describes what kind of action this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
-type ActionDescriptionKind string
-
-// ActionDescriptionTimeControl Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
-type ActionDescriptionTimeControl string
 
 // ActionHint Hints are used to provide additional information to the user. They are rendered in the ui when the user is configuring the action.
 type ActionHint struct {
@@ -195,6 +189,9 @@ type ActionHint struct {
 
 // ActionHintType Will be used in the product UI to display the hint in a different color and with a different icon.
 type ActionHintType string
+
+// ActionKind Describes what kind of action this is. This is used to help users understand and classify the various runnable actions that are part of an experiment.
+type ActionKind string
 
 // ActionKitError An enhanced version of RFC 7807 Problem Details for HTTP APIs compliant response body for error scenarios
 type ActionKitError struct {
@@ -344,10 +341,7 @@ type Message struct {
 	Level     *MessageLevel  `json:"level,omitempty"`
 	Message   string         `json:"message"`
 	Timestamp *time.Time     `json:"timestamp,omitempty"`
-
-	// TimestampSource Source of the timestamp. This is useful when the timestamp is retrieved from some other system. If not specified or equals `extension` the agent will adjust the timestamp with an offset calculated from the response date header and the platform's current time.
-	TimestampSource *TimestampSource `json:"timestampSource,omitempty"`
-	Type            *string          `json:"type,omitempty"`
+	Type      *string        `json:"type,omitempty"`
 }
 
 // MessageLevel defines model for Message.Level.
@@ -604,6 +598,9 @@ type TargetSelectionTemplate struct {
 
 // TargetSelectionTemplates Users that want to configure an action with a targetType need to define a target selection through the query UI or query language. Extensions can define selection templates to help users define such target selections.
 type TargetSelectionTemplates = []TargetSelectionTemplate
+
+// TimeControl Actions can either be an instantaneous event, e.g., the restart of a host, or an activity spanning over an unspecified duration. For those actions having a duration, we differentiate between internally, e.g., waiting for a deployment to finish, and externally, e.g., waiting for a user-specified time to pass, controlled durations.
+type TimeControl string
 
 // TimestampSource Source of the timestamp. This is useful when the timestamp is retrieved from some other system. If not specified or equals `extension` the agent will adjust the timestamp with an offset calculated from the response date header and the platform's current time.
 type TimestampSource string
@@ -1130,5 +1127,5 @@ func (t *StopActionResponse) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type ParameterOption interface{}
-type Widget interface{}
+type ParameterOption interface {}
+type Widget interface {}
