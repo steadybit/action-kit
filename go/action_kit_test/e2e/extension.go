@@ -380,9 +380,7 @@ func (e *Extension) GetMetrics(actionId string) []action_kit_api.Metric {
 		return nil
 	}
 	var result []action_kit_api.Metric
-	for _, metric := range value.([]action_kit_api.Metric) {
-		result = append(result, metric)
-	}
+	result = append(result, value.([]action_kit_api.Metric)...)
 	return result
 }
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.10
+## 1.0.11
 
 - added function to get metrics of status calls
 
