@@ -18,6 +18,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,10 @@ type Extension struct {
 	stop   func() error
 	Pod    metav1.Object
 }
+
+var (
+	Metrics =  sync.Map{}
+)
 
 func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target, error) {
 	discoveries, err := e.describeDiscoveries()
@@ -319,6 +324,7 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 		interval = 1 * time.Second
 	}
 
+	Metrics.Store(action.Id, nil)
 	for {
 		select {
 		case <-ctx.Done():
@@ -338,6 +344,7 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 			}
 
 			logMessages(statusResult.Messages)
+			storeLatestMetrics(action.Id, statusResult.Metrics)
 
 			if statusResult.State != nil {
 				state = *statusResult.State
@@ -354,6 +361,28 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 	}
 }
 
+func storeLatestMetrics(actionId string, metrics *[]action_kit_api.Metric) {
+	if metrics == nil {
+		return
+	}
+	value, ok := Metrics.Load(actionId)
+	if !ok || value == nil {
+		Metrics.Store(actionId, metrics)
+	} else {
+		metricsStored := value.(*[]action_kit_api.Metric)
+		*metricsStored = append(*metricsStored, *metrics...)
+		Metrics.Store(actionId, metricsStored)
+	}
+}
+func (e *Extension) GetMetrics(actionId string) *[]action_kit_api.Metric {
+	value, ok := Metrics.Load(actionId)
+	if !ok || value == nil {
+		return nil
+	}
+	metrics := value.(*[]action_kit_api.Metric)
+	return metrics
+}
+
 func (e *Extension) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState) error {
 	stopBody := action_kit_api.StopActionRequestBody{
 		ExecutionId: executionId,
@@ -365,6 +394,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
 	logMessages(stopResult.Messages)
+	storeLatestMetrics(action.Id, stopResult.Metrics)
 	if !res.IsSuccess() {
 		return fmt.Errorf("failed to stop action: HTTP %d %s", res.StatusCode(), string(res.Body()))
 	}
