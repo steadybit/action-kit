@@ -369,8 +369,8 @@ func storeLatestMetrics(actionId string, metrics *[]action_kit_api.Metric) {
 	if !ok || value == nil {
 		Metrics.Store(actionId, metrics)
 	} else {
-		metricsStored := value.(*[]action_kit_api.Metric)
-		*metricsStored = append(*metricsStored, *metrics...)
+		metricsStored := value.([]action_kit_api.Metric)
+		metricsStored = append(metricsStored, *metrics...)
 		Metrics.Store(actionId, metricsStored)
 	}
 }
@@ -380,7 +380,7 @@ func (e *Extension) GetMetrics(actionId string) []action_kit_api.Metric {
 		return nil
 	}
 	var result []action_kit_api.Metric
-	for _, metric := range *value.(*[]action_kit_api.Metric) {
+	for _, metric := range value.([]action_kit_api.Metric) {
 		result = append(result, metric)
 	}
 	return result
