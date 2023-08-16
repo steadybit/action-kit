@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.10
+
+- added function to get metrics of status calls
+
 ## 1.0.9
 
 - Update to action-kit api 2.7.0
