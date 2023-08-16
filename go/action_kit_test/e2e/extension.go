@@ -369,9 +369,15 @@ func storeLatestMetrics(actionId string, metrics *[]action_kit_api.Metric) {
 	if !ok || value == nil {
 		Metrics.Store(actionId, metrics)
 	} else {
+		var newMetrics []action_kit_api.Metric
 		metricsStored := value.([]action_kit_api.Metric)
-		metricsStored = append(metricsStored, *metrics...)
-		Metrics.Store(actionId, metricsStored)
+		for _, metricStored := range metricsStored {
+			newMetrics = append(newMetrics, metricStored)
+		}
+		for _, metric := range *metrics {
+			newMetrics = append(newMetrics, metric)
+		}
+		Metrics.Store(actionId, newMetrics)
 	}
 }
 func (e *Extension) GetMetrics(actionId string) []action_kit_api.Metric {
