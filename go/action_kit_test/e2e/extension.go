@@ -374,13 +374,16 @@ func storeLatestMetrics(actionId string, metrics *[]action_kit_api.Metric) {
 		Metrics.Store(actionId, metricsStored)
 	}
 }
-func (e *Extension) GetMetrics(actionId string) *[]action_kit_api.Metric {
+func (e *Extension) GetMetrics(actionId string) []action_kit_api.Metric {
 	value, ok := Metrics.Load(actionId)
 	if !ok || value == nil {
 		return nil
 	}
-	metrics := value.(*[]action_kit_api.Metric)
-	return metrics
+	var result []action_kit_api.Metric
+	for _, metric := range *value.(*[]action_kit_api.Metric) {
+		result = append(result, metric)
+	}
+	return result
 }
 
 func (e *Extension) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState) error {
