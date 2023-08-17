@@ -15,6 +15,7 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
 	"io"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -374,6 +375,25 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 	}
 }
 
+func (m *Minikube) CreateDeployment(deployment *appsv1.Deployment) (metav1.Object, []corev1.Pod, error) {
+	applied, err := m.GetClient().AppsV1().Deployments("default").Create(context.Background(), deployment, metav1.CreateOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	pods, err := m.WaitForDeploymentPhase(applied.GetObjectMeta(), corev1.PodRunning, fmt.Sprintf("app=%s", deployment.GetName()), 3*time.Minute)
+	if err != nil {
+		return nil, nil, err
+	}
+	return applied.GetObjectMeta(), pods, nil
+}
+
+func (m *Minikube) DeleteDeployment(deployment metav1.Object) error {
+	if deployment == nil {
+		return nil
+	}
+	return m.GetClient().AppsV1().Deployments(deployment.GetNamespace()).Delete(context.Background(), deployment.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+}
+
 func (m *Minikube) CreatePod(pod *acorev1.PodApplyConfiguration) (metav1.Object, error) {
 	applied, err := m.GetClient().CoreV1().Pods("default").Apply(context.Background(), pod, metav1.ApplyOptions{FieldManager: "application/apply-patch"})
 	if err != nil {
@@ -394,6 +414,32 @@ func (m *Minikube) DeletePod(pod metav1.Object) error {
 		return nil
 	}
 	return m.GetClient().CoreV1().Pods(pod.GetNamespace()).Delete(context.Background(), pod.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+}
+
+func (m *Minikube) WaitForDeploymentPhase(deployment metav1.Object, phase corev1.PodPhase, labelSelector string, duration time.Duration) ([]corev1.Pod, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	defer cancel()
+
+	var lastStatus corev1.PodPhase
+	var podListToReturn *corev1.PodList
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("pod %s/%s did not reach phase %s. last status %s", deployment.GetNamespace(), deployment.GetName(), phase, lastStatus)
+		case <-time.After(200 * time.Millisecond):
+			podList, err := m.GetClient().CoreV1().Pods(deployment.GetNamespace()).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+			if err != nil {
+				return nil, err
+			}
+			podListToReturn = podList
+			for _, p := range podList.Items {
+				if err == nil && p.Status.Phase == phase {
+					return podListToReturn.Items, nil
+				}
+				lastStatus = p.Status.Phase
+			}
+		}
+	}
 }
 
 func (m *Minikube) WaitForPodPhase(pod metav1.Object, phase corev1.PodPhase, duration time.Duration) error {
