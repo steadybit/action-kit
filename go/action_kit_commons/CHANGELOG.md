@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Avoid duplicate ip/tc rules when includes or excludes are not unique
+
 ## 1.0.4
 
 - Add utilty to resolve hostnames using dig

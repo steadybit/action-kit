@@ -15,7 +15,7 @@ type BlackholeOpts struct {
 func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 	var cmds []string
 
-	for _, nwp := range o.Include {
+	for _, nwp := range uniqueNetWithPortRange(o.Include) {
 		net := nwp.Net
 		portRange := nwp.PortRange
 
@@ -29,7 +29,7 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s sport %s", mode, net.String(), portRange.String()))
 	}
 
-	for _, nwp := range o.Exclude {
+	for _, nwp := range uniqueNetWithPortRange(o.Exclude) {
 		net := nwp.Net
 		portRange := nwp.PortRange
 

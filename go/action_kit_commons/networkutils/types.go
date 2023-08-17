@@ -4,6 +4,7 @@
 package networkutils
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"strconv"
@@ -80,11 +81,6 @@ func ParsePortRange(raw string) (PortRange, error) {
 	return PortRange{From: uint16(from), To: uint16(to)}, nil
 }
 
-type NetWithPortRange struct {
-	Net       net.IPNet
-	PortRange PortRange
-}
-
 func IpToNet(ips []net.IP) []net.IPNet {
 	var nets []net.IPNet
 	for _, ip := range ips {
@@ -95,6 +91,15 @@ func IpToNet(ips []net.IP) []net.IPNet {
 		}
 	}
 	return nets
+}
+
+type NetWithPortRange struct {
+	Net       net.IPNet
+	PortRange PortRange
+}
+
+func (nwp NetWithPortRange) Equal(o NetWithPortRange) bool {
+	return nwp.PortRange == o.PortRange && nwp.Net.IP.Equal(o.Net.IP) && bytes.Equal(nwp.Net.Mask, o.Net.Mask)
 }
 
 func (nwp NetWithPortRange) String() string {
@@ -112,6 +117,23 @@ func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPo
 				Net:       n,
 				PortRange: portRange,
 			})
+		}
+	}
+	return result
+}
+
+func uniqueNetWithPortRange(netWithPortRanges []NetWithPortRange) []NetWithPortRange {
+	var result []NetWithPortRange
+	for _, nwp := range netWithPortRanges {
+		found := false
+		for _, r := range result {
+			if r.Equal(nwp) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, nwp)
 		}
 	}
 	return result

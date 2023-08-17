@@ -29,8 +29,7 @@ func TestHostnameResolver_Resolve(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("Resolve(%+v)", tt.ipOrHostnames), func(t *testing.T) {
-			h := &HostnameResolver{}
-			got, err := h.Resolve(context.Background(), tt.ipOrHostnames...)
+			got, err := Resolve(context.Background(), tt.ipOrHostnames...)
 			if !tt.wantErr(t, err, fmt.Sprintf("Resolve(ctx, %v)", tt.ipOrHostnames)) {
 				return
 			}

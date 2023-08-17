@@ -13,14 +13,14 @@ import (
 func TestParseTcBatchError(t *testing.T) {
 	assert.NoError(t, ParseTcBatchError(strings.NewReader("")))
 
-	content := strings.NewReader(`Error: Exclusivity flag on, cannot modify.
+	content := `Error: Exclusivity flag on, cannot modify.
 Command failed -:1
 RTNETLINK answers: File exists
 Command failed -:2
 Error: Exclusivity flag on, cannot modify.
 Command failed -:161
-`)
-	err := ParseTcBatchError(content)
+`
+	err := ParseTcBatchError(strings.NewReader(content))
 
 	assert.Equal(t, 3, len(err.(*TcBatchError).Errors))
 	assert.Equal(t, content, err.Error())

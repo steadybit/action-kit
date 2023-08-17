@@ -50,12 +50,13 @@ func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
 	} else {
 		return nil, err
 	}
+
 	return cmds, nil
 }
 
 func tcCommandsForNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, parent, flowId string, prio int) ([]string, error) {
 	var cmds []string
-	for _, nwp := range netWithPortRanges {
+	for _, nwp := range uniqueNetWithPortRange(netWithPortRanges) {
 		protocol, err := getProtocol(nwp.Net)
 		if err != nil {
 			return nil, err
@@ -70,7 +71,6 @@ func tcCommandsForNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, par
 			prio += 1
 			cmds = append(cmds, fmt.Sprintf("filter %s dev %s protocol %s parent %s prio %d u32 %s flowid %s", mode, ifc, protocol, parent, prio, matcher, flowId))
 		}
-
 	}
 	return cmds, nil
 }
