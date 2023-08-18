@@ -12,9 +12,13 @@ func GetOwnIPs() []net.IP {
 		return nil
 	}
 
-	resultIP4s := make([]net.IP, 0)
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
+	result := make([]net.IP, 0)
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get addresses")
 			break
@@ -29,9 +33,9 @@ func GetOwnIPs() []net.IP {
 				ip = v.IP
 			}
 			if !ip.IsLoopback() && len(ip) > 0 && !ip.Equal(net.IPv4zero) {
-				resultIP4s = append(resultIP4s, ip)
+				result = append(result, ip)
 			}
 		}
 	}
-	return resultIP4s
+	return result
 }

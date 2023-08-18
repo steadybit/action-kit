@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- Only consider ip addresses of interfaces that are up in GetOwnIPs
+
 ## 1.0.5
 
 - Avoid duplicate ip/tc rules when includes or excludes are not unique

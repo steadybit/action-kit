@@ -1,12 +1,11 @@
 package networkutils
 
 import (
-  "github.com/stretchr/testify/assert"
-  "testing"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestGetOwnIPs(t *testing.T) {
-  iPs := GetOwnIPs()
-  assert.NotEmpty(t, iPs)
-  assert.True(t, len(iPs) > 0)
+	ips := GetOwnIPs()
+	assert.NotEmpty(t, ips)
 }
