@@ -10,7 +10,6 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -42,22 +41,22 @@ func (n *NginxDeployment) Deploy(deploymentName string) error {
 					"app": deploymentName,
 				},
 			},
-			Template: apiv1.PodTemplateSpec{
+			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: deploymentName,
 					Labels: map[string]string{
 						"app": deploymentName,
 					},
 				},
-				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
 						{
 							Name:  "nginx",
 							Image: "nginx:stable-alpine",
-							Ports: []apiv1.ContainerPort{
+							Ports: []corev1.ContainerPort{
 								{
 									Name:          "http",
-									Protocol:      apiv1.ProtocolTCP,
+									Protocol:      corev1.ProtocolTCP,
 									ContainerPort: 80,
 								},
 							},
