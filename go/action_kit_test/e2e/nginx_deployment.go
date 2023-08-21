@@ -27,7 +27,7 @@ type NginxDeployment struct {
 }
 
 func (n *NginxDeployment) Deploy(deploymentName string) error {
-	desiredCount := int32(1)
+	desiredCount := int32(2)
 	deploymentConfig := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: deploymentName,
