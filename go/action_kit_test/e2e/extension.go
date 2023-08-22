@@ -29,10 +29,10 @@ type Extension struct {
 }
 
 var (
-	Metrics =  sync.Map{}
+	Metrics = sync.Map{}
 )
 
-func (e *Extension) DiscoverTargets(targetId string) ([]discovery_kit_api.Target, error) {
+func (e *Extension) DiscoverTargets(targetId string) (*discovery_kit_api.DiscoveryData, error) {
 	discoveries, err := e.describeDiscoveries()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discovery descriptions: %w", err)
@@ -109,16 +109,16 @@ func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpo
 	return description, nil
 }
 
-func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescription) ([]discovery_kit_api.Target, error) {
-	var targets discovery_kit_api.DiscoveredTargets
-	res, err := e.Client.R().SetResult(&targets).Execute(cases.Upper(language.English).String(string(discovery.Discover.Method)), discovery.Discover.Path)
+func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescription) (*discovery_kit_api.DiscoveryData, error) {
+	var result discovery_kit_api.DiscoveryData
+	res, err := e.Client.R().SetResult(&result).Execute(cases.Upper(language.English).String(string(discovery.Discover.Method)), discovery.Discover.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover targets: %w", err)
 	}
 	if !res.IsSuccess() {
 		return nil, fmt.Errorf("failed to discover targets: %d", res.StatusCode())
 	}
-	return targets.Targets, nil
+	return &result, nil
 }
 
 func (e *Extension) listActions() (action_kit_api.ActionList, error) {

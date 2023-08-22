@@ -166,14 +166,39 @@ func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate
 		case <-ctx.Done():
 			return discovery_kit_api.Target{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
 		case <-time.After(200 * time.Millisecond):
-			targets, err := e.DiscoverTargets(targetId)
+			result, err := e.DiscoverTargets(targetId)
 			if err != nil {
 				lastErr = err
 				continue
 			}
-			for _, target := range targets {
-				if predicate(target) {
-					return target, nil
+			if result.Targets != nil {
+				for _, target := range *result.Targets {
+					if predicate(target) {
+						return target, nil
+					}
+				}
+			}
+		}
+	}
+}
+
+func PollForEnrichmentData(ctx context.Context, e *Extension, targetId string, predicate func(target discovery_kit_api.EnrichmentData) bool) (discovery_kit_api.EnrichmentData, error) {
+	var lastErr error
+	for {
+		select {
+		case <-ctx.Done():
+			return discovery_kit_api.EnrichmentData{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
+		case <-time.After(200 * time.Millisecond):
+			result, err := e.DiscoverTargets(targetId)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			if result.EnrichmentData != nil {
+				for _, enrichmentData := range *result.EnrichmentData {
+					if predicate(enrichmentData) {
+						return enrichmentData, nil
+					}
 				}
 			}
 		}
@@ -181,7 +206,11 @@ func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate
 }
 
 func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
-	for _, v := range target.Attributes[key] {
+	return ContainsAttribute(target.Attributes, key, value)
+}
+
+func ContainsAttribute(attributes map[string][]string, key, value string) bool {
+	for _, v := range attributes[key] {
 		if v == value {
 			return true
 		}

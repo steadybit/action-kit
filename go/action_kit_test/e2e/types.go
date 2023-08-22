@@ -1,9 +1,9 @@
 package e2e
 
 const (
-	RuntimeContainerd         Runtime = "containerd"
-	RuntimeDocker             Runtime = "docker"
-	RuntimeCrio               Runtime = "cri-o"
+	RuntimeContainerd Runtime = "containerd"
+	RuntimeDocker     Runtime = "docker"
+	RuntimeCrio       Runtime = "cri-o"
 )
 
 var (

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.13
+
+- added support for `enrichmentData` in discoveries
+
+## 1.0.12
+
 ## 1.0.11
 
 - added function to get metrics of status calls

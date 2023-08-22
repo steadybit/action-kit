@@ -4,11 +4,11 @@ go 1.20
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/rs/zerolog v1.30.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.7.0
-	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.3.0
-	github.com/steadybit/extension-kit v1.8.4
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.7.1
+	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.4.1
+	github.com/steadybit/extension-kit v1.8.7
 	github.com/stretchr/testify v1.8.4
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/text v0.12.0
