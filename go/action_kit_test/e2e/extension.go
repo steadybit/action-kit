@@ -216,6 +216,7 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 	}
 	go func() {
 		defer cancel()
+		defer close(ch)
 
 		var err error
 		if action.Status != nil {
@@ -239,8 +240,6 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 		} else {
 			log.Info().Str("actionId", action.Id).Stringer("executionId", executionId).Msg("Action ended")
 		}
-
-		close(ch)
 	}()
 
 	return ActionExecution{
