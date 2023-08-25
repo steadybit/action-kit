@@ -175,6 +175,9 @@ func (a *ActionExecution) Cancel() error {
 	if a.cancel != nil {
 		a.cancel()
 	}
+	for err := range a.ch {
+		return err
+	}
 	return nil
 }
 
@@ -186,6 +189,7 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 		return ActionExecution{}, err
 	}
 	log.Info().Str("actionId", action.Id).
+		Stringer("executionId", executionId).
 		Interface("config", config).
 		Interface("state", state).
 		Msg("Action prepared")
@@ -198,6 +202,7 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 		return ActionExecution{}, err
 	}
 	log.Info().Str("actionId", action.Id).
+		Stringer("executionId", executionId).
 		Interface("state", state).
 		Msg("Action started")
 
@@ -224,15 +229,15 @@ func (e *Extension) execAction(action action_kit_api.ActionDescription, target *
 			if stopErr != nil {
 				err = errors.Join(err, stopErr)
 			} else {
-				log.Info().Str("actionId", action.Id).Msg("Action stopped")
+				log.Info().Str("actionId", action.Id).Stringer("executionId", executionId).Msg("Action stopped")
 			}
 		}
 
 		if err != nil {
-			log.Warn().Str("actionId", action.Id).Err(err).Msg("Action ended with error")
+			log.Warn().Str("actionId", action.Id).Stringer("executionId", executionId).Err(err).Msg("Action ended with error")
 			ch <- err
 		} else {
-			log.Info().Str("actionId", action.Id).Msg("Action ended")
+			log.Info().Str("actionId", action.Id).Stringer("executionId", executionId).Msg("Action ended")
 		}
 
 		close(ch)
@@ -287,7 +292,7 @@ func (e *Extension) prepareAction(action action_kit_api.ActionDescription, targe
 	if err != nil {
 		return nil, duration, fmt.Errorf("failed to prepare action: %w", err)
 	}
-	logMessages(prepareResult.Messages)
+	logMessages(executionId, prepareResult.Messages)
 	if prepareResult.Error != nil {
 		return nil, duration, fmt.Errorf("action failed: %v", *prepareResult.Error)
 	}
@@ -308,7 +313,7 @@ func (e *Extension) startAction(action action_kit_api.ActionDescription, executi
 	if err != nil {
 		return state, fmt.Errorf("failed to start action: %w", err)
 	}
-	logMessages(startResult.Messages)
+	logMessages(executionId, startResult.Messages)
 	if !res.IsSuccess() {
 		return nil, fmt.Errorf("failed to start action: HTTP %d %s", res.StatusCode(), string(res.Body()))
 	}
@@ -343,7 +348,7 @@ func (e *Extension) actionStatus(ctx context.Context, action action_kit_api.Acti
 				return nil, fmt.Errorf("failed to get action state: HTTP %d %s", res.StatusCode(), string(res.Body()))
 			}
 
-			logMessages(statusResult.Messages)
+			logMessages(executionId, statusResult.Messages)
 			storeLatestMetrics(action.Id, statusResult.Metrics)
 
 			if statusResult.State != nil {
@@ -394,7 +399,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 	if err != nil {
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
-	logMessages(stopResult.Messages)
+	logMessages(executionId, stopResult.Messages)
 	storeLatestMetrics(action.Id, stopResult.Metrics)
 	if !res.IsSuccess() {
 		return fmt.Errorf("failed to stop action: HTTP %d %s", res.StatusCode(), string(res.Body()))
@@ -405,7 +410,7 @@ func (e *Extension) stopAction(action action_kit_api.ActionDescription, executio
 	return nil
 }
 
-func logMessages(messages *action_kit_api.Messages) {
+func logMessages(executionId uuid.UUID, messages *action_kit_api.Messages) {
 	if messages == nil {
 		return
 	}
@@ -418,7 +423,7 @@ func logMessages(messages *action_kit_api.Messages) {
 			level = zerolog.InfoLevel
 		}
 
-		event := log.WithLevel(level)
+		event := log.WithLevel(level).Stringer("executionId", executionId)
 		if msg.Fields != nil {
 			event.Fields(*msg.Fields)
 		}
