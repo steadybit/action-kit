@@ -175,8 +175,10 @@ func (a *ActionExecution) Cancel() error {
 	if a.cancel != nil {
 		a.cancel()
 	}
-	for err := range a.ch {
-		return err
+	if a.ch != nil {
+		for err := range a.ch {
+			return err
+		}
 	}
 	return nil
 }
