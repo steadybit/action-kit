@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14
+
+- don't swallow errors from action cancel
+
 ## 1.0.13
 
 - added support for `enrichmentData` in discoveries
