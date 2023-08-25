@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15
+
+- fix: ActionExecution.Cancel may hang if action failed in preparation
+
 ## 1.0.14
 
 - don't swallow errors from action cancel
