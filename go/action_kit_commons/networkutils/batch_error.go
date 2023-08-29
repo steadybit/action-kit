@@ -15,39 +15,37 @@ import (
 )
 
 var (
-	ignoreErrorsTcAdd = []string{
+	ignoreErrorsBatchAdd = []string{
 		strings.ToLower("Error: Exclusivity flag on, cannot modify."),
 		strings.ToLower("RTNETLINK answers: File exists"),
 	}
-	ignoreErrorsTcDelete = []string{
+	ignoreErrorsBatchDelete = []string{
 		strings.ToLower("Error: Failed to find qdisc with specified classid."),
 		strings.ToLower("Error: Parent Qdisc doesn't exists."),
 		strings.ToLower("Error: Invalid handle."),
 		strings.ToLower("Cannot find device"),
+		strings.ToLower("RTNETLINK answers: No such file or directory"),
 	}
 )
 
-type TcError struct {
+type BatchError struct {
 	Msg      string
 	Lineno   int
 	Filename string
 }
 
-type TcBatchError struct {
-	Errors []TcError
+type BatchErrors struct {
+	Cmd    []string
+	Errors []BatchError
 }
 
-var (
-	_ error = &TcError{}
-	_ error = &TcBatchError{}
-)
-
-func (t *TcError) Error() string {
+func (t *BatchError) Error() string {
 	return fmt.Sprintf("%s\nCommand failed %s:%d", t.Msg, t.Filename, t.Lineno)
 }
 
-func (t *TcBatchError) Error() string {
+func (t *BatchErrors) Error() string {
 	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Command failed %s\n", strings.Join(t.Cmd, " ")))
 	for _, err := range t.Errors {
 		sb.WriteString(err.Error())
 		sb.WriteString("\n")
@@ -55,9 +53,9 @@ func (t *TcBatchError) Error() string {
 	return sb.String()
 }
 
-func ParseTcBatchError(r io.Reader) error {
+func ParseBatchError(cmd []string, r io.Reader) error {
 	var msg strings.Builder
-	var errs []TcError
+	var errs []BatchError
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -71,7 +69,7 @@ func ParseTcBatchError(r io.Reader) error {
 				lineno, _ = strconv.Atoi(l[i+1:])
 			}
 
-			errs = append(errs, TcError{Msg: msg.String(), Lineno: lineno, Filename: filename})
+			errs = append(errs, BatchError{Msg: msg.String(), Lineno: lineno, Filename: filename})
 			msg.Reset()
 		} else {
 			if msg.Len() > 0 {
@@ -84,25 +82,25 @@ func ParseTcBatchError(r io.Reader) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &TcBatchError{Errors: errs}
+	return &BatchErrors{Cmd: cmd, Errors: errs}
 }
 
-func FilterTcBatchErrors(err error, mode Mode, cmds []string) error {
-	tcBatchErr := new(TcBatchError)
-	if !errors.As(err, &tcBatchErr) {
+func FilterBatchErrors(err error, mode Mode, cmds []string) error {
+	batchErrors := new(BatchErrors)
+	if !errors.As(err, &batchErrors) {
 		return err
 	}
 
-	var errs []TcError
+	var errs []BatchError
 	var ignoreErrors []string
 	switch mode {
 	case ModeAdd:
-		ignoreErrors = ignoreErrorsTcAdd
+		ignoreErrors = ignoreErrorsBatchAdd
 	case ModeDelete:
-		ignoreErrors = ignoreErrorsTcDelete
+		ignoreErrors = ignoreErrorsBatchDelete
 	}
 
-	for _, e := range tcBatchErr.Errors {
+	for _, e := range batchErrors.Errors {
 		if !contains(ignoreErrors, strings.ToLower(e.Msg)) {
 			errs = append(errs, e)
 		} else {
@@ -117,7 +115,7 @@ func FilterTcBatchErrors(err error, mode Mode, cmds []string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &TcBatchError{Errors: errs}
+	return &BatchErrors{Cmd: batchErrors.Cmd, Errors: errs}
 }
 
 func contains(ignoreErrors []string, msg string) bool {
