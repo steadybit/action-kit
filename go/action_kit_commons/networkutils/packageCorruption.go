@@ -37,24 +37,11 @@ func (o *CorruptPackagesOpts) TcCommands(mode Mode) ([]string, error) {
 
 func (o *CorruptPackagesOpts) String() string {
 	var sb strings.Builder
-	sb.WriteString("Corrupting Packages (corruption: ")
+	sb.WriteString("corrupting packages of ")
 	sb.WriteString(fmt.Sprintf("%d%%", o.Corruption))
-	sb.WriteString(", Interfaces: ")
+	sb.WriteString(" (interfaces: ")
 	sb.WriteString(strings.Join(o.Interfaces, ", "))
 	sb.WriteString(")")
-	sb.WriteString("\nto/from:\n")
-	for _, inc := range o.Include {
-		sb.WriteString(" ")
-		sb.WriteString(inc.String())
-		sb.WriteString("\n")
-	}
-	if len(o.Exclude) > 0 {
-		sb.WriteString("but not from/to:\n")
-		for _, exc := range o.Exclude {
-			sb.WriteString(" ")
-			sb.WriteString(exc.String())
-			sb.WriteString("\n")
-		}
-	}
+	writeStringForFilters(sb, o.Filter)
 	return sb.String()
 }

@@ -172,3 +172,20 @@ func getProtocol(net net.IPNet) (string, error) {
 		return "", fmt.Errorf("unknown family %s", family)
 	}
 }
+
+func writeStringForFilters(sb strings.Builder, f Filter) {
+	sb.WriteString("\nto/from:\n")
+	for _, inc := range f.Include {
+		sb.WriteString(" ")
+		sb.WriteString(inc.String())
+		sb.WriteString("\n")
+	}
+	if len(f.Exclude) > 0 {
+		sb.WriteString("but not from/to:\n")
+		for _, exc := range f.Exclude {
+			sb.WriteString(" ")
+			sb.WriteString(exc.String())
+			sb.WriteString("\n")
+		}
+	}
+}

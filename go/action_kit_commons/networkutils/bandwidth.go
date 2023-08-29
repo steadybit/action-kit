@@ -46,24 +46,11 @@ func (o *LimitBandwidthOpts) TcCommands(mode Mode) ([]string, error) {
 
 func (o *LimitBandwidthOpts) String() string {
 	var sb strings.Builder
-	sb.WriteString("Limit bandwidth (bandwidth: ")
+	sb.WriteString("limit bandwidth to ")
 	sb.WriteString(o.Bandwidth)
-	sb.WriteString(", Interfaces: ")
+	sb.WriteString(" (interfaces: ")
 	sb.WriteString(strings.Join(o.Interfaces, ", "))
 	sb.WriteString(")")
-	sb.WriteString("\nto/from:\n")
-	for _, inc := range o.Include {
-		sb.WriteString(" ")
-		sb.WriteString(inc.String())
-		sb.WriteString("\n")
-	}
-	if len(o.Exclude) > 0 {
-		sb.WriteString("but not from/to:\n")
-		for _, exc := range o.Exclude {
-			sb.WriteString(" ")
-			sb.WriteString(exc.String())
-			sb.WriteString("\n")
-		}
-	}
+	writeStringForFilters(sb, o.Filter)
 	return sb.String()
 }
