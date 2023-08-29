@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- ignore failed delete of non-existent rule
+
 ## 1.0.6
 
 - Only consider ip addresses of interfaces that are up in GetOwnIPs
