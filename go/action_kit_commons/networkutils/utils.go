@@ -173,7 +173,7 @@ func getProtocol(net net.IPNet) (string, error) {
 	}
 }
 
-func writeStringForFilters(sb strings.Builder, f Filter) {
+func writeStringForFilters(sb *strings.Builder, f Filter) {
 	sb.WriteString("\nto/from:\n")
 	for _, inc := range f.Include {
 		sb.WriteString(" ")

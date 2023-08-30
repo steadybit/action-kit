@@ -53,6 +53,6 @@ func (o *BlackholeOpts) TcCommands(_ Mode) ([]string, error) {
 func (o *BlackholeOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("blocking traffic ")
-	writeStringForFilters(sb, o.Filter)
+	writeStringForFilters(&sb, o.Filter)
 	return sb.String()
 }

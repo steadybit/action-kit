@@ -51,6 +51,6 @@ func (o *LimitBandwidthOpts) String() string {
 	sb.WriteString(" (interfaces: ")
 	sb.WriteString(strings.Join(o.Interfaces, ", "))
 	sb.WriteString(")")
-	writeStringForFilters(sb, o.Filter)
+	writeStringForFilters(&sb, o.Filter)
 	return sb.String()
 }
