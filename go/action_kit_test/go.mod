@@ -8,13 +8,14 @@ require (
 	github.com/rs/zerolog v1.30.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.7.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.4.1
+	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.0.0
 	github.com/steadybit/extension-kit v1.8.7
 	github.com/stretchr/testify v1.8.4
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/text v0.12.0
-	k8s.io/api v0.29.0-alpha.0
-	k8s.io/apimachinery v0.29.0-alpha.0
-	k8s.io/client-go v0.29.0-alpha.0
+	k8s.io/api v0.28.1
+	k8s.io/apimachinery v0.28.1
+	k8s.io/client-go v0.28.1
 )
 
 require (

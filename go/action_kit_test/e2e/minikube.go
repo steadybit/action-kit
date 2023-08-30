@@ -169,24 +169,56 @@ type WithMinikubeTestCase struct {
 type ExtensionFactory interface {
 	CreateImage() error
 	Start(minikube *Minikube) (*Extension, error)
-	BeforeAll(t *testing.T, m *Minikube, e *Extension) error
-	BeforeEach(t *testing.T, m *Minikube, e *Extension) error
-	AfterAll(t *testing.T, m *Minikube, e *Extension) error
-	AfterEach(t *testing.T, m *Minikube, e *Extension) error
 }
 
 type MinikubeOpts struct {
-	Runtimes []Runtime
-	Driver   string
+	runtimes   []Runtime
+	driver     string
+	afterStart func(m *Minikube) error
 }
 
-var DefaultMiniKubeOpts = MinikubeOpts{
-	Runtimes: []Runtime{RuntimeDocker},
-	Driver:   "docker",
+var defaultMiniKubeOpts = MinikubeOpts{
+	runtimes: []Runtime{RuntimeDocker},
+	driver:   "docker",
+}
+
+func DefaultMinikubeOpts() MinikubeOpts {
+	return defaultMiniKubeOpts
+}
+
+// AfterStart the after start callback will be called *after* the minikube cluster and *before* the extension is started.
+func (o MinikubeOpts) AfterStart(f func(m *Minikube) error) MinikubeOpts {
+	o.afterStart = chain(o.afterStart, f)
+	return o
+}
+
+func (o MinikubeOpts) WithRuntimes(runtimes ...Runtime) MinikubeOpts {
+	o.runtimes = runtimes
+	return o
+}
+
+func (o MinikubeOpts) WithDriver(driver string) MinikubeOpts {
+	o.driver = driver
+	return o
+}
+
+func chain(a func(m *Minikube) error, b func(m *Minikube) error) func(m *Minikube) error {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	return func(m *Minikube) error {
+		if err := a(m); err != nil {
+			return err
+		}
+		return b(m)
+	}
 }
 
 func WithDefaultMinikube(t *testing.T, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
-	WithMinikube(t, DefaultMiniKubeOpts, ext, testCases)
+	WithMinikube(t, DefaultMinikubeOpts(), ext, testCases)
 }
 
 func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
@@ -202,43 +234,46 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 		wg.Done()
 	}()
 
-	for _, runtime := range mOpts.Runtimes {
+	for _, runtime := range mOpts.runtimes {
 		t.Run(string(runtime), func(t *testing.T) {
-
-			minikube := newMinikube(runtime, mOpts.Driver)
+			minikube := newMinikube(runtime, mOpts.driver)
 			_ = minikube.delete()
+
 			err := minikube.start()
 			if err != nil {
 				log.Fatal().Msgf("failed to start Minikube: %v", err)
 			}
 			defer func() { _ = minikube.delete() }()
 
-			//t.Parallel()
-
 			if err := minikube.waitForDefaultServiceAccount(); err != nil {
 				t.Fatal("service account didn't show up", err)
+			}
+
+			if mOpts.afterStart != nil {
+				if err := mOpts.afterStart(minikube); err != nil {
+					t.Fatal("failed to run afterStart", err)
+				}
 			}
 
 			wg.Wait()
 			extension, err := ext.Start(minikube)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
-			if err := ext.BeforeAll(t, minikube, extension); err != nil {
-				t.Fatal("Before all failed", err)
-			}
+
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+			go func() {
+				err := ext.CreateImage()
+				if err != nil {
+					log.Fatal().Msgf("failed to create extension executable: %v", err)
+				}
+				wg.Done()
+			}()
+
 			for _, tc := range testCases {
 				t.Run(tc.Name, func(t *testing.T) {
-					if err := ext.BeforeEach(t, minikube, extension); err != nil {
-						t.Fatal("Before each failed", err)
-					}
 					tc.Test(t, minikube, extension)
-					if err := ext.AfterEach(t, minikube, extension); err != nil {
-						t.Fatal("After each failed", err)
-					}
 				})
-			}
-			if err := ext.AfterAll(t, minikube, extension); err != nil {
-				t.Fatal("After all failed", err)
 			}
 
 			processCoverage(extension, runtime)

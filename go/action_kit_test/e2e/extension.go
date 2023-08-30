@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
+	dclient "github.com/steadybit/discovery-kit/go/discovery_kit_test/client"
 	"github.com/steadybit/extension-kit/extconversion"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -32,17 +33,11 @@ var (
 	Metrics = sync.Map{}
 )
 
-func (e *Extension) DiscoverTargets(targetId string) (*discovery_kit_api.DiscoveryData, error) {
-	discoveries, err := e.describeDiscoveries()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get discovery descriptions: %w", err)
-	}
-	for _, discovery := range discoveries {
-		if discovery.Id == targetId {
-			return e.discoverTargets(discovery)
-		}
-	}
-	return nil, fmt.Errorf("discovery not found: %s", targetId)
+func (e *Extension) DiscoverTargets(discoveryId string) ([]discovery_kit_api.Target, error) {
+	return dclient.NewDiscoveryClient("/", e.Client).DiscoverTargets(discoveryId)
+}
+func (e *Extension) DiscoverEnrichmentData(discoveryId string) ([]discovery_kit_api.EnrichmentData, error) {
+	return dclient.NewDiscoveryClient("/", e.Client).DiscoverEnrichmentData(discoveryId)
 }
 
 func (e *Extension) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
@@ -79,48 +74,6 @@ func (e *Extension) listDiscoveries() (discovery_kit_api.DiscoveryList, error) {
 	}
 	return list, nil
 }
-
-func (e *Extension) describeDiscoveries() ([]discovery_kit_api.DiscoveryDescription, error) {
-	list, err := e.listDiscoveries()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get discovery descriptions: %w", err)
-	}
-
-	discoveries := make([]discovery_kit_api.DiscoveryDescription, 0, len(list.Discoveries))
-	for _, discovery := range list.Discoveries {
-		description, err := e.describeDiscovery(discovery)
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to describe discovery")
-		}
-		discoveries = append(discoveries, description)
-	}
-	return discoveries, nil
-}
-
-func (e *Extension) describeDiscovery(endpoint discovery_kit_api.DescribingEndpointReference) (discovery_kit_api.DiscoveryDescription, error) {
-	var description discovery_kit_api.DiscoveryDescription
-	res, err := e.Client.R().SetResult(&description).Execute(cases.Upper(language.English).String(string(endpoint.Method)), endpoint.Path)
-	if err != nil {
-		return description, fmt.Errorf("failed to get discovery description: %w", err)
-	}
-	if !res.IsSuccess() {
-		return description, fmt.Errorf("failed to get discovery description: %d", res.StatusCode())
-	}
-	return description, nil
-}
-
-func (e *Extension) discoverTargets(discovery discovery_kit_api.DiscoveryDescription) (*discovery_kit_api.DiscoveryData, error) {
-	var result discovery_kit_api.DiscoveryData
-	res, err := e.Client.R().SetResult(&result).Execute(cases.Upper(language.English).String(string(discovery.Discover.Method)), discovery.Discover.Path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to discover targets: %w", err)
-	}
-	if !res.IsSuccess() {
-		return nil, fmt.Errorf("failed to discover targets: %d", res.StatusCode())
-	}
-	return &result, nil
-}
-
 func (e *Extension) listActions() (action_kit_api.ActionList, error) {
 	var list action_kit_api.ActionList
 	res, err := e.Client.R().SetResult(&list).Get("/")
