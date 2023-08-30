@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- refactor hooks in WithMinikube
+- refactor to use the test discovery client
+
 ## 1.0.15
 
 - fix: ActionExecution.Cancel may hang if action failed in preparation

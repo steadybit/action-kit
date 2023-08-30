@@ -171,11 +171,9 @@ func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate
 				lastErr = err
 				continue
 			}
-			if result.Targets != nil {
-				for _, target := range *result.Targets {
-					if predicate(target) {
-						return target, nil
-					}
+			for _, target := range result {
+				if predicate(target) {
+					return target, nil
 				}
 			}
 		}
@@ -189,16 +187,14 @@ func PollForEnrichmentData(ctx context.Context, e *Extension, targetId string, p
 		case <-ctx.Done():
 			return discovery_kit_api.EnrichmentData{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
 		case <-time.After(200 * time.Millisecond):
-			result, err := e.DiscoverTargets(targetId)
+			result, err := e.DiscoverEnrichmentData(targetId)
 			if err != nil {
 				lastErr = err
 				continue
 			}
-			if result.EnrichmentData != nil {
-				for _, enrichmentData := range *result.EnrichmentData {
-					if predicate(enrichmentData) {
-						return enrichmentData, nil
-					}
+			for _, enrichmentData := range result {
+				if predicate(enrichmentData) {
+					return enrichmentData, nil
 				}
 			}
 		}
