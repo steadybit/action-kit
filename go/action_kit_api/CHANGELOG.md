@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.7.2
+- Embed the openapi spec into the api package
+
 ## 2.7.1
 
 - add timestampSource to Message

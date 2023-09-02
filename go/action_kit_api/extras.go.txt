@@ -1,3 +1,0 @@
-
-type ParameterOption interface {}
-type Widget interface {}
