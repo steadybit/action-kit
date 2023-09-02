@@ -774,16 +774,16 @@ components:
           description: HTTP method to use when calling the HTTP endpoint.
           type: string
           enum:
-            - get
+            - GET
       required:
         - path
         - method
     MutatingHttpMethod:
       type: string
       enum:
-        - post
-        - put
-        - delete
+        - POST
+        - PUT
+        - DELETE
     MutatingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.

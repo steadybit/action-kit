@@ -415,13 +415,13 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 		description.Prepare.Path = fmt.Sprintf("/%s/prepare", description.Id)
 	}
 	if description.Prepare.Method == "" {
-		description.Prepare.Method = action_kit_api.Post
+		description.Prepare.Method = action_kit_api.POST
 	}
 	if description.Start.Path == "" {
 		description.Start.Path = fmt.Sprintf("/%s/start", description.Id)
 	}
 	if description.Start.Method == "" {
-		description.Start.Method = action_kit_api.Post
+		description.Start.Method = action_kit_api.POST
 	}
 	if _, ok := action.(ActionWithStop[T]); ok && description.Stop == nil {
 		description.Stop = &action_kit_api.MutatingEndpointReference{}
@@ -432,7 +432,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 			description.Stop.Path = fmt.Sprintf("/%s/stop", description.Id)
 		}
 		if description.Stop.Method == "" {
-			description.Stop.Method = action_kit_api.Post
+			description.Stop.Method = action_kit_api.POST
 		}
 	}
 
@@ -450,7 +450,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 			description.Status.Path = fmt.Sprintf("/%s/status", description.Id)
 		}
 		if description.Status.Method == "" {
-			description.Status.Method = action_kit_api.Post
+			description.Status.Method = action_kit_api.POST
 		}
 		if description.Status.CallInterval == nil || *description.Status.CallInterval == "" {
 			description.Status.CallInterval = extutil.Ptr("5s")
@@ -462,7 +462,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 			description.Metrics.Query.Endpoint.Path = fmt.Sprintf("/%s/query", description.Id)
 		}
 		if description.Metrics.Query.Endpoint.Method == "" {
-			description.Metrics.Query.Endpoint.Method = action_kit_api.Post
+			description.Metrics.Query.Endpoint.Method = action_kit_api.POST
 		}
 	}
 	return description
