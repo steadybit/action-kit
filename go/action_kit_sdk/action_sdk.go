@@ -212,7 +212,7 @@ func GetActionList() action_kit_api.ActionList {
 	var result []action_kit_api.DescribingEndpointReference
 	for actionId := range registeredActions {
 		result = append(result, action_kit_api.DescribingEndpointReference{
-			Method: "GET",
+			Method: action_kit_api.GET,
 			Path:   fmt.Sprintf("/%s", actionId),
 		})
 	}

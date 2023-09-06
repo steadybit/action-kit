@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.6
+
+- Update to action-kit api 2.7.2
+
 ## 1.1.5
 
 - Update to action-kit api 2.7.0
