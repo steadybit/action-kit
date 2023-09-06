@@ -41,7 +41,7 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  extutil.Ptr("netserver"),
-					Image: extutil.Ptr("networkstatic/netserver:latest"),
+					Image: extutil.Ptr("docker.io/networkstatic/netserver:latest"),
 					Args:  []string{"-D"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
