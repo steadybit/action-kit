@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
+	aclient "github.com/steadybit/action-kit/go/action_kit_test/client"
+	dclient "github.com/steadybit/discovery-kit/go/discovery_kit_test/client"
 	corev1 "k8s.io/api/core/v1"
 	"os"
 	"os/exec"
@@ -132,5 +134,11 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	client := resty.New().SetBaseURL(address)
 	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %s", address)
 
-	return &Extension{Client: client, stop: stop, Pod: pods[0].GetObjectMeta()}, nil
+	return &Extension{
+		Client:    client,
+		discovery: dclient.NewDiscoveryClient("/", client),
+		action:    aclient.NewActionClient("/", client),
+		stop:      stop,
+		Pod:       pods[0].GetObjectMeta(),
+	}, nil
 }

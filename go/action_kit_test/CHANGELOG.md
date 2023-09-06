@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Add schema validation to action endpoints
+
 ## 1.1.1
 
 - reference image name using full repository reference
