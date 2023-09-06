@@ -57,7 +57,7 @@ func TestActionList(t *testing.T) {
 	v := ActionList{
 		Actions: []DescribingEndpointReference{
 			{
-				Get,
+				GET,
 				"/actions/rollout-restart",
 			},
 		},
@@ -143,7 +143,7 @@ func TestActionDescription(t *testing.T) {
 		Metrics: Ptr(MetricsConfiguration{
 			Query: Ptr(MetricsQueryConfiguration{
 				Endpoint: MutatingEndpointReferenceWithCallInterval{
-					Method: Post,
+					Method: POST,
 					Path:   "/actions/rollout-restart/metrics",
 				},
 				Parameters: []ActionParameter{
@@ -156,19 +156,19 @@ func TestActionDescription(t *testing.T) {
 			}),
 		}),
 		Prepare: MutatingEndpointReference{
-			Post,
+			POST,
 			"/actions/rollout-restart/prepare",
 		},
 		Start: MutatingEndpointReference{
-			Post,
+			POST,
 			"/actions/rollout-restart/start",
 		},
 		Status: Ptr(MutatingEndpointReferenceWithCallInterval{
-			Method: Post,
+			Method: POST,
 			Path:   "/actions/rollout-restart/status",
 		}),
 		Stop: Ptr(MutatingEndpointReference{
-			Post,
+			POST,
 			"/actions/rollout-restart/stop",
 		}),
 	}
