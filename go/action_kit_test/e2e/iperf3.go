@@ -42,7 +42,7 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  extutil.Ptr("iperf"),
-					Image: extutil.Ptr("networkstatic/iperf3:latest"),
+					Image: extutil.Ptr("docker.io/networkstatic/iperf3:latest"),
 					Args:  []string{"-s", "-p", "5201"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{

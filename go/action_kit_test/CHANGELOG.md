@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- reference image name using full repository reference
+
 ## 1.1.0
 
 - refactor hooks in WithMinikube

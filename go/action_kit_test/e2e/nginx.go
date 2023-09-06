@@ -39,7 +39,7 @@ func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfigura
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  extutil.Ptr("nginx"),
-					Image: extutil.Ptr("nginx:stable-alpine"),
+					Image: extutil.Ptr("docker.io/library/nginx:stable-alpine"),
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
 							ContainerPort: extutil.Ptr(int32(80)),
