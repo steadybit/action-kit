@@ -207,6 +207,11 @@ func RegisterAction[T any](a Action[T]) {
 	}
 }
 
+// ClearRegisteredActions clears all registered actions - used for testing. Warning: This will not remove the registered routes from the http server.
+func ClearRegisteredActions() {
+	registeredActions = make(map[string]interface{})
+}
+
 // GetActionList returns a list of all root endpoints of registered actions.
 func GetActionList() action_kit_api.ActionList {
 	var result []action_kit_api.DescribingEndpointReference

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7
+
+- Added `ClearRegisteredActions` for testing purposes
+
 ## 1.1.6
 
 - Update to action-kit api 2.7.2
