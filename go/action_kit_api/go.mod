@@ -3,8 +3,8 @@ module github.com/steadybit/action-kit/go/action_kit_api/v2
 go 1.20
 
 require (
-	github.com/deepmap/oapi-codegen v1.14.0
-	github.com/getkin/kin-openapi v0.119.0
+	github.com/deepmap/oapi-codegen v1.15.0
+	github.com/getkin/kin-openapi v0.120.0
 	github.com/google/uuid v1.3.1
 	github.com/stretchr/testify v1.8.4
 )
@@ -42,7 +42,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kataras/blocks v0.0.7 // indirect
 	github.com/kataras/golog v0.1.9 // indirect
-	github.com/kataras/iris/v12 v12.2.5 // indirect
+	github.com/kataras/iris/v12 v12.2.6-0.20230908161203-24ba4e8933b9 // indirect
 	github.com/kataras/pio v0.0.12 // indirect
 	github.com/kataras/sitemap v0.0.6 // indirect
 	github.com/kataras/tunnel v0.0.4 // indirect

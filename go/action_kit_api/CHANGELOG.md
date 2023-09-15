@@ -1,6 +1,11 @@
 # Changelog
 
+## 2.7.3
+
+- Added `deprecated` and `deprecationMessage` to `ActionParameter`
+
 ## 2.7.2
+
 - Embed the openapi spec into the api package
 
 ## 2.7.1

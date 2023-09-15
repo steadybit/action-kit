@@ -610,6 +610,18 @@ components:
           uniqueItems: true
         hint:
           $ref: '#/components/schemas/ActionHint'
+        deprecated:
+          type: boolean
+          description: >-
+            Whether or not this parameter is deprecated. Deprecated parameters
+            will be hidden from the user interface when configuring a new step.
+            Existing steps will still be able to use deprecated parameters.
+            A deprecated parameter should not be required nor have a defaultValue.
+        deprecationMessage:
+          type: string
+          description: >-
+            A message that will be shown to the user when they are configuring
+            the action. This could for example include a hint to use a replacement.
       required:
         - label
         - name
