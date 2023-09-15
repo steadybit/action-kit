@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: ./go/action_kit_api
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # increased fetch depth to support git diff
         fetch-depth: 2
@@ -40,7 +40,7 @@ jobs:
       run:
         working-directory: ./go/action_kit_sdk
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
           go-version: '1.20'
@@ -55,7 +55,7 @@ jobs:
       run:
         working-directory: ./go/action_kit_commons
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.20.0'
@@ -70,7 +70,7 @@ jobs:
       run:
         working-directory: ./go/action_kit_test
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
           go-version: '1.20'
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
