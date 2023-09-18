@@ -15,6 +15,7 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"sync"
 	"time"
 )
 
@@ -42,7 +43,6 @@ type clientImpl struct {
 	client   *resty.Client
 	rootPath string
 	spec     *openapi3.T
-	metrics  []action_kit_api.Metric
 }
 
 func NewActionClient(rootPath string, client *resty.Client) ActionAPI {
@@ -67,9 +67,10 @@ func (c *clientImpl) DescribeAction(ref action_kit_api.DescribingEndpointReferen
 }
 
 type actionExecutionImpl struct {
-	ch      <-chan error
-	cancel  context.CancelFunc
-	metrics []action_kit_api.Metric
+	ch           <-chan error
+	cancel       context.CancelFunc
+	metrics      []action_kit_api.Metric
+	metricsMutex sync.RWMutex
 }
 
 func (a *actionExecutionImpl) Wait() error {
@@ -89,11 +90,17 @@ func (a *actionExecutionImpl) Cancel() error {
 }
 
 func (a *actionExecutionImpl) appendMetrics(metrics []action_kit_api.Metric) {
+	a.metricsMutex.Lock()
 	a.metrics = append(a.metrics, metrics...)
+	a.metricsMutex.Unlock()
 }
 
 func (a *actionExecutionImpl) Metrics() []action_kit_api.Metric {
-	return a.metrics
+	a.metricsMutex.RLock()
+	result := make([]action_kit_api.Metric, len(a.metrics))
+	copy(result, a.metrics)
+	a.metricsMutex.RUnlock()
+	return result
 }
 
 func (c *clientImpl) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
@@ -153,7 +160,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	} else {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
-	actionExecution := &actionExecutionImpl{ch: ch, cancel: cancel, metrics: nil}
+	actionExecution := &actionExecutionImpl{ch: ch, cancel: cancel, metrics: nil, metricsMutex: sync.RWMutex{}}
 
 	go func() {
 		defer cancel()

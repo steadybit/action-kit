@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- fix data race
+
 ## 1.2.0
 
 - Add schema validation to action endpoints
