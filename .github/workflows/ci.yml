@@ -110,7 +110,7 @@ jobs:
           images: ${{ env.REGISTRY }}/steadybit/example-go-kubectl
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: examples/go-kubectl
           push: ${{ github.event_name != 'pull_request' }}
