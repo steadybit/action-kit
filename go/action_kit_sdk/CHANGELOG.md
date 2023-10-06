@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.8
+
+- Use 5s as minimum interval for expected heartbeats
+
 ## 1.1.7
 
 - Added `ClearRegisteredActions` for testing purposes

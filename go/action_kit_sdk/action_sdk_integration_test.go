@@ -155,7 +155,7 @@ func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
 	state = op.start(t, state)
 	op.resetCalls()
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(20 * time.Second)
 	op.assertCall(t, "Stop", toExampleState(state))
 
 	statusResult := op.statusResult(t, state)

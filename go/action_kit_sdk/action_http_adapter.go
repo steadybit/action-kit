@@ -23,6 +23,11 @@ import (
 	"time"
 )
 
+const (
+	defaultCallInterval  = "5s"
+	minHeartbeatInterval = 5 * time.Second
+)
+
 type ActionHttpAdapter[T any] struct {
 	description action_kit_api.ActionDescription
 	action      Action[T]
@@ -222,6 +227,9 @@ func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Reques
 
 		if (a.description.Status != nil) && (a.description.Status.CallInterval != nil) {
 			interval, err := time.ParseDuration(*a.description.Status.CallInterval)
+			if interval < minHeartbeatInterval {
+				interval = minHeartbeatInterval
+			}
 			if err == nil {
 				monitorHeartbeat(parsedBody.ExecutionId, interval, interval*4)
 			}
@@ -453,7 +461,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 			description.Status.Method = action_kit_api.POST
 		}
 		if description.Status.CallInterval == nil || *description.Status.CallInterval == "" {
-			description.Status.CallInterval = extutil.Ptr("5s")
+			description.Status.CallInterval = extutil.Ptr(defaultCallInterval)
 		}
 	}
 
