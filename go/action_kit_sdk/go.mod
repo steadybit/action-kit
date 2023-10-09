@@ -1,8 +1,6 @@
 module github.com/steadybit/action-kit/go/action_kit_sdk
 
-go 1.21
-
-toolchain go1.21.1
+go 1.20
 
 require (
 	github.com/google/uuid v1.3.1
