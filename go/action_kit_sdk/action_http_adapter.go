@@ -28,20 +28,20 @@ const (
 	minHeartbeatInterval = 5 * time.Second
 )
 
-type ActionHttpAdapter[T any] struct {
+type actionHttpAdapter[T any] struct {
 	description action_kit_api.ActionDescription
 	action      Action[T]
 	rootPath    string
 }
 
-func NewActionHttpAdapter[T any](action Action[T]) *ActionHttpAdapter[T] {
+func newActionHttpAdapter[T any](action Action[T]) *actionHttpAdapter[T] {
 	description := getDescriptionWithDefaults(action)
-	adapter := &ActionHttpAdapter[T]{
+	adapter := &actionHttpAdapter[T]{
 		description: description,
 		action:      action,
 		rootPath:    fmt.Sprintf("/%s", description.Id),
 	}
-	if adapter.HasQueryMetric() {
+	if adapter.hasQueryMetric() {
 		if adapter.description.Metrics == nil {
 			log.Fatal().Msgf("ActionWithMetricQuery is implemented but description.Metrics is nil.")
 		}
@@ -56,20 +56,20 @@ func NewActionHttpAdapter[T any](action Action[T]) *ActionHttpAdapter[T] {
 			break
 		}
 	}
-	if hasFileParameter && !adapter.HasStop() {
+	if hasFileParameter && !adapter.hasStop() {
 		log.Fatal().Msgf("Actions using a parameter of type 'file' need to implement ActionWithStop.")
 	}
-	if description.TimeControl == action_kit_api.TimeControlInternal && !adapter.HasStatus() {
+	if description.TimeControl == action_kit_api.TimeControlInternal && !adapter.hasStatus() {
 		log.Fatal().Msgf("Actions using TimeControl 'Internal' need to implement ActionWithStatus.")
 	}
 	return adapter
 }
 
-func (a *ActionHttpAdapter[T]) HandleGetDescription(w http.ResponseWriter, _ *http.Request, _ []byte) {
+func (a *actionHttpAdapter[T]) handleGetDescription(w http.ResponseWriter, _ *http.Request, _ []byte) {
 	exthttp.WriteBody(w, a.description)
 }
 
-func (a *ActionHttpAdapter[T]) HandlePrepare(w http.ResponseWriter, r *http.Request, body []byte) {
+func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Request, body []byte) {
 	prepareActionRequestBody := parseRequestAndHandleFiles(w, r, body)
 	if prepareActionRequestBody == nil {
 		return
@@ -179,7 +179,7 @@ func parsePrepareActionRequestBody(w http.ResponseWriter, request []byte) *actio
 	return &parsedBody
 }
 
-func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Request, body []byte) {
+func (a *actionHttpAdapter[T]) handleStart(w http.ResponseWriter, r *http.Request, body []byte) {
 	var parsedBody action_kit_api.StartActionRequestBody
 	err := json.Unmarshal(body, &parsedBody)
 	if err != nil {
@@ -238,12 +238,12 @@ func (a *ActionHttpAdapter[T]) HandleStart(w http.ResponseWriter, r *http.Reques
 	exthttp.WriteBody(w, result)
 }
 
-func (a *ActionHttpAdapter[T]) HasStatus() bool {
+func (a *actionHttpAdapter[T]) hasStatus() bool {
 	_, ok := a.action.(ActionWithStatus[T])
 	return ok
 }
 
-func (a *ActionHttpAdapter[T]) HandleStatus(w http.ResponseWriter, r *http.Request, body []byte) {
+func (a *actionHttpAdapter[T]) handleStatus(w http.ResponseWriter, r *http.Request, body []byte) {
 	var parsedBody action_kit_api.ActionStatusRequestBody
 	err := json.Unmarshal(body, &parsedBody)
 	if err != nil {
@@ -315,12 +315,12 @@ func (a *ActionHttpAdapter[T]) HandleStatus(w http.ResponseWriter, r *http.Reque
 	exthttp.WriteBody(w, result)
 }
 
-func (a *ActionHttpAdapter[T]) HasStop() bool {
+func (a *actionHttpAdapter[T]) hasStop() bool {
 	_, ok := a.action.(ActionWithStop[T])
 	return ok
 }
 
-func (a *ActionHttpAdapter[T]) HandleStop(w http.ResponseWriter, r *http.Request, body []byte) {
+func (a *actionHttpAdapter[T]) handleStop(w http.ResponseWriter, r *http.Request, body []byte) {
 	action := a.action.(ActionWithStop[T])
 
 	var parsedBody action_kit_api.StopActionRequestBody
@@ -385,12 +385,12 @@ func (a *ActionHttpAdapter[T]) HandleStop(w http.ResponseWriter, r *http.Request
 	exthttp.WriteBody(w, result)
 }
 
-func (a *ActionHttpAdapter[T]) HasQueryMetric() bool {
+func (a *actionHttpAdapter[T]) hasQueryMetric() bool {
 	_, ok := a.action.(ActionWithMetricQuery[T])
 	return ok
 }
 
-func (a *ActionHttpAdapter[T]) HandleQueryMetric(w http.ResponseWriter, r *http.Request, body []byte) {
+func (a *actionHttpAdapter[T]) handleQueryMetric(w http.ResponseWriter, r *http.Request, body []byte) {
 	action := a.action.(ActionWithMetricQuery[T])
 
 	var parsedBody action_kit_api.QueryMetricsRequestBody
@@ -414,6 +414,23 @@ func (a *ActionHttpAdapter[T]) HandleQueryMetric(w http.ResponseWriter, r *http.
 		return
 	}
 	exthttp.WriteBody(w, result)
+}
+
+func (a *actionHttpAdapter[T]) registerHandlers() {
+
+	exthttp.RegisterHttpHandler(a.rootPath, a.handleGetDescription)
+	exthttp.RegisterHttpHandler(a.description.Prepare.Path, a.handlePrepare)
+	exthttp.RegisterHttpHandler(a.description.Start.Path, a.handleStart)
+	if a.hasStatus() || a.hasStop() {
+		// If the action has a stop,  we augment a status endpoint. It is used to report stops by extension.
+		exthttp.RegisterHttpHandler(a.description.Status.Path, a.handleStatus)
+	}
+	if a.hasStop() {
+		exthttp.RegisterHttpHandler(a.description.Stop.Path, a.handleStop)
+	}
+	if a.hasQueryMetric() {
+		exthttp.RegisterHttpHandler(a.description.Metrics.Query.Endpoint.Path, a.handleQueryMetric)
+	}
 }
 
 // getDescriptionWithDefaults wraps the action description and adds default paths and methods for prepare, start, status, stop and metrics.

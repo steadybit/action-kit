@@ -189,22 +189,9 @@ func handleCoverageCounters(w http.ResponseWriter, _ *http.Request, _ []byte) {
 }
 
 func RegisterAction[T any](a Action[T]) {
-	adapter := NewActionHttpAdapter(a)
+	adapter := newActionHttpAdapter(a)
 	registeredActions[adapter.description.Id] = a
-
-	exthttp.RegisterHttpHandler(adapter.rootPath, adapter.HandleGetDescription)
-	exthttp.RegisterHttpHandler(adapter.description.Prepare.Path, adapter.HandlePrepare)
-	exthttp.RegisterHttpHandler(adapter.description.Start.Path, adapter.HandleStart)
-	if adapter.HasStatus() || adapter.HasStop() {
-		// If the action has a stop,  we augment a status endpoint. It is used to report stops by extension.
-		exthttp.RegisterHttpHandler(adapter.description.Status.Path, adapter.HandleStatus)
-	}
-	if adapter.HasStop() {
-		exthttp.RegisterHttpHandler(adapter.description.Stop.Path, adapter.HandleStop)
-	}
-	if adapter.HasQueryMetric() {
-		exthttp.RegisterHttpHandler(adapter.description.Metrics.Query.Endpoint.Path, adapter.HandleQueryMetric)
-	}
+	adapter.registerHandlers()
 }
 
 // ClearRegisteredActions clears all registered actions - used for testing. Warning: This will not remove the registered routes from the http server.
