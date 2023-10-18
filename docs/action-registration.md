@@ -12,7 +12,7 @@ steadybit.com/extension-auto-discovery:
     "extensions": [                                                                                                                                                                                                
       {                                                                                                                                                                                                            
         "port": 8088,                                                                                                                                                                                              
-        "types": ["ACTION","DISCOVERY","EVENTS"],                                                                                                                                                                           
+        "types": ["ACTION","DISCOVERY","EVENT"],                                                                                                                                                                           
         "protocol": "http"                                                                                                                                                                                               
       }                                                                                                                                                                                                          
     ]                                                                                                                                                                                                    
