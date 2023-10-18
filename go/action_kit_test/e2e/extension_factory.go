@@ -74,7 +74,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	ctxHelm := context.Background()
 	out, err := exec.CommandContext(ctxHelm, "helm", args...).CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to install helm chart: %s: %s", err, out)
+		return nil, fmt.Errorf("failed to install helm chart: %w: %s", err, out)
 	}
 	log.Info().TimeDiff("duration", time.Now(), start).Msg("helm chart installed (without waiting for pods to start)")
 
@@ -83,7 +83,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		close(stopFwdCh)
 		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, h.Name).CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("failed to uninstall helm chart: %s: %s", err, out)
+			return fmt.Errorf("failed to uninstall helm chart: %w: %s", err, out)
 		}
 		return nil
 	}

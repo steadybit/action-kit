@@ -130,7 +130,7 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 func (n *Nginx) CanReach(url string) error {
 	out, err := n.Minikube.PodExec(n.Pod, "nginx", "curl", "--max-time", "2", url)
 	if err != nil {
-		return fmt.Errorf("%s: %s", err, out)
+		return fmt.Errorf("%w: %s", err, out)
 	}
 	return nil
 }

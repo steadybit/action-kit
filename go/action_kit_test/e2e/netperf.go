@@ -118,7 +118,7 @@ func (n *Netperf) Target() (*action_kit_api.Target, error) {
 func (n *Netperf) MeasureLatency() (time.Duration, error) {
 	out, err := n.run("TCP_RR", "-P5000", "-r", "1,1", "-o", "mean_latency")
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", err, out)
+		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
 	lines := strings.Split(out, "\n")
@@ -162,7 +162,7 @@ func (n *Netperf) run(test string, args ...string) (string, error) {
 			break
 		} else {
 			if !strings.Contains(out, "Cannot assign requested address") {
-				return "", fmt.Errorf("%s: %s", err, out)
+				return "", fmt.Errorf("%w: %s", err, out)
 			}
 			time.Sleep(100 * time.Millisecond)
 		}

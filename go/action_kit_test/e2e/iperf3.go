@@ -126,7 +126,7 @@ func (n *Iperf) Delete() error {
 func (n *Iperf) MeasurePackageLoss() (float64, error) {
 	out, err := n.Minikube.PodExec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", err, out)
+		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
 	var result interface{}
@@ -188,7 +188,7 @@ func (n *Iperf) AssertPackageLossWithRetry(min float64, max float64, maxRetries 
 func (n *Iperf) MeasureBandwidth() (float64, error) {
 	out, err := n.Minikube.PodExec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=3", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--bitrate=500M", "--no-delay", "--json")
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", err, out)
+		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
 	var result interface{}
