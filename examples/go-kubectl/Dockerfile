@@ -3,7 +3,9 @@
 ##
 ## Build
 ##
-FROM golang:1.20-bullseye AS build
+FROM --platform=$BUILDPLATFORM  golang:1.20-bullseye AS build
+
+ARG TARGETOS TARGETARCH
 
 WORKDIR /app
 
