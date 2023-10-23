@@ -336,12 +336,16 @@ func (w *prefixWriter) Write(p []byte) (n int, err error) {
 }
 
 type ServiceClient struct {
-	resty.Client
-	close func()
+	client *resty.Client
+	close  func()
 }
 
 func (c *ServiceClient) Close() {
 	c.close()
+}
+
+func (c *ServiceClient) R() *resty.Request {
+	return c.client.R()
 }
 
 func (m *Minikube) NewRestClientForService(service metav1.Object) (*ServiceClient, error) {
@@ -355,7 +359,7 @@ func (m *Minikube) NewRestClientForService(service metav1.Object) (*ServiceClien
 	client.SetTimeout(3 * time.Second)
 
 	return &ServiceClient{
-		Client: *client,
+		client: client,
 		close:  cancel,
 	}, nil
 }
