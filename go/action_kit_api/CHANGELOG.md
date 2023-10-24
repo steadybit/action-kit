@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.0
+
+- Aligned Http Method constants
+
 ## 2.7.3
 
 - Added `deprecated` and `deprecationMessage` to `ActionParameter`

@@ -774,6 +774,10 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+    ReadHttpMethod:
+      type: string
+      enum:
+        - GET
     DescribingEndpointReference:
       title: HTTP Endpoint Reference
       description: HTTP endpoint which the Steadybit platform/agent could communicate with.
@@ -784,9 +788,7 @@ components:
           pattern: ^/.*$
         method:
           description: HTTP method to use when calling the HTTP endpoint.
-          type: string
-          enum:
-            - GET
+          $ref: '#/components/schemas/ReadHttpMethod'
       required:
         - path
         - method
