@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/phayes/freeport"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extlogging"
@@ -61,7 +62,9 @@ func Test_SDK(t *testing.T) {
 	calls := make(chan Call, 1024)
 	defer close(calls)
 
-	const serverPort = 3333
+	serverPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+
 	go func(calls chan<- Call) {
 		action := NewExampleAction(calls)
 		extlogging.InitZeroLog()
