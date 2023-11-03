@@ -6,8 +6,8 @@ package networkutils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"io"
 	"strconv"
