@@ -1,6 +1,6 @@
 module go-kubectl
 
-go 1.20
+go 1.21
 
 require (
 	github.com/rs/zerolog v1.30.0

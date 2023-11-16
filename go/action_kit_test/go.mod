@@ -1,23 +1,23 @@
 module github.com/steadybit/action-kit/go/action_kit_test
 
-go 1.20
+go 1.21
 
 require (
 	github.com/getkin/kin-openapi v0.120.0
 	github.com/go-resty/resty/v2 v2.10.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/rs/zerolog v1.31.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.7.3
-	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.4.2
-	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.0.2
-	github.com/steadybit/extension-kit v1.8.9
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.8.0
+	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.5.0
+	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.0
+	github.com/steadybit/extension-kit v1.8.10
 	github.com/stretchr/testify v1.8.4
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
-	golang.org/x/text v0.13.0
-	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
-	k8s.io/client-go v0.28.3
+	golang.org/x/text v0.14.0
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
+	k8s.io/client-go v0.28.4
 )
 
 require (
@@ -33,7 +33,7 @@ require (
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deepmap/oapi-codegen v1.15.0 // indirect
+	github.com/deepmap/oapi-codegen v1.16.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/flosch/pongo2/v4 v4.0.2 // indirect
@@ -95,7 +95,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.4.0 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yosssi/ace v0.0.5 // indirect
 	golang.org/x/arch v0.5.0 // indirect
