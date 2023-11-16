@@ -7,5 +7,5 @@
 
 set -eo pipefail
 
-go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.13.4
+go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.16.2
 oapi-codegen -config generator-config.yml ../../openapi/spec.yml > action_kit_api.go
