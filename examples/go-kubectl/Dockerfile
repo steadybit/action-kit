@@ -3,7 +3,7 @@
 ##
 ## Build
 ##
-FROM --platform=$BUILDPLATFORM  golang:1.20-bullseye AS build
+FROM --platform=$BUILDPLATFORM  golang:1.21-bullseye AS build
 
 ARG TARGETOS TARGETARCH
 
