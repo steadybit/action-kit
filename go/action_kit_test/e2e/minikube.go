@@ -222,7 +222,7 @@ func WithDefaultMinikube(t *testing.T, ext ExtensionFactory, testCases []WithMin
 }
 
 func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"})
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
