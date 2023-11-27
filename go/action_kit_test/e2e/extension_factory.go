@@ -126,7 +126,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 			minikube.TailLog(tailCtx, pod.GetObjectMeta())
 			return nil, err
 		} else {
-			minikube.TailLog(tailCtx, pod.GetObjectMeta())
+			go minikube.TailLog(tailCtx, pod.GetObjectMeta())
 		}
 	}
 	log.Info().TimeDiff("duration", time.Now(), start).Msg("pods are in running state")
