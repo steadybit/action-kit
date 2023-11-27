@@ -255,20 +255,14 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 				}
 			}
 
+			if _, dnsErr := minikube.WaitForDeploymentPhase(&metav1.ObjectMeta{Name: "coredns", Namespace: "kube-system"}, corev1.PodRunning, "k8s-app=kube-dns", 1*time.Minute); dnsErr != nil {
+				log.Warn().Err(dnsErr).Msg("coredns not started withing 1 minute.")
+			}
+
 			wg.Wait()
 			extension, err := ext.Start(minikube)
 			require.NoError(t, err)
 			defer func() { _ = extension.stop() }()
-
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				err := ext.CreateImage()
-				if err != nil {
-					log.Fatal().Msgf("failed to create extension executable: %v", err)
-				}
-				wg.Done()
-			}()
 
 			for _, tc := range testCases {
 				t.Run(tc.Name, func(t *testing.T) {

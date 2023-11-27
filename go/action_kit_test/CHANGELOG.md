@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.4
+
+- wait on coredns to be ready before running tests
+
 ## 1.2.3
 
 - fix livelock introduced in 1.2.2
