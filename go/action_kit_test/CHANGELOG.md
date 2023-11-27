@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3
+
+- fix livelock introduced in 1.2.2
+
 ## 1.2.2
 
 - don't limit extension log to 10s
