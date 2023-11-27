@@ -79,8 +79,12 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 	log.Info().TimeDiff("duration", time.Now(), start).Msg("helm chart installed (without waiting for pods to start)")
 
 	stopFwdCh := make(chan struct{})
+	tailCtx, tailCancel := context.WithCancel(context.Background())
+	success := false
+
 	stop := func() error {
-		close(stopFwdCh)
+		defer tailCancel()
+		defer close(stopFwdCh)
 		out, err := exec.Command("helm", "uninstall", "--namespace=default", "--kube-context", minikube.Profile, h.Name).CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("failed to uninstall helm chart: %w: %s", err, out)
@@ -88,21 +92,25 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		return nil
 	}
 
+	defer func() {
+		if !success {
+			_ = stop()
+		}
+	}()
+
 	start = time.Now()
-	ctxWaitForPods, waitForPodsCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	waitForPodsCtx, waitForPodsCancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer waitForPodsCancel()
 	var pods []corev1.Pod
 	for {
 		select {
-		case <-ctxWaitForPods.Done():
-			_ = stop()
+		case <-waitForPodsCtx.Done():
 			return nil, fmt.Errorf("extension pods did not start in time")
 		case <-time.After(1 * time.Second):
 		}
 
-		pods, err = minikube.ListPods(ctxWaitForPods, "default", podLabelSelector)
+		pods, err = minikube.ListPods(waitForPodsCtx, "default", podLabelSelector)
 		if err != nil {
-			_ = stop()
 			return nil, err
 		}
 
@@ -110,30 +118,28 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 			break
 		}
 	}
-	log.Info().TimeDiff("duration", time.Now(), start).Int("pods", len(pods)).Msg("got list of pods")
+	log.Info().TimeDiff("duration", time.Now(), start).Int("pods", len(pods)).Msg("pod(s) for extension created")
 
 	start = time.Now()
-	tailCtx, tailCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer tailCancel()
 	for _, pod := range pods {
 		if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
 			minikube.TailLog(tailCtx, pod.GetObjectMeta())
-			_ = stop()
 			return nil, err
+		} else {
+			minikube.TailLog(tailCtx, pod.GetObjectMeta())
 		}
-		minikube.TailLog(tailCtx, pod.GetObjectMeta())
 	}
 	log.Info().TimeDiff("duration", time.Now(), start).Msg("pods are in running state")
 
 	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), h.Port, stopFwdCh)
 	if err != nil {
-		_ = stop()
 		return nil, err
 	}
 	address := fmt.Sprintf("http://127.0.0.1:%d", localPort)
 	client := resty.New().SetBaseURL(address)
 	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %s", address)
 
+	success = true
 	return &Extension{
 		Client:    client,
 		discovery: dclient.NewDiscoveryClient("/", client),
