@@ -453,23 +453,25 @@ func (m *Minikube) WaitForDeploymentPhase(deployment metav1.Object, phase corev1
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 
-	var lastStatus corev1.PodPhase
-	var podListToReturn *corev1.PodList
+	var violatingPhase corev1.PodPhase
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("pod %s/%s did not reach phase %s. last status %s", deployment.GetNamespace(), deployment.GetName(), phase, lastStatus)
+			return nil, fmt.Errorf("pod %s/%s did not reach phase %s. some have %s", deployment.GetNamespace(), deployment.GetName(), phase, violatingPhase)
 		case <-time.After(200 * time.Millisecond):
 			podList, err := m.GetClient().CoreV1().Pods(deployment.GetNamespace()).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 			if err != nil {
 				return nil, err
 			}
-			podListToReturn = podList
+			allPodsHavePhase := true
 			for _, p := range podList.Items {
-				if err == nil && p.Status.Phase == phase {
-					return podListToReturn.Items, nil
+				if p.Status.Phase != phase {
+					allPodsHavePhase = false
+					violatingPhase = p.Status.Phase
 				}
-				lastStatus = p.Status.Phase
+			}
+			if allPodsHavePhase {
+				return podList.Items, nil
 			}
 		}
 	}
@@ -483,7 +485,7 @@ func (m *Minikube) WaitForPodPhase(pod metav1.Object, phase corev1.PodPhase, dur
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("pod %s/%s did not reach phase %s. last status %s", pod.GetNamespace(), pod.GetName(), phase, lastStatus)
+			return fmt.Errorf("pod %s/%s did not reach phase %s. last known %s", pod.GetNamespace(), pod.GetName(), phase, lastStatus)
 		case <-time.After(200 * time.Millisecond):
 			p, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).Get(context.Background(), pod.GetName(), metav1.GetOptions{})
 			if err == nil && p.Status.Phase == phase {

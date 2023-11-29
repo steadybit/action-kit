@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+
+- WaitForDeploymentPhase checks all pods for reaching the wanted phase
+
 ## 1.2.4
 
 - wait on coredns to be ready before running tests
