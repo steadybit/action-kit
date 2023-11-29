@@ -122,7 +122,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 
 	start = time.Now()
 	for _, pod := range pods {
-		if err = minikube.WaitForPodPhase(pod.GetObjectMeta(), corev1.PodRunning, 3*time.Minute); err != nil {
+		if err = minikube.WaitForPodReady(pod.GetObjectMeta(), 3*time.Minute); err != nil {
 			minikube.TailLog(tailCtx, pod.GetObjectMeta())
 			return nil, err
 		} else {

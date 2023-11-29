@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+
+- Wait for extension to be ready before the portforwarding
+
 ## 1.2.5
 
 - WaitForDeploymentPhase checks all pods for reaching the wanted phase

@@ -481,17 +481,40 @@ func (m *Minikube) WaitForPodPhase(pod metav1.Object, phase corev1.PodPhase, dur
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 
-	var lastStatus corev1.PodPhase
+	var lastStatus corev1.PodStatus
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("pod %s/%s did not reach phase %s. last known %s", pod.GetNamespace(), pod.GetName(), phase, lastStatus)
+			return fmt.Errorf("pod %s/%s did not reach phase %s. last known: %v", pod.GetNamespace(), pod.GetName(), phase, lastStatus)
 		case <-time.After(200 * time.Millisecond):
 			p, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).Get(context.Background(), pod.GetName(), metav1.GetOptions{})
 			if err == nil && p.Status.Phase == phase {
 				return nil
 			}
-			lastStatus = p.Status.Phase
+			lastStatus = p.Status
+		}
+	}
+}
+
+func (m *Minikube) WaitForPodReady(pod metav1.Object, duration time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	defer cancel()
+
+	var lastStatus corev1.PodStatus
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("pod %s/%s did not become ready. last known: %v", pod.GetNamespace(), pod.GetName(), lastStatus)
+		case <-time.After(200 * time.Millisecond):
+			p, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).Get(context.Background(), pod.GetName(), metav1.GetOptions{})
+			if err == nil && p.Status.Phase == corev1.PodRunning {
+				for _, condition := range p.Status.Conditions {
+					if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+						return nil
+					}
+				}
+			}
+			lastStatus = p.Status
 		}
 	}
 }
