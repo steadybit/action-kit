@@ -1,4 +1,4 @@
-package networkutils
+package network
 
 import (
 	"github.com/stretchr/testify/assert"
