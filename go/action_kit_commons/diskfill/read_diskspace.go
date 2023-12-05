@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"io"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -21,7 +19,7 @@ type DiskUsage struct {
 }
 
 func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*DiskUsage, error) {
-	bundle, err := createBundle(ctx, r, sidecar, opts, "df", "--sync", "-k", "--output=source,target,fstype,file,size,avail,used", mountpointInContainer)
+	bundle, err := createBundle(ctx, r, sidecar, opts, "df", "-Pk", mountpointInContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -51,60 +49,86 @@ func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts O
 	return &usage, nil
 }
 
-var DfHeader = []string{
-	"Filesystem",
-
-	// Mounted on
-	"Mounted",
-	"on",
-
-	"Type",
-	"File",
-	"1K-blocks",
-	"Avail",
-	"Used",
-}
-
 func CalculateDiskUsage(r io.Reader) (DiskUsage, error) {
-	headerFound := false
+	var lines []string
 	scanner := bufio.NewScanner(r)
-	var result DiskUsage
-
 	for scanner.Scan() {
 		line := scanner.Text()
-		fields := strings.Fields(line)
-		log.Debug().Msgf("line: %q, fields: %v", line, fields)
-		if !headerFound {
-			if fields[0] == DfHeader[0] {
-				if !reflect.DeepEqual(fields, DfHeader) {
-					return DiskUsage{}, fmt.Errorf("unexpected 'df' command header order (%v, expected %v, output: %q)", fields, DfHeader, line)
-				}
-				headerFound = true
-				continue
-			}
-		} else {
-			if len(fields) != 7 {
-				return DiskUsage{}, fmt.Errorf("unexpected row column number %v (expected %v)", fields, 7)
-			}
-			if iv, err := strconv.ParseInt(fields[4], 10, 64); err == nil {
-				result.Capacity = iv
-			} else {
-				return DiskUsage{}, fmt.Errorf("parse error %w", err)
-			}
-			if iv, err := strconv.ParseInt(fields[5], 10, 64); err == nil {
-				result.Available = iv
-			} else {
-				return DiskUsage{}, fmt.Errorf("parse error %w", err)
-			}
-			if iv, err := strconv.ParseInt(fields[6], 10, 64); err == nil {
-				result.Used = iv
-			} else {
-				return DiskUsage{}, fmt.Errorf("parse error %w", err)
-			}
-			log.Debug().Msgf("result: %+v", result)
-			return result, nil
+		lines = append(lines, line)
+	}
+	if err := scanner.Err(); err != nil {
+		return DiskUsage{}, err
+	}
+	if len(lines) < 2 {
+		return DiskUsage{}, fmt.Errorf("failed to parse df output: %v", lines)
+	}
+	lines[0] = strings.ReplaceAll(lines[0], "Mounted on", "Mounted-on")
+	log.Trace().Msgf("calculateDiskUsage: %v", lines)
+	var keyValueMap = make(map[string]string)
+	colNames := deleteEmpty(strings.Split(lines[0], " "))
+	log.Trace().Msgf("colNames: %v", colNames)
+	colValues := deleteEmpty(strings.Split(lines[1], " "))
+	log.Trace().Msgf("colValues: %v", colValues)
+	//remove empty string
+	for idx, colValue := range colValues {
+		if colValue != "" && idx < len(colNames) {
+			keyValueMap[strings.ToLower(colNames[idx])] = colValue
 		}
 	}
+	log.Trace().Msgf("keyValueMap: %v", keyValueMap)
+	if len(keyValueMap) == 0 {
+		return DiskUsage{}, fmt.Errorf("failed to parse df output: %v", lines)
+	}
+	_, ok1k := keyValueMap["1k-blocks"]
+	_, ok1024 := keyValueMap["1024-blocks"]
+	if !ok1k && ! ok1024{
+		return DiskUsage{}, fmt.Errorf("failed to parse 1k-blocks of df output: %v", lines)
+	}
+	if _, ok := keyValueMap["used"]; !ok {
+		return DiskUsage{}, fmt.Errorf("failed to parse used of df output: %v", lines)
+	}
+	_, okAvailable := keyValueMap["available"]
+	_, okAvail := keyValueMap["avail"]
+	if  !okAvailable && !okAvail{
+		return DiskUsage{}, fmt.Errorf("failed to parse available of df output: %v", lines)
+	}
+	var capacity int64
+	var err error
+	if ok1k {
+		capacity, err = strconv.ParseInt(keyValueMap["1k-blocks"], 10, 64)
+	} else {
+		capacity, err = strconv.ParseInt(keyValueMap["1024-blocks"], 10, 64)
+	}
+	if err != nil {
+		return DiskUsage{}, err
+	}
+	used, err := strconv.ParseInt(keyValueMap["used"], 10, 64)
+	if err != nil {
+		return DiskUsage{}, err
+	}
+	var available int64
+	if okAvailable {
+		available, err = strconv.ParseInt(keyValueMap["available"], 10, 64)
+	} else {
+		available, err = strconv.ParseInt(keyValueMap["avail"], 10, 64)
+	}
+	if err != nil {
+		return DiskUsage{}, err
+	}
+	result := DiskUsage{
+		Capacity:  capacity,
+		Used:      used,
+		Available: available,
+	}
+	return result, nil
+}
 
-	return DiskUsage{}, errors.New("unexpected 'df' command output")
+func deleteEmpty(s []string) []string {
+	var r []string
+	for _, str := range s {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
 }
