@@ -119,7 +119,7 @@ func (df *DiskFill) Stop() error {
 	fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
 	if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil {
 		log.Error().Err(err).Msgf("failed to remove file %s", out)
-		deleteFileErr = errors.New(fmt.Sprintf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out))
+		deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
 	} else {
 		log.Info().Msgf("removed file %s: %s", fileToRemove, out)
 	}
