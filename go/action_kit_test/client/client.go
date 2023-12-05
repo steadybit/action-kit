@@ -242,6 +242,10 @@ func (c *clientImpl) startAction(action action_kit_api.ActionDescription, execut
 
 	logMessages(executionId, startResult.Messages)
 
+	if startResult.Error != nil {
+		return state, fmt.Errorf("action failed: %v", *startResult.Error)
+	}
+
 	if startResult.State != nil {
 		state = *startResult.State
 	}

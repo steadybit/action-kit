@@ -1,31 +1,29 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
-package networkutils
+package network
 
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
-type DelayOpts struct {
+type CorruptPackagesOpts struct {
 	Filter
-	Delay      time.Duration
-	Jitter     time.Duration
+	Corruption uint
 	Interfaces []string
 }
 
-func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, ifc := range o.Interfaces {
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio", mode, ifc))
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem delay %dms %dms", mode, ifc, handleInclude, o.Delay.Milliseconds(), o.Jitter.Milliseconds()))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem corrupt %d%%", mode, ifc, handleInclude, o.Corruption))
 
 		filterCmds, err := tcCommandsForFilter(mode, &o.Filter, ifc)
 		if err != nil {
@@ -37,13 +35,11 @@ func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
 	return cmds, nil
 }
 
-func (o *DelayOpts) String() string {
+func (o *CorruptPackagesOpts) String() string {
 	var sb strings.Builder
-	sb.WriteString("delaying traffic by ")
-	sb.WriteString(o.Delay.String())
-	sb.WriteString(" (jitter: ")
-	sb.WriteString(o.Jitter.String())
-	sb.WriteString(", interfaces: ")
+	sb.WriteString("corrupting packages of ")
+	sb.WriteString(fmt.Sprintf("%d%%", o.Corruption))
+	sb.WriteString(" (interfaces: ")
 	sb.WriteString(strings.Join(o.Interfaces, ", "))
 	sb.WriteString(")")
 	writeStringForFilters(&sb, o.Filter)

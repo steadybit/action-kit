@@ -2,53 +2,45 @@
  * Copyright 2023 steadybit GmbH. All rights reserved.
  */
 
-package networkutils
+package network
 
 import (
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"testing/iotest"
+	"time"
 )
 
-func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
+func TestDelayOpts_TcCommands(t *testing.T) {
 	tests := []struct {
 		name    string
-		opts    LimitBandwidthOpts
+		opts    DelayOpts
 		wantAdd []byte
 		wantDel []byte
 		wantErr bool
 	}{
 		{
-			name: "bandwidth less then 8bit not supported",
-			opts: LimitBandwidthOpts{
-				Bandwidth:  "1bit",
-				Interfaces: []string{"eth0"},
-			},
-			wantAdd: []byte(`
-`),
-			wantDel: []byte(`
-`),
-			wantErr: true,
-		},
-		{
-			name: "bandwidth",
-			opts: LimitBandwidthOpts{
+			name: "delay",
+			opts: DelayOpts{
 				Filter: Filter{
 					Include: []NetWithPortRange{
 						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny},
+						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny}, //should filter that duplicate
 						{Net: net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}, PortRange: PortRangeAny},
 					},
 					Exclude: []NetWithPortRange{
 						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
+						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}}, //should filter that duplicate
 						{Net: net.IPNet{IP: net.ParseIP("ff02::114"), Mask: net.CIDRMask(128, 128)}, PortRange: PortRange{From: 8000, To: 8999}},
 					},
 				},
-				Bandwidth:  "100mbit",
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
 				Interfaces: []string{"eth0"},
 			},
-			wantAdd: []byte(`qdisc add dev eth0 root handle 1: htb default 30
-class add dev eth0 parent 1: classid 1:3 htb rate 100mbit
+			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio
+qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
@@ -86,8 +78,8 @@ filter del dev eth0 protocol ipv6 parent 1: prio 4 u32 match ip6 dst ff02::114/1
 filter del dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
-class del dev eth0 parent 1: classid 1:3 htb rate 100mbit
-qdisc del dev eth0 root handle 1: htb default 30
+qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
+qdisc del dev eth0 root handle 1: prio
 `),
 			wantErr: false,
 		},
