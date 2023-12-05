@@ -59,6 +59,35 @@ rule del blackhole to ::/0 dport 1-65534
 `),
 			wantErr: false,
 		},
+		{
+			name: "blackhole udp port 123 only",
+			opts: BlackholeOpts{
+				IpProto: IpProtoUdp,
+				Filter: Filter{
+					Include: NewNetWithPortRanges(NetAny, PortRange{From: 123, To: 123}),
+					Exclude: []NetWithPortRange{
+						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
+					},
+				},
+			},
+			wantAddV4: []byte(`rule add blackhole to 0.0.0.0/0 ipproto udp dport 123
+rule add blackhole from 0.0.0.0/0 ipproto udp sport 123
+rule add to 192.168.2.1/32 ipproto udp dport 80 table main
+rule add from 192.168.2.1/32 ipproto udp sport 80 table main
+`),
+			wantDelV4: []byte(`rule del from 192.168.2.1/32 ipproto udp sport 80 table main
+rule del to 192.168.2.1/32 ipproto udp dport 80 table main
+rule del blackhole from 0.0.0.0/0 ipproto udp sport 123
+rule del blackhole to 0.0.0.0/0 ipproto udp dport 123
+`),
+			wantAddV6: []byte(`rule add blackhole to ::/0 ipproto udp dport 123
+rule add blackhole from ::/0 ipproto udp sport 123
+`),
+			wantDelV6: []byte(`rule del blackhole from ::/0 ipproto udp sport 123
+rule del blackhole to ::/0 ipproto udp dport 123
+`),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
