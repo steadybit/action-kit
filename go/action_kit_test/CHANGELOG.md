@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7
+
+- Fix: action client not taking errors from start into account
+
 ## 1.2.6
 
 - Wait for extension to be ready before the portforwarding
