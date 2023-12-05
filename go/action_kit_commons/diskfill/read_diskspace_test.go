@@ -65,6 +65,18 @@ overlay               61202244  37121180  20939740  64% /`,
 			},
 			wantErr: false,
 		}, {
+			name: "success 5",
+			args: args{
+				lines: `1024-blocks Filesystem Available Used Capacity Mounted on
+61202244 overlay                  20939740 37121180  64% /`,
+			},
+			want: DiskUsage{
+				Capacity:  61202244,
+				Used:      37121180,
+				Available: 20939740,
+			},
+			wantErr: false,
+		}, {
 			name: "fail",
 			args: args{
 				lines: `Filesystem      Mounted on      Type    File            512K-blocks    Avail    Used
