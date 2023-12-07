@@ -278,7 +278,7 @@ func listNamespaceUsingInodeImpl(ctx context.Context, inode uint64) (string, err
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
 	defer trace.StartRegion(ctx, "runc.readCgroupPath").End()
 	var out bytes.Buffer
-	cmd := RootCommandContext(ctx, "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
+	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
