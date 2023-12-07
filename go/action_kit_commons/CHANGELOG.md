@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.2
+
+- fix wrong cgroup path for stress
+
+## 1.1.1
+
+- more robust diskusage helper
+
+## 1.1.0
+
+- add runc helper for running containers
+- add stress-ng, diskfill and network helpers
+
 ## 1.0.9
 
 - update dependencies
