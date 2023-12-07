@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Read cgroup path of container using the root cgroup
+
 ## 1.1.2
 
 - fix wrong cgroup path for stress
