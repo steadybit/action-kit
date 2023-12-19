@@ -36,8 +36,7 @@ Please note that these environment variables are index-based (referred to as `n`
 | `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_n_BASIC_PASSWORD`                          |          | Optional basic authentication password to use within HTTP requests.                                                                                                                          |
 
 ### Example
-To specify, e.g., the fully-qualified URL of two extensions, where the second one requires basic authentication, you use
-
+To register, e.g., two extensions, where the second one requires basic authentication, you use
 - `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_0_URL`,
 - `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_1_URL`,
 - `STEADYBIT_AGENT_ACTIONS_EXTENSIONS_1_BASIC_USERNAME` and
