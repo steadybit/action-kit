@@ -1,5 +1,10 @@
 # Changelog
 
+
+## 1.1.4
+
+- Don't apply ipv6 rules if kernel module was disabled
+
 ## 1.1.3
 
 - Read cgroup path of container using the root cgroup
