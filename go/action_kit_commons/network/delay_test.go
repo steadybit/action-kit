@@ -14,11 +14,12 @@ import (
 
 func TestDelayOpts_TcCommands(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    DelayOpts
-		wantAdd []byte
-		wantDel []byte
-		wantErr bool
+		name         string
+		opts         DelayOpts
+		ipv6Disabled bool
+		wantAdd      []byte
+		wantDel      []byte
+		wantErr      bool
 	}{
 		{
 			name: "delay",
@@ -86,6 +87,13 @@ qdisc del dev eth0 root handle 1: prio
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ipv6Supported = func() bool {
+				return !tt.ipv6Disabled
+			}
+			defer func() {
+				ipv6Supported = defaultIpv6Supported
+			}()
+
 			gotAdd, err := tt.opts.TcCommands(ModeAdd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
