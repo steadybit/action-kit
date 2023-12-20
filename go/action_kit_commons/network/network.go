@@ -12,8 +12,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"os"
 	"runtime/trace"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -42,9 +44,12 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 		return err
 	}
 
-	ipCommandsV6, err := opts.IpCommands(FamilyV6, mode)
-	if err != nil {
-		return err
+	var ipCommandsV6 []string
+	if ipv6Supported() {
+		ipCommandsV6, err = opts.IpCommands(FamilyV6, mode)
+		if err != nil {
+			return err
+		}
 	}
 
 	tcCommands, err := opts.TcCommands(mode)
@@ -56,25 +61,38 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
-	if ipCommandsV4 != nil {
+	if len(ipCommandsV4) > 0 {
 		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV4, ipCommandsV4); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
-	if ipCommandsV6 != nil {
+	if len(ipCommandsV6) > 0 {
 		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV6, ipCommandsV6); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
 
-	if tcCommands != nil {
+	if len(tcCommands) > 0 {
 		if tcErr := executeTcCommands(ctx, r, sidecar, tcCommands); tcErr != nil {
 			err = errors.Join(err, FilterBatchErrors(tcErr, mode, tcCommands))
 		}
 	}
 
 	return err
+}
+
+var ipv6Supported = defaultIpv6Supported
+
+func defaultIpv6Supported() bool {
+	if content, err := os.ReadFile("/sys/module/ipv6/parameters/disable"); err == nil {
+		disabled := strings.TrimSpace(string(content)) == "1"
+		log.Trace().Bool("disabled", disabled).Msg("read ipv6 module parameters")
+		return !disabled
+	} else {
+		log.Warn().Err(err).Msg("Failed to read /sys/module/ipv6/parameters/disable. Assuming ipv6 is disabled.")
+		return false
+	}
 }
 
 func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, cmds []string) error {

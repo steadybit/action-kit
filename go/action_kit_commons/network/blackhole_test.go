@@ -13,13 +13,14 @@ import (
 
 func TestBlackholeOpts_IpCommands(t *testing.T) {
 	tests := []struct {
-		name      string
-		opts      BlackholeOpts
-		wantAddV4 []byte
-		wantDelV4 []byte
-		wantAddV6 []byte
-		wantDelV6 []byte
-		wantErr   bool
+		name         string
+		opts         BlackholeOpts
+		ipv6Disabled bool
+		wantAddV4    []byte
+		wantDelV4    []byte
+		wantAddV6    []byte
+		wantDelV6    []byte
+		wantErr      bool
 	}{
 		{
 			name: "blackhole",
@@ -91,6 +92,13 @@ rule del blackhole to ::/0 ipproto udp dport 123
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ipv6Supported = func() bool {
+				return !tt.ipv6Disabled
+			}
+			defer func() {
+				ipv6Supported = defaultIpv6Supported
+			}()
+
 			gotAddV4, err := tt.opts.IpCommands(FamilyV4, ModeAdd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
