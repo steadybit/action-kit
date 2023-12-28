@@ -37,6 +37,7 @@ type ActionExecution interface {
 	Wait() error
 	Cancel() error
 	Metrics() []action_kit_api.Metric
+	Messages() []action_kit_api.Message
 }
 
 type clientImpl struct {
@@ -67,10 +68,12 @@ func (c *clientImpl) DescribeAction(ref action_kit_api.DescribingEndpointReferen
 }
 
 type actionExecutionImpl struct {
-	ch           <-chan error
-	cancel       context.CancelFunc
-	metrics      []action_kit_api.Metric
-	metricsMutex sync.RWMutex
+	ch            <-chan error
+	cancel        context.CancelFunc
+	metrics       []action_kit_api.Metric
+	metricsMutex  sync.RWMutex
+	messages      []action_kit_api.Message
+	messagesMutex sync.RWMutex
 }
 
 func (a *actionExecutionImpl) Wait() error {
@@ -100,6 +103,20 @@ func (a *actionExecutionImpl) Metrics() []action_kit_api.Metric {
 	result := make([]action_kit_api.Metric, len(a.metrics))
 	copy(result, a.metrics)
 	a.metricsMutex.RUnlock()
+	return result
+}
+
+func (a *actionExecutionImpl) appendMessages(messages []action_kit_api.Message) {
+	a.messagesMutex.Lock()
+	a.messages = append(a.messages, messages...)
+	a.messagesMutex.Unlock()
+}
+
+func (a *actionExecutionImpl) Messages() []action_kit_api.Message {
+	a.messagesMutex.RLock()
+	result := make([]action_kit_api.Message, len(a.messages))
+	copy(result, a.messages)
+	a.messagesMutex.RUnlock()
 	return result
 }
 
@@ -143,7 +160,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	state, err = c.startAction(action, executionId, state)
 	if err != nil {
 		if action.Stop != nil {
-			_ = c.stopAction(action, executionId, state, nil)
+			_ = c.stopAction(action, executionId, state, nil, nil)
 		}
 		return &actionExecutionImpl{}, err
 	}
@@ -160,7 +177,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	} else {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
-	actionExecution := &actionExecutionImpl{ch: ch, cancel: cancel, metrics: nil, metricsMutex: sync.RWMutex{}}
+	actionExecution := &actionExecutionImpl{ch: ch, cancel: cancel, metrics: nil, metricsMutex: sync.RWMutex{}, messages: nil, messagesMutex: sync.RWMutex{}}
 
 	go func() {
 		defer cancel()
@@ -168,13 +185,13 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 
 		var err error
 		if action.Status != nil {
-			state, err = c.actionStatus(ctx, action, executionId, state, actionExecution.appendMetrics)
+			state, err = c.actionStatus(ctx, action, executionId, state, actionExecution.appendMetrics, actionExecution.appendMessages)
 		} else {
 			<-ctx.Done()
 		}
 
 		if action.Stop != nil {
-			stopErr := c.stopAction(action, executionId, state, actionExecution.appendMetrics)
+			stopErr := c.stopAction(action, executionId, state, actionExecution.appendMetrics, actionExecution.appendMessages)
 			if stopErr != nil {
 				err = errors.Join(err, stopErr)
 			} else {
@@ -252,7 +269,7 @@ func (c *clientImpl) startAction(action action_kit_api.ActionDescription, execut
 	return state, nil
 }
 
-func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric)) (action_kit_api.ActionState, error) {
+func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) (action_kit_api.ActionState, error) {
 	interval, err := time.ParseDuration(*action.Status.CallInterval)
 	if err != nil {
 		interval = 1 * time.Second
@@ -277,6 +294,9 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 			if statusResult.Metrics != nil {
 				metrics(*statusResult.Metrics)
 			}
+			if statusResult.Messages != nil {
+				messages(*statusResult.Messages)
+			}
 
 			if statusResult.State != nil {
 				state = *statusResult.State
@@ -293,7 +313,7 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 	}
 }
 
-func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric)) error {
+func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) error {
 	stopBody := action_kit_api.StopActionRequestBody{
 		ExecutionId: executionId,
 		State:       state,
@@ -307,6 +327,9 @@ func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executi
 	logMessages(executionId, stopResult.Messages)
 	if stopResult.Metrics != nil {
 		metrics(*stopResult.Metrics)
+	}
+	if stopResult.Messages != nil {
+		messages(*stopResult.Messages)
 	}
 
 	if stopResult.Error != nil {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.8
+
+- Collect messages from actions
+
 ## 1.2.7
 
 - Fix: action client not taking errors from start into account
