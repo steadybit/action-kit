@@ -553,7 +553,6 @@ components:
             - string
             - 'string[]'
             - 'string_array'
-            - password
             - integer
             - boolean
             - percentage

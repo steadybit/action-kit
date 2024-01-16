@@ -1,8 +1,8 @@
 # Changelog
 
-## 2.8.1
+## 2.9.0
 
-- deprecated `action_kit_api.Password`. Do not use secrets in the action description. Build your extension to use secrets from the configuration.
+- removed `action_kit_api.Password`. Do not use secrets in the action description. Build your extension to use secrets from the configuration.
 
 ## 2.8.0
 
