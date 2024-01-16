@@ -53,7 +53,11 @@ const (
 	Header          ActionParameterType = "header"
 	Integer         ActionParameterType = "integer"
 	KeyValue        ActionParameterType = "key_value"
+
+	// Password Deprecated: Do not use secrets in the action description.
+	// Deprecated: Do not use secrets in the action description. Build your extension to use secrets from the configuration.
 	Password        ActionParameterType = "password"
+
 	Percentage      ActionParameterType = "percentage"
 	Separator       ActionParameterType = "separator"
 	StressngWorkers ActionParameterType = "stressng-workers"
