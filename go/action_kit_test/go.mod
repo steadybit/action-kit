@@ -3,7 +3,7 @@ module github.com/steadybit/action-kit/go/action_kit_test
 go 1.21
 
 require (
-	github.com/getkin/kin-openapi v0.122.0
+	github.com/getkin/kin-openapi v0.123.0
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/google/uuid v1.5.0
 	github.com/jarcoal/httpmock v1.3.1
@@ -41,9 +41,9 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
-	github.com/go-openapi/jsonpointer v0.20.0 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/swag v0.22.8 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.15.5 // indirect
