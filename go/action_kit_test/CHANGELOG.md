@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.9
+
+- Option to specify image tag in e2e tests
+
 ## 1.2.8
 
 - Collect messages from actions

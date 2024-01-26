@@ -16,6 +16,7 @@ import (
 type HelmExtensionFactory struct {
 	Name             string
 	ImageName        string
+	ImageTag         string
 	Port             uint16
 	ChartPath        string
 	PodLabelSelector string
@@ -42,6 +43,11 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		imageName = h.ImageName
 	}
 
+	imageTag := "latest"
+	if h.ImageName != "" {
+		imageTag = h.ImageTag
+	}
+
 	chartPath := fmt.Sprintf("../charts/steadybit-%s", h.Name)
 	if h.ChartPath != "" {
 		chartPath = h.ChartPath
@@ -62,6 +68,7 @@ func (h *HelmExtensionFactory) Start(minikube *Minikube) (*Extension, error) {
 		"--kube-context", minikube.Profile,
 		"--namespace=default",
 		"--set", fmt.Sprintf("image.name=%s", imageName),
+		"--set", fmt.Sprintf("image.tag=%s", imageTag),
 		"--set", "image.pullPolicy=Never",
 	}
 
