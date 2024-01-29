@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/go-resty/resty/v2 v2.11.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/rs/zerolog v1.31.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.0
