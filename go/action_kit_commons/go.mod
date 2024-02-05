@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/opencontainers/runtime-spec v1.1.0
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.8.4
 )
 
