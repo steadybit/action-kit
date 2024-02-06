@@ -59,7 +59,15 @@ spec:
         - image: ghcr.io/steadybit/example-go-kubectl:main
           imagePullPolicy: Always
           name: example-go-kubectl
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 32Mi
       serviceAccountName: example-go-kubectl
+      automountServiceAccountToken: true
 ---
 apiVersion: v1
 kind: Service
