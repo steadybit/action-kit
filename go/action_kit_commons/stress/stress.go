@@ -70,9 +70,9 @@ func (o *Opts) Args() []string {
 }
 
 func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Stress, error) {
-	id := getNextContainerId(sidecar.IdSuffix)
+	containerId := getNextContainerId(sidecar.IdSuffix)
 
-	bundle, err := r.Create(ctx, sidecar.ImagePath, id)
+	bundle, err := r.Create(ctx, sidecar.ImagePath, containerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
 	}
@@ -83,7 +83,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 			return
 		}
 		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to remove bundle")
+			log.Warn().Str("id", containerId).Err(err).Msg("failed to remove bundle")
 		}
 	}()
 
@@ -99,13 +99,13 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 
 	processArgs := append([]string{"stress-ng"}, opts.Args()...)
 	if err := bundle.EditSpec(ctx,
-		runc.WithHostname(id),
+		runc.WithHostname(containerId),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, "stress"),
+		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
 		runc.WithCapabilities("CAP_SYS_RESOURCE"),
 		runc.WithMountIfNotPresent(specs.Mount{
