@@ -46,10 +46,10 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 		bufReader := bufio.NewReader(pr)
 
 		for {
-			if line, err := bufReader.ReadString('\n'); err != nil {
-				break
-			} else {
+			if line, err := bufReader.ReadString('\n'); err == nil {
 				log.Debug().Str("id", bundle.ContainerId()).Msg(line)
+			} else {
+				break
 			}
 		}
 	}()

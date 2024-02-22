@@ -47,7 +47,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 		}),
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, "disk-fill"),
+		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
 		runc.WithCapabilities("CAP_SYS_RESOURCE"),
 		runc.WithMountIfNotPresent(specs.Mount{
