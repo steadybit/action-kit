@@ -149,14 +149,9 @@ func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error
 func readNamespaces(ctx context.Context, pid int) ([]LinuxNamespace, error) {
 	defer trace.StartRegion(ctx, "runc.readNamespaces").End()
 
-	var sout bytes.Buffer
-	var serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "lsns", "--task", strconv.Itoa(pid), "--output=ns,type,path", "--noheadings")
-	cmd.Stdout = &sout
-	cmd.Stderr = &serr
-
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("lsns --task %d %w: %s", pid, err, serr.String())
+	sout, err := executeLsns(ctx, pid)
+	if err != nil {
+		return nil, err
 	}
 
 	var namespaces []LinuxNamespace
@@ -177,6 +172,29 @@ func readNamespaces(ctx context.Context, pid int) ([]LinuxNamespace, error) {
 		namespaces = append(namespaces, ns)
 	}
 	return namespaces, nil
+}
+
+func executeLsns(ctx context.Context, pid int) (bytes.Buffer, error) {
+	var lastErr error
+	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
+	for attempts := 0; attempts < 3; attempts++ {
+		var sout bytes.Buffer
+		var serr bytes.Buffer
+		cmd := RootCommandContext(ctx, "lsns", "--task", strconv.Itoa(pid), "--output=ns,type,path", "--noheadings")
+		cmd.Stdout = &sout
+		cmd.Stderr = &serr
+		if err := cmd.Run(); err == nil {
+			return sout, nil
+		} else {
+			lastErr = fmt.Errorf("lsns %w: %s", err, serr.String())
+
+			var exiterr *exec.ExitError
+			if errors.As(err, &exiterr) && exiterr.ExitCode() != 1 {
+				break
+			}
+		}
+	}
+	return bytes.Buffer{}, lastErr
 }
 
 func toRuncNamespaceType(t string) specs.LinuxNamespaceType {

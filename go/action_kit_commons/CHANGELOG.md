@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.5
+
+- avoid collisions for cgroups used by stress-ng attacks
 
 ## 1.1.4
 
