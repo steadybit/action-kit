@@ -1,9 +1,12 @@
 # Changelog
 
+## 1.1.6
+
+- Workaround for failing lsns
+
 ## 1.1.5
 
 - avoid collisions for cgroups used by stress-ng attacks
-- workaround for failing lsns
 
 ## 1.1.4
 
