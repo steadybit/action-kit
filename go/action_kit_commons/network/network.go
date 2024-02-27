@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	runLock = utils.NewHashedKeyMutex(10)
+	runLock  = utils.NewHashedKeyMutex(10)
+	activeTc = map[string]Opts{}
 )
 
 type SidecarOpts struct {
@@ -61,6 +62,15 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
+	if mode == ModeAdd {
+		if active, ok := activeTc[netNsID]; ok && !equals(opts, active) {
+			return fmt.Errorf("different tc config active for the same network namespace active")
+		}
+		activeTc[netNsID] = opts
+	} else {
+		delete(activeTc, netNsID)
+	}
+
 	if len(ipCommandsV4) > 0 {
 		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV4, ipCommandsV4); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
@@ -80,6 +90,10 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	}
 
 	return err
+}
+
+func equals(opts Opts, active Opts) bool {
+	return opts.String() == active.String()
 }
 
 var ipv6Supported = defaultIpv6Supported
