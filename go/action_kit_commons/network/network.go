@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	runLock = utils.NewHashedKeyMutex(10)
+	runLock  = utils.NewHashedKeyMutex(10)
+	activeTc = map[string][]Opts{}
 )
 
 type SidecarOpts struct {
@@ -61,6 +62,12 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
+	if mode == ModeAdd {
+		if err := pushActiveTc(netNsID, opts); err != nil {
+			return err
+		}
+	}
+
 	if len(ipCommandsV4) > 0 {
 		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV4, ipCommandsV4); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
@@ -79,7 +86,39 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 		}
 	}
 
+	if mode == ModeDelete {
+		popActiveTc(netNsID, opts)
+	}
+
 	return err
+}
+
+func pushActiveTc(netNsId string, opts Opts) error {
+	for _, active := range activeTc[netNsId] {
+		if !equals(opts, active) {
+			return errors.New("running multiple tc configs at the same time on the same namespace is not supported")
+		}
+	}
+
+	activeTc[netNsId] = append(activeTc[netNsId], opts)
+	return nil
+}
+
+func popActiveTc(id string, opts Opts) {
+	active, ok := activeTc[id]
+	if !ok {
+		return
+	}
+	for i, a := range active {
+		if equals(opts, a) {
+			activeTc[id] = append(active[:i], active[i+1:]...)
+			return
+		}
+	}
+}
+
+func equals(opts Opts, active Opts) bool {
+	return opts.String() == active.String()
 }
 
 var ipv6Supported = defaultIpv6Supported
