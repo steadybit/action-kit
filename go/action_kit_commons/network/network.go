@@ -96,7 +96,7 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 func pushActiveTc(netNsId string, opts Opts) error {
 	for _, active := range activeTc[netNsId] {
 		if !equals(opts, active) {
-			return errors.New("running multiple tc configs at the same time on the same namespace is not supported")
+			return errors.New("running multiple network attacks at the same time on the same network namespace is not supported")
 		}
 	}
 

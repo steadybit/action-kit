@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7
+
+- Prevent different network attacks on the same network ns
+
 ## 1.1.6
 
 - Workaround for failing lsns
