@@ -3,36 +3,53 @@
 ##
 ## Build
 ##
-FROM --platform=$BUILDPLATFORM  golang:1.21-bullseye AS build
+FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS build
 
 ARG TARGETOS TARGETARCH
+ARG NAME
+ARG VERSION
+ARG REVISION
+ARG ADDITIONAL_BUILD_PARAMS
+ARG SKIP_LICENSES_REPORT=false
 
 WORKDIR /app
 
+RUN apk add build-base
 COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-COPY *.go ./
+RUN wget -P /usr/bin "https://storage.googleapis.com/kubernetes-release/release/$(wget -O - https://dl.k8s.io/release/stable.txt)/bin/linux/${TARGETARCH}/kubectl" && chmod a+x /usr/bin/kubectl
 
-RUN go build -o /go-kubectl
+COPY . .
+
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -ldflags="\
+    -X 'github.com/steadybit/extension-kit/extbuild.ExtensionName=${NAME}' \
+    -X 'github.com/steadybit/extension-kit/extbuild.Version=${VERSION}' \
+    -X 'github.com/steadybit/extension-kit/extbuild.Revision=${REVISION}'" \
+    -o ./extension \
+    ${ADDITIONAL_BUILD_PARAMS}
 
 ##
 ## Runtime
 ##
-FROM debian:bullseye-slim
+FROM alpine:3.19
+
+LABEL "steadybit.com.discovery-disabled"="true"
+
+ARG USERNAME=steadybit
+ARG USER_UID=10000
+
+RUN adduser -u $USER_UID -D $USERNAME
+
+USER $USERNAME
 
 WORKDIR /
 
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl gpg && \
-  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-archive.gpg && \
-  echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list && \
-  apt-get update && \
-  apt-get install -y --no-install-recommends kubectl
-
-COPY --from=build /go-kubectl /go-kubectl
+COPY --from=build app/extension /extension
+COPY --from=build /usr/bin/kubectl /usr/bin/kubectl
 
 EXPOSE 8083
 
-ENTRYPOINT ["/go-kubectl"]
+ENTRYPOINT ["/extension"]
