@@ -24,7 +24,6 @@ go get github.com/steadybit/action-kit/go/action_kit_sdk
 
 1. Implement at least the `action_kit_sdk.Action` interface:
     - Examples:
-        - [examples/go-kubectl/action.go](../../examples/go-kubectl/action.go)
         - [go/action_kit_sdk/example_action_test.go](./example_action_test.go)
 
 2. Implement other interfaces if you need them:
