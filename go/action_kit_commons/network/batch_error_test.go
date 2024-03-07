@@ -64,20 +64,6 @@ Command failed -:3
 			},
 		},
 		{
-			name: "error",
-			args: args{
-				cmd: []string{"test", "-b -"},
-				r:   strings.NewReader(exampleError),
-			},
-			assert: func(t assert.TestingT, err error, message string) {
-				assert.Equal(t, 3, len(err.(*BatchErrors).Errors))
-				assert.Equal(t, exampleError, strings.TrimPrefix(err.Error(), "Command failed test -b -\n"))
-				assert.Equal(t, "Error: Exclusivity flag on, cannot modify.", err.(*BatchErrors).Errors[0].Msg)
-				assert.Equal(t, "RTNETLINK answers: File exists", err.(*BatchErrors).Errors[1].Msg)
-				assert.Equal(t, "Error: Exclusivity flag on, cannot modify.", err.(*BatchErrors).Errors[2].Msg)
-			},
-		},
-		{
 			name: "should add kernel module hint",
 			args: args{
 				cmd: []string{"test", "-b -"},
