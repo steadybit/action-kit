@@ -117,3 +117,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            BUILD_SNAPSHOT=${{ !startsWith(github.ref, 'refs/tags/') }}
+            NAME=${{ github.repository }}
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
