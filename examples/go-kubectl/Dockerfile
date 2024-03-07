@@ -23,7 +23,7 @@ RUN wget -P /usr/bin "https://storage.googleapis.com/kubernetes-release/release/
 
 COPY . .
 
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+RUN GOARCH=$TARGETARCH go build \
     -ldflags="\
     -X 'github.com/steadybit/extension-kit/extbuild.ExtensionName=${NAME}' \
     -X 'github.com/steadybit/extension-kit/extbuild.Version=${VERSION}' \
