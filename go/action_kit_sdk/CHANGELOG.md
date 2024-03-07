@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.9
+
+- update extension-kit
+
 ## 1.1.8
 
 - Use 5s as minimum interval for expected heartbeats

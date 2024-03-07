@@ -13,6 +13,7 @@ import (
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
+	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extutil"
 	"io"
 	"mime/multipart"
@@ -91,6 +92,18 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 	if result.State != nil {
 		exthttp.WriteError(w, extension_kit.ToError("Please modify the state using the given state pointer.", err))
 	}
+
+	unameInformation := extruntime.GetUnameInformation()
+	if unameInformation != "" {
+		if result.Messages == nil {
+			result.Messages = extutil.Ptr([]action_kit_api.Message{})
+		}
+		*result.Messages = append(*result.Messages, action_kit_api.Message{
+			Level:   extutil.Ptr(action_kit_api.Info),
+			Message: unameInformation,
+		})
+	}
+
 
 	var convertedState action_kit_api.ActionState
 	err = extconversion.Convert(state, &convertedState)
