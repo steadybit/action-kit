@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.8
+
+- Added hint if kernel modules are missing for tc
+
 ## 1.1.7
 
 - Prevent different network attacks on the same network ns
