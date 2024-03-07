@@ -26,6 +26,10 @@ var (
 		strings.ToLower("Cannot find device"),
 		strings.ToLower("RTNETLINK answers: No such file or directory"),
 	}
+	tcErrorKernelConfig = []string{
+		strings.ToLower("Error: Specified qdisc not found."),
+		strings.ToLower("Error: Specified qdisc kind is unknown."),
+	}
 )
 
 type BatchError struct {
@@ -82,7 +86,26 @@ func ParseBatchError(cmd []string, r io.Reader) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &BatchErrors{Cmd: cmd, Errors: errs}
+	return &BatchErrors{Cmd: cmd, Errors: addTcErrorHints(errs)}
+}
+
+func addTcErrorHints(errs []BatchError) []BatchError {
+	for _, e := range errs {
+		if contains(tcErrorKernelConfig, strings.ToLower(e.Msg)) {
+			return append([]BatchError{
+				{
+					Msg:      "Kernel configuration error. Please check if the required kernel modules are loaded.",
+					Lineno:   0,
+					Filename: "",
+				}, {
+					Msg:      "This is expected, for example, when using minikube under Windows with WLS2 (https://github.com/microsoft/WSL/issues/6065).",
+					Lineno:   0,
+					Filename: "",
+				},
+			}, errs...)
+		}
+	}
+	return errs
 }
 
 func FilterBatchErrors(err error, mode Mode, cmds []string) error {
