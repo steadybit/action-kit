@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"io"
@@ -33,7 +35,11 @@ func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts O
 	err = r.Run(ctx, bundle, runc.IoOpts{Stdout: &outb, Stderr: &errb})
 	defer func() {
 		if err := r.Delete(context.Background(), bundle.ContainerId(), true); err != nil {
-			log.Warn().Str("id", bundle.ContainerId()).Err(err).Msg("failed to delete container")
+			level := zerolog.WarnLevel
+			if errors.Is(err, runc.ErrContainerNotFound) {
+				level = zerolog.DebugLevel
+			}
+			log.WithLevel(level).Str("id", bundle.ContainerId()).Err(err).Msg("failed to delete container")
 		}
 	}()
 	if err != nil {
@@ -81,7 +87,7 @@ func CalculateDiskUsage(r io.Reader) (DiskUsage, error) {
 	}
 	_, ok1k := keyValueMap["1k-blocks"]
 	_, ok1024 := keyValueMap["1024-blocks"]
-	if !ok1k && ! ok1024{
+	if !ok1k && !ok1024 {
 		return DiskUsage{}, fmt.Errorf("failed to parse 1k-blocks of df output: %v", lines)
 	}
 	if _, ok := keyValueMap["used"]; !ok {
@@ -89,7 +95,7 @@ func CalculateDiskUsage(r io.Reader) (DiskUsage, error) {
 	}
 	_, okAvailable := keyValueMap["available"]
 	_, okAvail := keyValueMap["avail"]
-	if  !okAvailable && !okAvail{
+	if !okAvailable && !okAvail {
 		return DiskUsage{}, fmt.Errorf("failed to parse available of df output: %v", lines)
 	}
 	var capacity int64

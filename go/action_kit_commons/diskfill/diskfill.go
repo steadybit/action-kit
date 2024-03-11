@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"path/filepath"
@@ -125,7 +126,11 @@ func (df *DiskFill) Stop() error {
 	}
 
 	if err := df.runc.Delete(ctx, df.bundle.ContainerId(), false); err != nil {
-		log.Warn().Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to delete container")
+		level := zerolog.WarnLevel
+		if errors.Is(err, runc.ErrContainerNotFound) {
+			level = zerolog.DebugLevel
+		}
+		log.WithLevel(level).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to delete container")
 	}
 
 	if err := df.bundle.Remove(); err != nil {

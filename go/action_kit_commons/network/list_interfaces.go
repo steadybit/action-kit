@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"runtime/trace"
@@ -68,7 +70,11 @@ func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]In
 	err = r.Run(ctx, bundle, runc.IoOpts{Stdout: &outb, Stderr: &errb})
 	defer func() {
 		if err := r.Delete(context.Background(), id, true); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to delete container")
+			level := zerolog.WarnLevel
+			if errors.Is(err, runc.ErrContainerNotFound) {
+				level = zerolog.DebugLevel
+			}
+			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
 		}
 	}()
 	if err != nil {

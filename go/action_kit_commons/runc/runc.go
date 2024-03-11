@@ -71,6 +71,10 @@ func ConfigFromEnvironment() Config {
 	return cfg
 }
 
+var (
+	ErrContainerNotFound = errors.New("container not found")
+)
+
 func NewRunc(cfg Config) Runc {
 	return &defaultRunc{cfg: cfg}
 }
@@ -85,7 +89,7 @@ func (r *defaultRunc) State(ctx context.Context, id string) (*ContainerState, er
 	output := outputBuffer.Bytes()
 	stderr := errorBuffer.Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("%w (%s): %s", err, stderr, output)
+		return nil, r.toError(err, stderr)
 	}
 
 	log.Trace().Str("output", string(output)).Str("stderr", string(stderr)).Msg("get container state")
@@ -164,9 +168,16 @@ func (r *defaultRunc) Delete(ctx context.Context, id string, force bool) error {
 	defer trace.StartRegion(ctx, "runc.Delete").End()
 	log.Trace().Str("id", id).Msg("deleting container")
 	if output, err := r.command(ctx, "delete", fmt.Sprintf("--force=%t", force), id).CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %s", err, output)
+		return r.toError(err, output)
 	}
 	return nil
+}
+
+func (r *defaultRunc) toError(err error, output []byte) error {
+	if bytes.Contains(output, []byte("msg=\"container does not exist\"")) {
+		return ErrContainerNotFound
+	}
+	return fmt.Errorf("%s: %s", err, output)
 }
 
 type IoOpts struct {
@@ -215,7 +226,7 @@ func (r *defaultRunc) Kill(ctx context.Context, id string, signal syscall.Signal
 	defer trace.StartRegion(ctx, "runc.Kill").End()
 	log.Trace().Str("id", id).Int("signal", int(signal)).Msg("sending signal to container")
 	if output, err := r.command(ctx, "kill", id, strconv.Itoa(int(signal))).CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %s", err, output)
+		return r.toError(err, output)
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
@@ -174,7 +175,11 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 	})
 	defer func() {
 		if err := r.Delete(context.Background(), id, true); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to delete container")
+			level := zerolog.WarnLevel
+			if errors.Is(err, runc.ErrContainerNotFound) {
+				level = zerolog.DebugLevel
+			}
+			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
 		}
 	}()
 	if err != nil {
@@ -226,7 +231,11 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 	})
 	defer func() {
 		if err := r.Delete(context.Background(), id, true); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to delete container")
+			level := zerolog.WarnLevel
+			if errors.Is(err, runc.ErrContainerNotFound) {
+				level = zerolog.DebugLevel
+			}
+			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
 		}
 	}()
 	if err != nil {
