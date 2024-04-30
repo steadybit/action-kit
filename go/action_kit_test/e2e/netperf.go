@@ -8,14 +8,23 @@ import (
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+)
+
+const (
+	netserverDockerfile = "https://raw.githubusercontent.com/nerdalert/netperf-netserver/main/netserver/Dockerfile"
+	netserverImage      = "networkstatic/netserver:local"
+	netperfDockerfile   = "https://raw.githubusercontent.com/nerdalert/netperf-netserver/main/netperf/Dockerfile"
+	netperfImage        = "networkstatic/netperf:local"
 )
 
 type Netperf struct {
@@ -23,9 +32,15 @@ type Netperf struct {
 	ServerPod metav1.Object
 	ClientPod metav1.Object
 	ServerIp  string
+	imageOnce sync.Once
+	imageErr  error
 }
 
 func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfiguration, client *acorev1.PodApplyConfiguration)) error {
+	if err := n.buildImages(); err != nil {
+		return err
+	}
+
 	serverPodName := fmt.Sprintf("%s-server", name)
 	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
@@ -41,7 +56,7 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  extutil.Ptr("netserver"),
-					Image: extutil.Ptr("docker.io/networkstatic/netserver:latest"),
+					Image: extutil.Ptr(netserverImage),
 					Args:  []string{"-D"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
@@ -79,7 +94,7 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:    extutil.Ptr("netperf"),
-					Image:   extutil.Ptr("networkstatic/netperf:latest"),
+					Image:   extutil.Ptr(netperfImage),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -109,6 +124,21 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 	}
 	n.ClientPod = clientPod
 	return nil
+}
+
+func (n *Netperf) buildImages() error {
+	n.imageOnce.Do(func() {
+		eg := errgroup.Group{}
+		eg.Go(func() error {
+			return n.Minikube.BuildImage(netserverDockerfile, netserverImage)
+
+		})
+		eg.Go(func() error {
+			return n.Minikube.BuildImage(netperfDockerfile, netperfImage)
+		})
+		n.imageErr = eg.Wait()
+	})
+	return n.imageErr
 }
 
 func (n *Netperf) Target() (*action_kit_api.Target, error) {
@@ -174,5 +204,4 @@ func (n *Netperf) Delete() error {
 		n.Minikube.DeletePod(n.ServerPod),
 		n.Minikube.DeletePod(n.ClientPod),
 	)
-
 }

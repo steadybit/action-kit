@@ -11,10 +11,12 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/yalp/jsonpath"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	"sync"
 	"testing"
 	"time"
 )
@@ -24,9 +26,20 @@ type Iperf struct {
 	ServerPod metav1.Object
 	ClientPod metav1.Object
 	ServerIp  string
+	ImageOnce sync.Once
+	ImageErr  error
 }
 
+const (
+	iperf3Dockerfile = "https://raw.githubusercontent.com/nerdalert/iperf3/master/Dockerfile"
+	iperf3Image      = "networkstatic/iperf3:local"
+)
+
 func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfiguration, client *acorev1.PodApplyConfiguration)) error {
+	if err := n.buildImages(); err != nil {
+		return err
+	}
+
 	serverPodName := fmt.Sprintf("%s-server", name)
 	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
@@ -42,7 +55,7 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  extutil.Ptr("iperf"),
-					Image: extutil.Ptr("docker.io/networkstatic/iperf3:latest"),
+					Image: extutil.Ptr(iperf3Image),
 					Args:  []string{"-s", "-p", "5201"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
@@ -80,7 +93,7 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:    extutil.Ptr("iperf"),
-					Image:   extutil.Ptr("networkstatic/iperf3:latest"),
+					Image:   extutil.Ptr(iperf3Image),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -110,6 +123,18 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 	}
 	n.ClientPod = clientPod
 	return nil
+}
+
+func (n *Iperf) buildImages() error {
+	n.ImageOnce.Do(func() {
+		eg := errgroup.Group{}
+		eg.Go(func() error {
+			return n.Minikube.BuildImage(iperf3Dockerfile, iperf3Image)
+
+		})
+		n.ImageErr = eg.Wait()
+	})
+	return n.ImageErr
 }
 
 func (n *Iperf) Target() (*action_kit_api.Target, error) {

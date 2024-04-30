@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.10
+
+- Build images for iperf3/netperf on minikube instead of pulling
+
 ## 1.2.9
 
 - Option to specify image tag in e2e tests

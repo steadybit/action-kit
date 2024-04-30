@@ -637,3 +637,7 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 		fmt.Printf("📦%s\n", scanner.Text())
 	}
 }
+
+func (m *Minikube) BuildImage(url string, tag string) error {
+	return m.command("image", "build", url, "-t", tag, "--build-opt=progress=plain").Run()
+}
