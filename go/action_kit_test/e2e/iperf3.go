@@ -130,7 +130,6 @@ func (n *Iperf) buildImages() error {
 		eg := errgroup.Group{}
 		eg.Go(func() error {
 			return n.Minikube.BuildImage(iperf3Dockerfile, iperf3Image)
-
 		})
 		n.ImageErr = eg.Wait()
 	})
