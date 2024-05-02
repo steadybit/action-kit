@@ -67,16 +67,18 @@ func newMinikube(runtime Runtime, driver string) *Minikube {
 	}
 }
 
-func (m *Minikube) start() error {
+func (m *Minikube) start(args ...string) error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
 
-	args := []string{"start",
-		"--keep-context",
-		fmt.Sprintf("--container-runtime=%s", string(m.Runtime)),
-		fmt.Sprintf("--driver=%s", m.Driver),
-	}
-
+	args = append(
+		[]string{
+			"start",
+			"--keep-context",
+			fmt.Sprintf("--container-runtime=%s", string(m.Runtime)),
+			fmt.Sprintf("--driver=%s", m.Driver),
+		}, args...,
+	)
 	if m.Runtime == "cri-o" && m.Driver == "docker" {
 		args = append(args, "--cni=bridge")
 	}
@@ -86,7 +88,6 @@ func (m *Minikube) start() error {
 		return err
 	}
 	log.Info().TimeDiff("duration", time.Now(), start).Msg("minikube started")
-
 	return nil
 }
 
@@ -175,6 +176,7 @@ type MinikubeOpts struct {
 	runtimes   []Runtime
 	driver     string
 	afterStart func(m *Minikube) error
+	startArgs  []string
 }
 
 var defaultMiniKubeOpts = MinikubeOpts{
@@ -199,6 +201,11 @@ func (o MinikubeOpts) WithRuntimes(runtimes ...Runtime) MinikubeOpts {
 
 func (o MinikubeOpts) WithDriver(driver string) MinikubeOpts {
 	o.driver = driver
+	return o
+}
+
+func (o MinikubeOpts) WithStartArgs(args ...string) MinikubeOpts {
+	o.startArgs = args
 	return o
 }
 
@@ -239,7 +246,7 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 			minikube := newMinikube(runtime, mOpts.driver)
 			_ = minikube.delete()
 
-			err := minikube.start()
+			err := minikube.start(mOpts.startArgs...)
 			if err != nil {
 				log.Fatal().Msgf("failed to start Minikube: %v", err)
 			}
