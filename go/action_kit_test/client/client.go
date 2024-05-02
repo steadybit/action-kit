@@ -324,11 +324,11 @@ func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executi
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
 
-	logMessages(executionId, stopResult.Messages)
 	if stopResult.Metrics != nil {
 		metrics(*stopResult.Metrics)
 	}
 	if stopResult.Messages != nil {
+		logMessages(executionId, stopResult.Messages)
 		messages(*stopResult.Messages)
 	}
 
