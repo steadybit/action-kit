@@ -23,6 +23,7 @@ import (
 )
 
 func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string, showAll bool) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -55,6 +56,7 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 }
 
 func AssertProcessNOTRunningInContainer(t *testing.T, m *Minikube, pod metav1.Object, containername string, comm string) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -215,10 +217,12 @@ func ContainsAttribute(attributes map[string][]string, key, value string) bool {
 }
 
 func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string) {
+	t.Helper()
 	AssertLogContainsWithTimeout(t, m, pod, expectedLog, 30*time.Second)
 }
 
 func AssertLogContainsWithTimeout(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string, timeout time.Duration) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
