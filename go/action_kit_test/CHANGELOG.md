@@ -2,6 +2,10 @@
 
 ## 1.2.10
 
+- Workaround for build images on containerd not working via minikube
+
+## 1.2.10
+
 - Build images for iperf3/netperf on minikube instead of pulling
 
 ## 1.2.9
