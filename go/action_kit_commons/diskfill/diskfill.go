@@ -195,7 +195,11 @@ func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 			bytesToWriteNeeded := desiredUsage - diskSpace.Used
 			return bytesToWriteNeeded, false, nil
 		} else { // MB_LEFT
-			return diskSpace.Available - (int64(opts.Size) * 1024), false, nil
+			bytesToWriteNeeded := diskSpace.Available - (int64(opts.Size) * 1024)
+			if bytesToWriteNeeded <= 0 {
+				return 0, true, nil
+			}
+			return bytesToWriteNeeded, false, nil
 		}
 	}
 
