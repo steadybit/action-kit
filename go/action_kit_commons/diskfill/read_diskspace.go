@@ -43,7 +43,7 @@ func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts O
 		}
 	}()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list interfaces: %w: %s", err, errb.String())
+		return nil, fmt.Errorf("failed to read disk usage: %w: %s", err, errb.String())
 	}
 
 	usage, err := CalculateDiskUsage(bytes.NewReader(outb.Bytes()))
