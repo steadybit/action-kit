@@ -48,7 +48,7 @@ type Opts struct {
 }
 
 func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*DiskFill, error) {
-	kbytesToWrite, err := calculateKBytesToWrite(ctx, r, sidecar, opts)
+	kbytesToWrite, noop, err := calculateKBytesToWrite(ctx, r, sidecar, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,9 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Dis
 	}
 
 	var processArgs []string
-	if opts.Method == AtOnce {
+	if noop {
+		processArgs = []string{"echo", "noop"}
+	} else if opts.Method == AtOnce {
 		processArgs = fallocateArgs(kbytesToWrite)
 	} else if opts.Method == OverTime {
 		blockSizeInKB := calculateBlockSizeKBytes(opts, kbytesToWrite)
@@ -169,31 +171,32 @@ func calculateBlockSizeKBytes(opts Opts, kbytesToWrites int64) int {
 	return blockSizeInKB
 }
 
-func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (int64, error) {
+func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (int64, bool, error) {
 	if opts.Mode == MBToFill {
-		return int64(opts.Size) * 1024, nil
+		return int64(opts.Size) * 1024, false, nil
 	}
 
 	if opts.Mode == Percentage || opts.Mode == MBLeft {
 		diskSpace, err := readDiskUsage(ctx, r, sidecar, opts)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to resolve disk space")
-			return 0, err
+			return 0, false, err
 		}
 		if opts.Mode == Percentage {
 			desiredUsage := diskSpace.Capacity * int64(opts.Size) / 100
 			if diskSpace.Used >= desiredUsage {
-				return 0, fmt.Errorf("disk is already filled up to %f%%", float64(diskSpace.Used)/float64(diskSpace.Capacity)*100)
+				log.Warn().Msgf("disk is already filled up to %f%%", float64(diskSpace.Used)/float64(diskSpace.Capacity)*100)
+				return 0, true, nil
 			}
 			bytesToWriteNeeded := desiredUsage - diskSpace.Used
-			return bytesToWriteNeeded, nil
+			return bytesToWriteNeeded, false, nil
 		} else { // MB_LEFT
-			return diskSpace.Available - (int64(opts.Size) * 1024), nil
+			return diskSpace.Available - (int64(opts.Size) * 1024), false, nil
 		}
 	}
 
 	log.Error().Msgf("Invalid size unit %s", opts.Mode)
-	return 0, fmt.Errorf("invalid size unit %s", opts.Mode)
+	return 0, false, fmt.Errorf("invalid size unit %s", opts.Mode)
 }
 
 func ddArgs(writeKBytes int64, blockSize int) []string {
