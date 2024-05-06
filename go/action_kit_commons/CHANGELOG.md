@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.9
+
+- Added noop mode for diskfill attack to avoid errors when the disk is already full enough
+
 ## 1.1.8
 
 - Added hint if kernel modules are missing for tc
