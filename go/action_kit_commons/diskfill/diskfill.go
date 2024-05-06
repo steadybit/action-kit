@@ -21,6 +21,7 @@ type DiskFill struct {
 
 	state *runc.BackgroundState
 	args  []string
+	noop  bool
 }
 
 const maxBlockSize = 1024  //Megabytes (1GB)
@@ -76,6 +77,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Dis
 		bundle: bundle,
 		runc:   r,
 		args:   processArgs,
+		noop:   noop,
 	}, nil
 }
 
@@ -119,12 +121,14 @@ func (df *DiskFill) Stop() error {
 
 	// remove file
 	var deleteFileErr error
-	fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
-	if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil {
-		log.Error().Err(err).Msgf("failed to remove file %s", out)
-		deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
-	} else {
-		log.Info().Msgf("removed file %s: %s", fileToRemove, out)
+	if !df.noop {
+		fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
+		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil {
+			log.Error().Err(err).Msgf("failed to remove file %s", out)
+			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
+		} else {
+			log.Info().Msgf("removed file %s: %s", fileToRemove, out)
+		}
 	}
 
 	if err := df.runc.Delete(ctx, df.bundle.ContainerId(), false); err != nil {
