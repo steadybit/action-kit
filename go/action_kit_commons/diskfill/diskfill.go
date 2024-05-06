@@ -52,7 +52,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Dis
 	if err != nil {
 		return nil, err
 	}
-	if kbytesToWrite <= 0 {
+	if kbytesToWrite <= 0 && noop == false{
 		return nil, errors.New("invalid size to write")
 	}
 
