@@ -648,7 +648,9 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 func (m *Minikube) BuildImage(url string, tag string) error {
 	if m.Runtime == "containerd" {
 		//image build not working for containerd in minikube. We load outside and load
+		log.Info().Msg("Image build not working for containerd in minikube. We load outside and load")
 		cmd := exec.Command("docker", "build", url, "-t", tag, "--progress=plain")
+		log.Info().Msgf("Running: %v", cmd.String())
 		cmd.Stdout = m.stdout
 		cmd.Stderr = m.stderr
 		if err := cmd.Run(); err != nil {
@@ -656,5 +658,7 @@ func (m *Minikube) BuildImage(url string, tag string) error {
 		}
 		return m.LoadImage(tag)
 	}
-	return m.command("image", "build", url, "-t", tag, "--build-opt=progress=plain").Run()
+	command := m.command("image", "build", url, "-t", tag, "--build-opt=progress=plain")
+	log.Info().Msgf("Running: %v", command.String())
+	return command.Run()
 }
