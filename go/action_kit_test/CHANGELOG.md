@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.2.10
+## 1.2.12
+
+- Fix: Workaround for build images on containerd not working via minikube
+
+## 1.2.11
 
 - Workaround for build images on containerd not working via minikube
 
