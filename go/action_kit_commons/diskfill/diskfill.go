@@ -20,8 +20,8 @@ type DiskFill struct {
 	runc   runc.Runc
 
 	state *runc.BackgroundState
-	args  []string
-	noop  bool
+	args []string
+	Noop bool
 }
 
 const maxBlockSize = 1024  //Megabytes (1GB)
@@ -77,7 +77,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Dis
 		bundle: bundle,
 		runc:   r,
 		args:   processArgs,
-		noop:   noop,
+		Noop:   noop,
 	}, nil
 }
 
@@ -121,7 +121,7 @@ func (df *DiskFill) Stop() error {
 
 	// remove file
 	var deleteFileErr error
-	if !df.noop {
+	if !df.Noop {
 		fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
 		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil {
 			log.Error().Err(err).Msgf("failed to remove file %s", out)
