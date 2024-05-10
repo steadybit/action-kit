@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.9
+## 1.1.10
 
 - Added noop mode for diskfill attack to avoid errors when the disk is already full enough
 
