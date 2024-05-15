@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -55,8 +56,8 @@ type Minikube struct {
 
 func newMinikube(runtime Runtime, driver string) *Minikube {
 	profile := "e2e-" + string(runtime)
-	stdout := prefixWriter{prefix: "🧊", w: os.Stdout}
-	stderr := prefixWriter{prefix: "🧊", w: os.Stderr}
+	stdout := prefixWriter{prefix: []byte("🧊 "), w: os.Stdout}
+	stderr := prefixWriter{prefix: []byte("🧊 "), w: os.Stderr}
 
 	return &Minikube{
 		Runtime: runtime,
@@ -319,21 +320,44 @@ func createKubernetesClient(context string) (*kubernetes.Clientset, *rest.Config
 }
 
 type prefixWriter struct {
-	prefix string
-	w      io.Writer
+	prefix             []byte
+	w                  io.Writer
+	notStartWithPrefix bool
+	m                  sync.Mutex
 }
 
-func (w *prefixWriter) Write(p []byte) (n int, err error) {
-	lines := strings.Split(strings.TrimSuffix(string(p), "\n"), "\n")
-	count := 0
-	for _, line := range lines {
-		c, err := fmt.Fprintf(w.w, "%s%s\n", w.prefix, line)
-		count += c
+func (p *prefixWriter) Write(buf []byte) (n int, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if !p.notStartWithPrefix {
+		p.notStartWithPrefix = true
+		_, err := p.w.Write([]byte(p.prefix))
 		if err != nil {
-			return count, err
+			return 0, err
 		}
 	}
-	return len(p), nil
+
+	remainder := buf
+	for {
+		var c int
+		if j := slices.Index(remainder, '\n'); j >= 0 {
+			c, err = p.w.Write(remainder[:j+1])
+			if j+1 < len(remainder) {
+				_, err = p.w.Write(p.prefix)
+			} else {
+				p.notStartWithPrefix = false
+			}
+			remainder = remainder[j+1:]
+		} else {
+			c, err = p.w.Write(remainder)
+			remainder = nil
+		}
+		n += c
+		if len(remainder) == 0 || err != nil {
+			return
+		}
+	}
 }
 
 type ServiceClient struct {
@@ -641,7 +665,7 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 	defer func() { _ = reader.Close() }()
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		fmt.Printf("📦%s\n", scanner.Text())
+		fmt.Printf("📦 %s\n", scanner.Text())
 	}
 }
 

@@ -40,7 +40,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
-	if err := bundle.EditSpec(ctx,
+	if err := bundle.EditSpec(
 		runc.WithHostname(containerId),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
@@ -56,7 +56,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
 	); err != nil {
-		return nil, fmt.Errorf("failed to create config.json: %w", err)
+		return nil, err
 	}
 
 	success = true

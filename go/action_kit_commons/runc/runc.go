@@ -4,6 +4,7 @@
 package runc
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,12 +13,14 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/trace"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -32,7 +35,7 @@ type Runc interface {
 }
 
 type ContainerBundle interface {
-	EditSpec(ctx context.Context, editors ...SpecEditor) error
+	EditSpec(editors ...SpecEditor) error
 	MountFromProcess(ctx context.Context, fromPid int, fromPath, mountpoint string) error
 	CopyFileFromProcess(ctx context.Context, pid int, fromPath, toPath string) error
 	Path() string
@@ -76,6 +79,9 @@ var (
 )
 
 func NewRunc(cfg Config) Runc {
+	if errors.Is(checkForCgroup2Nsdelegate(), ErrCgroup2NsdelegateOptionUsed) {
+		log.Warn().Err(ErrCgroup2NsdelegateOptionUsed).Msg("cgroup2 mount option nsdelegate is set. This may lead to unexpected errors.")
+	}
 	return &defaultRunc{cfg: cfg}
 }
 
@@ -233,9 +239,8 @@ func (r *defaultRunc) Kill(ctx context.Context, id string, signal syscall.Signal
 
 type SpecEditor func(spec *specs.Spec)
 
-func (b *containerBundle) EditSpec(ctx context.Context, editors ...SpecEditor) error {
-	defer trace.StartRegion(ctx, "runc.EditSpec").End()
-	spec, err := readSpec(filepath.Join(b.path, "config.json"))
+func (b *containerBundle) EditSpec(editors ...SpecEditor) error {
+	spec, err := b.readSpec()
 	if err != nil {
 		return err
 	}
@@ -245,23 +250,18 @@ func (b *containerBundle) EditSpec(ctx context.Context, editors ...SpecEditor) e
 	for _, fn := range editors {
 		fn(spec)
 	}
-	err = writeSpec(filepath.Join(b.path, "config.json"), spec)
+
+	if err := checkForCgroup2NsdelegateConflict(spec); err != nil {
+		return err
+	}
+
+	err = b.writeSpec(spec)
 	log.Trace().Str("bundle", b.path).Interface("createSpec", spec).Msg("written runc createSpec")
 	return err
 }
 
-func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
-	defer trace.StartRegion(ctx, "runc.Spec").End()
-	log.Trace().Str("bundle", bundle).Msg("creating container createSpec")
-	output, err := r.command(ctx, "spec", "--bundle", bundle).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%w: %s", err, output)
-	}
-	return nil
-}
-
-func readSpec(file string) (*specs.Spec, error) {
-	content, err := os.ReadFile(file)
+func (b *containerBundle) readSpec() (*specs.Spec, error) {
+	content, err := os.ReadFile(filepath.Join(b.path, "config.json"))
 	if err != nil {
 		return nil, err
 	}
@@ -274,13 +274,22 @@ func readSpec(file string) (*specs.Spec, error) {
 
 	return &spec, nil
 }
-
-func writeSpec(file string, spec *specs.Spec) error {
+func (b *containerBundle) writeSpec(spec *specs.Spec) error {
 	content, err := json.MarshalIndent(spec, "", "\t")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(file, content, 0644)
+	return os.WriteFile(filepath.Join(b.path, "config.json"), content, 0644)
+}
+
+func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
+	defer trace.StartRegion(ctx, "runc.Spec").End()
+	log.Trace().Str("bundle", bundle).Msg("creating container createSpec")
+	output, err := r.command(ctx, "spec", "--bundle", bundle).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, output)
+	}
+	return nil
 }
 
 func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
@@ -427,4 +436,54 @@ func WithNamespace(ns LinuxNamespace) SpecEditor {
 		}
 		spec.Linux.Namespaces = append(spec.Linux.Namespaces, ns)
 	}
+}
+
+var getMountOptions = defaultMountOptions
+
+var ErrCgroup2NsdelegateOptionUsed = errors.New("cgroup2 nsdelegate mount option conflicts with cgroup path in spec")
+
+func checkForCgroup2NsdelegateConflict(spec *specs.Spec) error {
+	if spec == nil || spec.Linux == nil || spec.Linux.CgroupsPath == "" {
+		return nil
+	}
+
+	return checkForCgroup2Nsdelegate()
+}
+
+func checkForCgroup2Nsdelegate() error {
+	opts, err := getMountOptions("/sys/fs/cgroup", "cgroup2")
+	if err != nil {
+		return err
+	}
+
+	if slices.Contains(opts, "nsdelegate") {
+		return ErrCgroup2NsdelegateOptionUsed
+	}
+	return nil
+}
+
+func defaultMountOptions(file, vfstype string) ([]string, error) {
+	f, err := os.Open("/proc/mounts")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	return getMountOptionsFromReader(f, file, vfstype), nil
+}
+
+func getMountOptionsFromReader(r io.Reader, file string, vfstype string) []string {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) >= 4 {
+			fsFile := fields[1]
+			fsVfstype := fields[2]
+			fsMntops := fields[3]
+			if fsFile == file && fsVfstype == vfstype {
+				return strings.Split(fsMntops, ",")
+			}
+		}
+	}
+	return nil
 }

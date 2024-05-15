@@ -48,7 +48,6 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 	runc.RefreshNamespaces(ctx, r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
 	if err = bundle.EditSpec(
-		ctx,
 		runc.WithHostname(fmt.Sprintf("dig-%s", id)),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
