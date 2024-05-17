@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.11
+
+- Check when CGroup2 nsdelegate is used and running containers on other CGroups
+
 ## 1.1.10
 
 - Added noop mode for diskfill attack to avoid errors when the disk is already full enough
