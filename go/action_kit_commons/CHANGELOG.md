@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.11
+## 1.1.12
 
 - Check when CGroup2 nsdelegate is used and running containers on other CGroups
 
