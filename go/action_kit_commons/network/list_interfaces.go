@@ -54,15 +54,13 @@ func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]In
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
 	if err = bundle.EditSpec(
-		ctx,
 		runc.WithHostname(fmt.Sprintf("ip-link-show-%s", id)),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithProcessArgs("ip", "-json", "link", "show"),
-	); err != nil {
+		runc.WithProcessArgs("ip", "-json", "link", "show")); err != nil {
 		return nil, err
 	}
 

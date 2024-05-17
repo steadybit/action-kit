@@ -26,8 +26,9 @@ type HelmExtensionFactory struct {
 func (h *HelmExtensionFactory) CreateImage() error {
 	cmd := exec.Command("make", "container")
 	cmd.Dir = ".."
-	cmd.Stdout = &prefixWriter{prefix: "⚒️", w: os.Stdout}
-	cmd.Stderr = &prefixWriter{prefix: "⚒️", w: os.Stdout}
+	stdout := &prefixWriter{prefix: []byte("⚒️"), w: os.Stdout}
+	cmd.Stdout = stdout
+	cmd.Stderr = stdout
 
 	start := time.Now()
 	if err := cmd.Run(); err != nil {

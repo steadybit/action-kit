@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.13
+
+- Fix: Nil pointer deref
+
 ## 1.2.12
 
 - Fix: Workaround for build images on containerd not working via minikube

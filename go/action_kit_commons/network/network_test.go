@@ -100,8 +100,8 @@ type MockBundle struct {
 	id   string
 }
 
-func (m *MockBundle) EditSpec(ctx context.Context, editors ...runc.SpecEditor) error {
-	args := m.Called(ctx, editors)
+func (m *MockBundle) EditSpec(editors ...runc.SpecEditor) error {
+	args := m.Called(editors)
 	return args.Error(0)
 }
 

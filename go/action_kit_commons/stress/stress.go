@@ -100,7 +100,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
 	processArgs := append([]string{"stress-ng"}, opts.Args()...)
-	if err := bundle.EditSpec(ctx,
+	if err := bundle.EditSpec(
 		runc.WithHostname(containerId),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
@@ -116,7 +116,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
 	); err != nil {
-		return nil, fmt.Errorf("failed to create config.json: %w", err)
+		return nil, err
 	}
 
 	success = true

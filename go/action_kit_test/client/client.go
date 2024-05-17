@@ -15,6 +15,7 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"strings"
 	"sync"
 	"time"
 )
@@ -239,7 +240,7 @@ func (c *clientImpl) prepareAction(action action_kit_api.ActionDescription, targ
 	logMessages(executionId, prepareResult.Messages)
 
 	if prepareResult.Error != nil {
-		return nil, duration, fmt.Errorf("action failed: %v", *prepareResult.Error)
+		return nil, duration, toError(prepareResult.Error)
 	}
 
 	return prepareResult.State, duration, nil
@@ -260,7 +261,7 @@ func (c *clientImpl) startAction(action action_kit_api.ActionDescription, execut
 	logMessages(executionId, startResult.Messages)
 
 	if startResult.Error != nil {
-		return state, fmt.Errorf("action failed: %v", *startResult.Error)
+		return state, toError(startResult.Error)
 	}
 
 	if startResult.State != nil {
@@ -302,7 +303,7 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 				state = *statusResult.State
 			}
 			if statusResult.Error != nil {
-				return state, fmt.Errorf("action failed: %v", *statusResult.Error)
+				return state, toError(statusResult.Error)
 			}
 
 			log.Info().Str("actionId", action.Id).Bool("completed", statusResult.Completed).Msg("Action status")
@@ -313,27 +314,44 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 	}
 }
 
+func toError(err *action_kit_api.ActionKitError) error {
+	if err == nil {
+		return nil
+	}
+	var sb strings.Builder
+	if err.Status != nil {
+		sb.WriteString("[")
+		sb.WriteString(string(*err.Status))
+		sb.WriteString("] ")
+	}
+	sb.WriteString(err.Title)
+	if err.Detail != nil {
+		sb.WriteString(": ")
+		sb.WriteString(*err.Detail)
+	}
+	return fmt.Errorf(sb.String())
+}
+
 func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) error {
 	stopBody := action_kit_api.StopActionRequestBody{
 		ExecutionId: executionId,
 		State:       state,
 	}
 	var stopResult action_kit_api.StopResult
-	err := c.executeWithBodyAndValidate(*action.Stop, stopBody, &stopResult, "StopResult")
-	if err != nil {
+	if err := c.executeWithBodyAndValidate(*action.Stop, stopBody, &stopResult, "StopResult"); err != nil {
 		return fmt.Errorf("failed to stop action: %w", err)
 	}
 
 	logMessages(executionId, stopResult.Messages)
-	if stopResult.Metrics != nil {
+	if metrics != nil && stopResult.Metrics != nil {
 		metrics(*stopResult.Metrics)
 	}
-	if stopResult.Messages != nil {
+	if messages != nil && stopResult.Messages != nil {
 		messages(*stopResult.Messages)
 	}
 
 	if stopResult.Error != nil {
-		return fmt.Errorf("action failed: %v", *stopResult.Error)
+		return toError(stopResult.Error)
 	}
 	return nil
 }

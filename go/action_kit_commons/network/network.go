@@ -156,7 +156,6 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 
 	processArgs := []string{"ip", "-family", string(family), "-force", "-batch", "-"}
 	if err = bundle.EditSpec(
-		ctx,
 		runc.WithHostname(fmt.Sprintf("ip-%s", id)),
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
@@ -212,7 +211,6 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 
 	processArgs := []string{"tc", "-force", "-batch", "-"}
 	if err = bundle.EditSpec(
-		ctx,
 		runc.WithHostname(fmt.Sprintf("tc-%s", id)),
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
