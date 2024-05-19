@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 steadybit GmbH. All rights reserved.
+ * Copyright 2024 steadybit GmbH. All rights reserved.
  */
 
 package network
@@ -13,27 +13,47 @@ import (
 )
 
 func TestHostnameResolver_Resolve(t *testing.T) {
-	githubIPs, _ := net.LookupIP("github.com")
-	for i, p := range githubIPs {
-		githubIPs[i] = p.To16()
+	steadybitIPs, _ := net.LookupIP("steadybit.com")
+	for i, p := range steadybitIPs {
+		steadybitIPs[i] = p.To16()
 	}
 
 	tests := []struct {
-		ipOrHostnames []string
-		want          []net.IP
-		wantErr       assert.ErrorAssertionFunc
+		hostnames []string
+		want      []net.IP
+		wantErr   assert.ErrorAssertionFunc
 	}{
-		{ipOrHostnames: []string{"", ""}, want: nil, wantErr: assert.NoError},
-		{ipOrHostnames: []string{"127.0.0.1", "github.com"}, want: append([]net.IP{net.ParseIP("127.0.0.1")}, githubIPs...), wantErr: assert.NoError},
-		{ipOrHostnames: []string{"not-existing.local"}, want: nil, wantErr: assert.Error},
+		{
+			hostnames: []string{""},
+			want:      []net.IP{},
+			wantErr:   assert.Error,
+		},
+		{
+			hostnames: []string{" "},
+			wantErr:   assert.Error,
+		},
+		{
+			hostnames: []string{"not-existing.local"},
+			wantErr:   assert.Error,
+		},
+		{
+			hostnames: []string{"127.0.0.1"},
+			wantErr:   assert.Error,
+		},
+		{
+			hostnames: []string{"steadybit.com"},
+			want:      steadybitIPs,
+			wantErr:   assert.NoError,
+		},
 	}
+
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Resolve(%+v)", tt.ipOrHostnames), func(t *testing.T) {
-			got, err := Resolve(context.Background(), tt.ipOrHostnames...)
-			if !tt.wantErr(t, err, fmt.Sprintf("Resolve(ctx, %v)", tt.ipOrHostnames)) {
+		t.Run(fmt.Sprintf("Resolve(%+v)", tt.hostnames), func(t *testing.T) {
+			got, err := Resolve(context.Background(), tt.hostnames...)
+			if !tt.wantErr(t, err, fmt.Sprintf("Resolve(ctx, %v)", tt.hostnames)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "Resolve(ctx, %v)", tt.ipOrHostnames)
+			assert.ElementsMatchf(t, tt.want, got, "Resolve(ctx, %v)", tt.hostnames)
 		})
 	}
 }
