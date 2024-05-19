@@ -81,13 +81,57 @@ func ParsePortRange(raw string) (PortRange, error) {
 	return PortRange{From: uint16(from), To: uint16(to)}, nil
 }
 
-func IpToNet(ips []net.IP) []net.IPNet {
+func ParseCIDRs(raw []string) ([]net.IPNet, []string) {
+	var cidrs []net.IPNet
+	var nonCidrs []string
+
+	for _, r := range raw {
+		if len(r) == 0 {
+			continue
+		}
+
+		if cidr, err := ParseCIDR(r); err == nil {
+			cidrs = append(cidrs, *cidr)
+		} else {
+			nonCidrs = append(nonCidrs, r)
+		}
+	}
+
+	return cidrs, nonCidrs
+}
+
+func ParseCIDR(s string) (*net.IPNet, error) {
+	if _, cidr, err := net.ParseCIDR(s); err == nil {
+		return cidr, nil
+	}
+
+	if ip := net.ParseIP(strings.TrimPrefix(strings.TrimSuffix(s, "]"), "[")); ip != nil {
+		if cidr := IpToNet(ip); cidr != nil {
+			return cidr, nil
+		}
+	}
+	return nil, &net.ParseError{Type: "CIDR address", Text: s}
+}
+
+var (
+	ipV4SingleAddressMask = net.CIDRMask(32, 32)
+	ipV6SingleAddressMask = net.CIDRMask(128, 128)
+)
+
+func IpToNet(ip net.IP) *net.IPNet {
+	if v4 := ip.To4(); v4 != nil {
+		return &net.IPNet{IP: v4, Mask: ipV4SingleAddressMask}
+	} else if v6 := ip.To16(); v6 != nil {
+		return &net.IPNet{IP: v6, Mask: ipV6SingleAddressMask}
+	}
+	return nil
+}
+
+func IpsToNets(ips []net.IP) []net.IPNet {
 	var nets []net.IPNet
 	for _, ip := range ips {
-		if v4 := ip.To4(); v4 != nil {
-			nets = append(nets, net.IPNet{IP: v4, Mask: net.CIDRMask(32, 32)})
-		} else if v6 := ip.To16(); v6 != nil {
-			nets = append(nets, net.IPNet{IP: v6, Mask: net.CIDRMask(128, 128)})
+		if n := IpToNet(ip); n != nil {
+			nets = append(nets, *n)
 		}
 	}
 	return nets

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- Add ParseCIDRs to parse ip Addresses and CIDRs for network attacks.
+- Resolve will not accept empty strings or ip addresses anymore.
+- IpToNet was renamed to IpsToNets
+
 ## 1.1.12
 
 - Check when CGroup2 nsdelegate is used and running containers on other CGroups

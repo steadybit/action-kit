@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 steadybit GmbH. All rights reserved.
+ * Copyright 2024 steadybit GmbH. All rights reserved.
  */
 
 package network
@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
@@ -26,22 +27,32 @@ type HostnameResolver struct {
 
 var defaultHostnameResolver = &HostnameResolver{Dig: &CommandDigRunner{}}
 
-func Resolve(ctx context.Context, ipOrHostnames ...string) ([]net.IP, error) {
-	return defaultHostnameResolver.Resolve(ctx, ipOrHostnames...)
+func Resolve(ctx context.Context, hostnames ...string) ([]net.IP, error) {
+	return defaultHostnameResolver.Resolve(ctx, hostnames...)
 }
 
-func (h *HostnameResolver) Resolve(ctx context.Context, ipOrHostnames ...string) ([]net.IP, error) {
-	hostnames, ips := classify(ipOrHostnames)
+func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]net.IP, error) {
 	if len(hostnames) == 0 {
-		return ips, nil
+		return nil, nil
 	}
 
+	unresolved := make([]string, 0, len(hostnames))
+	var invalid []string
 	var sb strings.Builder
 	for _, hostname := range hostnames {
+		if len(strings.TrimSpace(hostname)) == 0 {
+			invalid = append(invalid, hostname)
+			continue
+		}
 		sb.WriteString(hostname)
 		sb.WriteString(" A\n")
 		sb.WriteString(hostname)
 		sb.WriteString(" AAAA\n")
+		unresolved = append(unresolved, hostname)
+	}
+
+	if len(invalid) > 0 {
+		return nil, fmt.Errorf("could not resolve hostnames: '%s'", strings.Join(unresolved, "', '"))
 	}
 
 	outb, err := h.Dig.Run(ctx, []string{"-f-", "+timeout=4", "+noall", "+nottlid", "+answer"}, strings.NewReader(sb.String()))
@@ -50,41 +61,24 @@ func (h *HostnameResolver) Resolve(ctx context.Context, ipOrHostnames ...string)
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(outb))
+	var resolved []net.IP
 	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Fields(line)
+		fields := strings.Fields(scanner.Text())
 		if len(fields) >= 4 {
 			domain := strings.TrimSuffix(fields[0], ".")
-			ips = append(ips, net.ParseIP(fields[3]))
-			for i, hostname := range hostnames {
-				if hostname == domain {
-					hostnames = append(hostnames[:i], hostnames[i+1:]...)
-					break
-				}
-			}
+			resolved = append(resolved, net.ParseIP(fields[3]))
+			unresolved = slices.DeleteFunc(unresolved, func(hostname string) bool {
+				return hostname == domain
+			})
 		}
 	}
 
-	if len(hostnames) > 0 {
-		return ips, fmt.Errorf("could not resolve hostnames: %s", strings.Join(hostnames, ", "))
+	if len(unresolved) > 0 {
+		return nil, fmt.Errorf("could not resolve hostnames: '%s'", strings.Join(unresolved, "', '"))
 	}
 
-	log.Trace().Interface("ips", ips).Strs("ipOrHostnames", ipOrHostnames).Msg("resolved ips")
-	return ips, nil
-}
-
-func classify(ipOrHostnames []string) (unresolved []string, resolved []net.IP) {
-	for _, ipOrHostname := range ipOrHostnames {
-		if len(ipOrHostname) == 0 {
-			continue
-		}
-		if ip := net.ParseIP(strings.TrimPrefix(strings.TrimSuffix(ipOrHostname, "]"), "[")); ip == nil {
-			unresolved = append(unresolved, ipOrHostname)
-		} else {
-			resolved = append(resolved, ip)
-		}
-	}
-	return unresolved, resolved
+	log.Trace().Interface("resolved", resolved).Strs("hostnames", hostnames).Msg("resolved resolved")
+	return resolved, nil
 }
 
 type CommandDigRunner struct {
