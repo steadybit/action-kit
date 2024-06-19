@@ -741,7 +741,7 @@ components:
     StatusResult:
       properties:
         completed:
-          description: the agent will continue to poll the status endpoint as long as completed is false
+          description: the agent will continue to poll the status endpoint as long as completed is false and no error is set
           type: boolean
         state:
           $ref: '#/components/schemas/ActionState'
