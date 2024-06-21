@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.15
+
+- Add endpoint validation helper
+
 ## 1.2.14
 
 - Fix: Nil pointer deref
