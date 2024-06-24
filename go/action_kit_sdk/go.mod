@@ -7,7 +7,7 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.33.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.0
-	github.com/steadybit/extension-kit v1.8.14
+	github.com/steadybit/extension-kit v1.8.15
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sys v0.21.0
 )
@@ -31,7 +31,7 @@ require (
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/procfs v0.14.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
