@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- feat: run stress attacks when cgroup fs was mounted with nsdelegate option
+
 ## 1.2.0
 
 - Add ParseCIDRs to parse ip Addresses and CIDRs for network attacks.
