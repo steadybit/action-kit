@@ -4,7 +4,6 @@
 package runc
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -13,14 +12,12 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/trace"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
@@ -79,9 +76,6 @@ var (
 )
 
 func NewRunc(cfg Config) Runc {
-	if errors.Is(checkForCgroup2Nsdelegate(), ErrCgroup2NsdelegateOptionUsed) {
-		log.Warn().Err(ErrCgroup2NsdelegateOptionUsed).Msg("cgroup2 mount option nsdelegate is set. This may lead to unexpected errors.")
-	}
 	return &defaultRunc{cfg: cfg}
 }
 
@@ -251,10 +245,6 @@ func (b *containerBundle) EditSpec(editors ...SpecEditor) error {
 		fn(spec)
 	}
 
-	if err := checkForCgroup2NsdelegateConflict(spec); err != nil {
-		return err
-	}
-
 	err = b.writeSpec(spec)
 	log.Trace().Str("bundle", b.path).Interface("createSpec", spec).Msg("written runc createSpec")
 	return err
@@ -293,10 +283,13 @@ func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
 }
 
 func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
-	return RootCommandContext(ctx, "runc", append(r.args(), args...)...)
+	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
+	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
+	nsenterArgs = append(nsenterArgs, args...)
+	return RootCommandContext(ctx, "nsenter", nsenterArgs...)
 }
 
-func (r *defaultRunc) args() []string {
+func (r *defaultRunc) defaultArgs() []string {
 	var out []string
 	if r.cfg.Root != "" {
 		out = append(out, "--root", r.cfg.Root)
@@ -436,54 +429,4 @@ func WithNamespace(ns LinuxNamespace) SpecEditor {
 		}
 		spec.Linux.Namespaces = append(spec.Linux.Namespaces, ns)
 	}
-}
-
-var getMountOptions = defaultMountOptions
-
-var ErrCgroup2NsdelegateOptionUsed = errors.New("cgroup2 nsdelegate mount option conflicts with cgroup path in spec")
-
-func checkForCgroup2NsdelegateConflict(spec *specs.Spec) error {
-	if spec == nil || spec.Linux == nil || spec.Linux.CgroupsPath == "" {
-		return nil
-	}
-
-	return checkForCgroup2Nsdelegate()
-}
-
-func checkForCgroup2Nsdelegate() error {
-	opts, err := getMountOptions("/sys/fs/cgroup", "cgroup2")
-	if err != nil {
-		return err
-	}
-
-	if slices.Contains(opts, "nsdelegate") {
-		return ErrCgroup2NsdelegateOptionUsed
-	}
-	return nil
-}
-
-func defaultMountOptions(file, vfstype string) ([]string, error) {
-	f, err := os.Open("/proc/mounts")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = f.Close() }()
-
-	return getMountOptionsFromReader(f, file, vfstype), nil
-}
-
-func getMountOptionsFromReader(r io.Reader, file string, vfstype string) []string {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) >= 4 {
-			fsFile := fields[1]
-			fsVfstype := fields[2]
-			fsMntops := fields[3]
-			if fsFile == file && fsVfstype == vfstype {
-				return strings.Split(fsMntops, ",")
-			}
-		}
-	}
-	return nil
 }
