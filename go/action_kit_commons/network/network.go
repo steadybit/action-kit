@@ -17,12 +17,15 @@ import (
 	"runtime/trace"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 var (
-	runLock  = utils.NewHashedKeyMutex(10)
-	activeTc = map[string][]Opts{}
+	runLock = utils.NewHashedKeyMutex(10)
+
+	activeTCLock = sync.Mutex{}
+	activeTc     = map[string][]Opts{}
 )
 
 type SidecarOpts struct {
@@ -95,6 +98,9 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 }
 
 func pushActiveTc(netNsId string, opts Opts) error {
+	activeTCLock.Lock()
+	defer activeTCLock.Unlock()
+
 	for _, active := range activeTc[netNsId] {
 		if !equals(opts, active) {
 			return errors.New("running multiple network attacks at the same time on the same network namespace is not supported")
@@ -106,6 +112,9 @@ func pushActiveTc(netNsId string, opts Opts) error {
 }
 
 func popActiveTc(id string, opts Opts) {
+	activeTCLock.Lock()
+	defer activeTCLock.Unlock()
+
 	active, ok := activeTc[id]
 	if !ok {
 		return
