@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- fix: Race condition in network attacks reporting attack for namespace still active, when it isn't 
+
 ## 1.2.1
 
 - feat: run stress attacks when cgroup fs was mounted with nsdelegate option
