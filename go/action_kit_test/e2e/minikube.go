@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package e2e
 
@@ -657,7 +657,7 @@ func (m *Minikube) ListPods(ctx context.Context, namespace, matchLabels string) 
 	return list.Items, nil
 }
 
-func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
+func (m *Minikube) TailLogPrefixed(ctx context.Context, pod metav1.Object, prefix string) {
 	reader, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{Follow: true}).Stream(ctx)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to tail logs")
@@ -665,8 +665,11 @@ func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
 	defer func() { _ = reader.Close() }()
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		fmt.Printf("📦 %s\n", scanner.Text())
+		fmt.Printf("%s%s\n", prefix, scanner.Text())
 	}
+}
+func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {
+	m.TailLogPrefixed(ctx, pod, "📦 ")
 }
 
 func (m *Minikube) BuildImage(url string, tag string) error {
