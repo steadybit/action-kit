@@ -22,7 +22,7 @@ func (o *CorruptPackagesOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem corrupt %d%%", mode, ifc, handleInclude, o.Corruption))
 
 		filterCmds, err := tcCommandsForFilter(mode, &o.Filter, ifc)

@@ -40,7 +40,7 @@ func TestDelayOpts_TcCommands(t *testing.T) {
 				Jitter:     10 * time.Millisecond,
 				Interfaces: []string{"eth0"},
 			},
-			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio
+			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
@@ -80,7 +80,7 @@ filter del dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/1
 filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
-qdisc del dev eth0 root handle 1: prio
+qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 `),
 			wantErr: false,
 		},
