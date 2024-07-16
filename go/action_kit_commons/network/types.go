@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package network
 
@@ -140,6 +140,7 @@ func IpsToNets(ips []net.IP) []net.IPNet {
 type NetWithPortRange struct {
 	Net       net.IPNet
 	PortRange PortRange
+	Comment   string
 }
 
 func (nwp NetWithPortRange) Equal(o NetWithPortRange) bool {
@@ -147,10 +148,17 @@ func (nwp NetWithPortRange) Equal(o NetWithPortRange) bool {
 }
 
 func (nwp NetWithPortRange) String() string {
-	if nwp.PortRange == PortRangeAny {
-		return nwp.Net.String()
+	var sb strings.Builder
+	sb.WriteString(nwp.Net.String())
+	if nwp.PortRange != PortRangeAny {
+		sb.WriteString(" port ")
+		sb.WriteString(nwp.PortRange.String())
 	}
-	return fmt.Sprintf("%s port %s", nwp.Net.String(), nwp.PortRange.String())
+	if nwp.Comment != "" {
+		sb.WriteString(" #")
+		sb.WriteString(nwp.Comment)
+	}
+	return sb.String()
 }
 
 func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPortRange {
