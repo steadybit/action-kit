@@ -24,7 +24,7 @@ func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem delay %dms %dms", mode, ifc, handleInclude, o.Delay.Milliseconds(), o.Jitter.Milliseconds()))
 
 		filterCmds, err := tcCommandsForFilter(mode, &o.Filter, ifc)
