@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3
+
+- feat: allow comments on include/excludes
+- fix: don't use prio priomap defaults
+
 ## 1.2.2
 
 - fix: Race condition in network attacks reporting attack for namespace still active, when it isn't 
