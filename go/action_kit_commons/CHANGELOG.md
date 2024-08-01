@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.4
+
+- feat: add common code for fill memory attacks
+
 ## 1.2.3
 
 - feat: allow comments on include/excludes
