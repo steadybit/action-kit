@@ -108,6 +108,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
+		runc.WithDisableOOMKiller(),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)),
 		runc.WithCapabilities("CAP_SYS_RESOURCE"),
 		runc.WithMountIfNotPresent(specs.Mount{
