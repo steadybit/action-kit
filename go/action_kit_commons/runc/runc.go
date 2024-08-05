@@ -358,6 +358,22 @@ func WithMountIfNotPresent(mount specs.Mount) SpecEditor {
 	}
 }
 
+func WithDisableOOMKiller() SpecEditor {
+	return func(spec *specs.Spec) {
+		t := true
+		if spec.Linux.Resources == nil {
+			spec.Linux.Resources = &specs.LinuxResources{}
+		}
+
+		if spec.Linux.Resources.Memory == nil {
+			spec.Linux.Resources.Memory = &specs.LinuxMemory{}
+
+		}
+
+		spec.Linux.Resources.Memory.DisableOOMKiller = &t
+	}
+}
+
 func WithHostname(hostname string) SpecEditor {
 	return func(spec *specs.Spec) {
 		WithNamespace(LinuxNamespace{Type: specs.UTSNamespace})(spec)
