@@ -18,13 +18,13 @@ The article assumes that you have read the [overview documentation](../action-ap
 
 ## Necessary Boilerplate
 
-Every extension needs boilerplate code to start an HTTP server, initialize logging and register the HTTP handlers that comply with the expected API. The following excerpt shows how the go-kubectl example extension is doing this.
+Every extension needs boilerplate code to start an HTTP server, initialize logging, and register HTTP handlers that comply with the expected API. The following excerpt shows how the go-kubectl example extension does this.
 
 https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2d17a3/examples/go-kubectl/main.go#L14-L30
 
 The excerpt above shows an extension leveraging our ExtensionKit, e.g., to register HTTP handlers or initialize the logging system. ExtensionKit makes authoring Steadybit extensions easier through utilities that help you comply with the expected behavior of extensions.
 
-Note the HTTP endpoints' paths. You can choose these paths freely. The Steadybit agent only needs to know about the entry point into the extension. In this case, that would be {{origin}}/actions.
+Note the HTTP endpoints' paths. You can choose these paths freely. The Steadybit agent only needs to know about the entry point into the extension. That would be {{origin}}/actions in this case.
 
 ## Action List
 
@@ -34,9 +34,12 @@ Let us start with the first API implementation: The list of supported actions. T
     <img src="./img/action-attack.excalidraw.png" width="150" alt="UML class diagram depicting that an Attack is also an Action (Attack inherits from Action)">
 </p>
 
-The attack list API endpoint's response body needs to be a JSON encoded list of HTTP endpoints that the Steadybit agent can call to learn more about each action.
+The attack list API endpoint's response body needs a JSON encoded list of HTTP endpoints that the Steadybit agent can call to learn more about each action.
 
 https://github.com/steadybit/action-kit/blob/128d8c05bdadb54e8b001391ead530e22d2d17a3/examples/go-kubectl/handlers.go#L20-L29
+
+All paths will be resolved relative to the URL used to register the extension at the agent. For example, if `https://extension/some-path` was used to register and this endpoint returns `/actions/rollout,` the agent will make the request to `https://extension/some-path/actions/rollout.` This allows extensions to run behind reverse proxies, rewriting the path. 
+
 
 ## Action Description
 
