@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.5
+## 1.2.6
 
 - fix: check ip command family inet6 support
 
