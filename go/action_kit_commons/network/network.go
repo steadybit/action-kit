@@ -13,10 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"os"
+	"os/exec"
 	"runtime/trace"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -134,14 +133,15 @@ func equals(opts Opts, active Opts) bool {
 var ipv6Supported = defaultIpv6Supported
 
 func defaultIpv6Supported() bool {
-	if content, err := os.ReadFile("/sys/module/ipv6/parameters/disable"); err == nil {
-		disabled := strings.TrimSpace(string(content)) == "1"
-		log.Trace().Bool("disabled", disabled).Msg("read ipv6 module parameters")
-		return !disabled
-	} else {
-		log.Warn().Err(err).Msg("Failed to read /sys/module/ipv6/parameters/disable. Assuming ipv6 is disabled.")
+	// execute the following command to check if ipv6 is disabled:
+	// ip -family inet6 rule
+	// if the command fails, we assume that ipv6 is disabled
+	cmd := exec.Command("ip", "-family", "inet6", "rule")
+	if err := cmd.Run(); err != nil {
+		log.Trace().Err(err).Msg("ipv6 is disabled")
 		return false
 	}
+	return true
 }
 
 func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, cmds []string) error {
