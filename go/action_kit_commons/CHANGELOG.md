@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+
+- fix: check ip command family inet6 support
+
 ## 1.2.4
 
 - feat: add common code for fill memory attacks
