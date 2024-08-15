@@ -595,6 +595,11 @@ components:
           description: >-
             A default value for this parameter. This value will be used if the
             user does not specify a value for this parameter.
+        optionsOnly:
+          type: boolean
+          default: true
+          description: >-
+            Define if for a type = 'string' with options, if only the options should be allowed or also free text.
         options:
           type: array
           description: Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
