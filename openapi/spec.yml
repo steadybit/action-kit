@@ -599,7 +599,7 @@ components:
           type: boolean
           default: true
           description: >-
-            Define if for a type = 'string' with options, if only the options should be allowed or also free text.
+            Define if for a type = 'string' with options, if only the options should be allowed or also free text. Default is true.
         options:
           type: array
           description: Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
