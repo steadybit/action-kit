@@ -329,7 +329,7 @@ func toError(err *action_kit_api.ActionKitError) error {
 		sb.WriteString(": ")
 		sb.WriteString(*err.Detail)
 	}
-	return fmt.Errorf(sb.String())
+	return fmt.Errorf("%s", sb.String())
 }
 
 func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) error {
