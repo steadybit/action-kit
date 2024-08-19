@@ -187,6 +187,28 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 }
 ```
 
+### Example with options to represent a drop down field
+
+```json
+{
+  "name": "fullName",
+  "label": "Full Name",
+  "type": "string",
+  "options": [
+    {
+      "label": "Jane Doe",
+      "value": "Jane Doe"
+    },
+    {
+      "label": "Admiral Ackbar",
+      "value": "Admiral Ackbar"
+    }
+  ]
+}
+```
+
+<img src="img/parameters/string_with_options.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string parameter with options looks like. Depicting a textual label and a text input." />
+
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
