@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.1
+
+- added new optional field `optionsOnly` to action type = 'string' with provided options to define if the action should only support with the provided options or is over writeable
+
 ## 2.9.0
 
 - removed `action_kit_api.Password`. Do not use secrets in the action description. Build your extension to use secrets from the configuration.
