@@ -209,6 +209,30 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 
 <img src="img/parameters/string_with_options.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string parameter with options looks like. Depicting a textual label and a text input." />
 
+### Example with options to represent a drop down field with the option to add a custom value
+
+```json
+{
+  "name": "fullName",
+  "label": "Full Name",
+  "type": "string",
+  "optionsOnly": false,
+  "options": [
+    {
+      "label": "Jane Doe",
+      "value": "Jane Doe"
+    },
+    {
+      "label": "Admiral Ackbar",
+      "value": "Admiral Ackbar"
+    }
+  ]
+}
+```
+#### Parameter optionsOnly
+Indicates if the action should only support the provided options or if the user can enter a custom value. If `optionsOnly` is set to `true` or is left out, the user can only select from the provided options. If `optionsOnly` is set to `false`, the user can select from the provided options or enter a custom value.
+
+
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
@@ -230,7 +254,7 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
 
 ```json
 {
-  "fullName": "Jane Doe"
+  "fullName": null
 }
 ```
 
