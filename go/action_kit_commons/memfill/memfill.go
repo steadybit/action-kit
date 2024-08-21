@@ -5,23 +5,18 @@ package memfill
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
-	"syscall"
+	"os/exec"
+	"strconv"
 	"time"
 )
 
 type MemFill struct {
-	bundle runc.ContainerBundle
-	runc   runc.Runc
-
+	cmd   *exec.Cmd
 	state *runc.BackgroundState
 	args  []string
-	Noop  bool
 }
 
 type Mode string
@@ -50,17 +45,19 @@ func (o Opts) processArgs() []string {
 	return args
 }
 
-func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*MemFill, error) {
-	bundle, err := createBundle(ctx, r, sidecar, opts.processArgs()...)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create start bundle")
-		return nil, err
-	}
+func New(targeProcess runc.LinuxProcessInfo, opts Opts) (*MemFill, error) {
+	args := append([]string{
+		"nsenter", "-t", "1", "-C", "--",
+		//when util-linux package >= 2.39 is broadly available we could also the cgroup change using nsenter,
+		"cgexec", "-g", fmt.Sprintf("memory:%s", targeProcess.CGroupPath),
+		"nsenter", "-t", strconv.Itoa(targeProcess.Pid), "-p", "-F", "--",
+	},
+		opts.processArgs()...,
+	)
 
-	return &MemFill{
-		bundle: bundle,
-		runc:   r,
-	}, nil
+	cmd := runc.RootCommandContext(context.Background(), args[0], args[1:]...)
+
+	return &MemFill{cmd: cmd, args: opts.processArgs()}, nil
 }
 
 func (mf *MemFill) Exited() (bool, error) {
@@ -69,105 +66,39 @@ func (mf *MemFill) Exited() (bool, error) {
 
 func (mf *MemFill) Start() error {
 	log.Info().
-		Str("containerId", mf.bundle.ContainerId()).
 		Strs("args", mf.args).
 		Msg("Starting memfill")
 
-	if state, err := runc.RunBundleInBackground(context.Background(), mf.runc, mf.bundle); err != nil {
-		return fmt.Errorf("failed to start memfill: %w", err)
+	if state, err := runc.RunCommandInBackground(mf.cmd, log.With().Str("id", "memfill").Logger()); err != nil {
+		return fmt.Errorf("failed to start: %w", err)
 	} else {
 		mf.state = state
 	}
+
 	return nil
 }
 
 func (mf *MemFill) Stop() error {
 	log.Info().
-		Str("containerId", mf.bundle.ContainerId()).
 		Msg("stopping memfill")
-	ctx := context.Background()
 
-	if err := mf.runc.Kill(ctx, mf.bundle.ContainerId(), syscall.SIGINT); err != nil {
-		log.Warn().Str("id", mf.bundle.ContainerId()).Err(err).Msg("failed to send SIGINT to container")
+	//as the process is running with a different user, we also need to do so, for sending signals
+	ctx := context.Background()
+	if err := runc.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(mf.cmd.Process.Pid)).Run(); err != nil {
+		log.Warn().Err(err).Msg("failed to send SIGINT to memfill")
 	}
 
 	timerStart := time.AfterFunc(10*time.Second, func() {
-		if err := mf.runc.Kill(ctx, mf.bundle.ContainerId(), syscall.SIGTERM); err != nil {
-			log.Warn().Str("id", mf.bundle.ContainerId()).Err(err).Msg("failed to send SIGTERM to container")
+		if err := runc.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(mf.cmd.Process.Pid)).Run(); err != nil {
+			log.Warn().Err(err).Msg("failed to send SIGTERM to memfill")
 		}
 	})
 
 	mf.state.Wait()
 	timerStart.Stop()
-
-	if err := mf.runc.Delete(ctx, mf.bundle.ContainerId(), false); err != nil {
-		level := zerolog.WarnLevel
-		if errors.Is(err, runc.ErrContainerNotFound) {
-			level = zerolog.DebugLevel
-		}
-		log.WithLevel(level).Str("id", mf.bundle.ContainerId()).Err(err).Msg("failed to delete container")
-	}
-
-	if err := mf.bundle.Remove(); err != nil {
-		log.Warn().Str("id", mf.bundle.ContainerId()).Err(err).Msg("failed to remove bundle")
-	}
 	return nil
 }
 
 func (mf *MemFill) Args() []string {
 	return mf.args
-}
-
-type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
-	IdSuffix      string
-	ImagePath     string
-}
-
-func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs ...string) (runc.ContainerBundle, error) {
-	containerId := getNextContainerId(sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, sidecar.ImagePath, containerId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
-	}
-
-	success := false
-	defer func() {
-		if success {
-			return
-		}
-		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", containerId).Err(err).Msg("failed to remove bundle")
-		}
-	}()
-
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)
-
-	if err := bundle.EditSpec(
-		runc.WithHostname(containerId),
-		runc.WithAnnotations(map[string]string{
-			"com.steadybit.sidecar": "true",
-		}),
-		runc.WithProcessArgs(processArgs...),
-		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
-		runc.WithDisableOOMKiller(),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)),
-		runc.WithCapabilities("CAP_SYS_RESOURCE"),
-		runc.WithMountIfNotPresent(specs.Mount{
-			Destination: "/tmp",
-			Type:        "tmpfs",
-			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
-		}),
-	); err != nil {
-		return nil, err
-	}
-
-	success = true
-
-	return bundle, nil
-}
-
-func getNextContainerId(suffix string) string {
-	return fmt.Sprintf("sb-memfill-%d-%s", time.Now().UnixMilli(), suffix)
 }

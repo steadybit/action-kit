@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"io"
 	"os"
@@ -35,11 +36,16 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 		return nil, fmt.Errorf("failed to run %s: %w", bundle.ContainerId(), err)
 	}
 
-	var outb bytes.Buffer
+	logger := log.With().Str("id", bundle.ContainerId()).Logger()
+
+	return RunCommandInBackground(cmd, logger)
+}
+
+func RunCommandInBackground(cmd *exec.Cmd, logger zerolog.Logger) (*BackgroundState, error) {
+	var outb_stderr bytes.Buffer
 	pr, pw := io.Pipe()
-	writer := io.MultiWriter(&outb, pw)
-	cmd.Stdout = writer
-	cmd.Stderr = writer
+	cmd.Stdout = pw
+	cmd.Stderr = io.MultiWriter(&outb_stderr, pw)
 
 	go func() {
 		defer func() { _ = pr.Close() }()
@@ -47,15 +53,15 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 
 		for {
 			if line, err := bufReader.ReadString('\n'); err == nil {
-				log.Debug().Str("id", bundle.ContainerId()).Msg(line)
+				logger.Debug().Msg(line)
 			} else {
 				break
 			}
 		}
 	}()
 
-	if err = cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start %s: %w", bundle.ContainerId(), err)
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start: %w", err)
 	}
 
 	result := &BackgroundState{
@@ -67,7 +73,7 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 	go func(r *BackgroundState) {
 		defer func() { _ = pw.Close() }()
 		err := cmd.Wait()
-		log.Trace().Str("id", bundle.ContainerId()).Int("exitCode", cmd.ProcessState.ExitCode()).Msgf("%s exited", bundle.ContainerId())
+		logger.Trace().Int("exitCode", cmd.ProcessState.ExitCode()).Msg("exited.")
 
 		r.cond.L.Lock()
 		defer r.cond.L.Unlock()
@@ -75,7 +81,7 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 		r.exited = true
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			exitErr.Stderr = outb.Bytes()
+			exitErr.Stderr = outb_stderr.Bytes()
 			r.err = exitErr
 		} else {
 			r.err = err
