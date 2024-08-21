@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7
+
+- refa: use nsenter instead of runc for running fill memory attacks
+
 ## 1.2.6
 
 - fix: check ip command family inet6 support
