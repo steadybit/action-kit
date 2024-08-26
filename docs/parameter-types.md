@@ -612,6 +612,8 @@ Defines how many workers should be used for stressng
 
 Defines a regular expression, which is used to validate the input value as a regular expression.
 
+The validation will be done on server side with `java` regex flavor. 
+
 <img src="img/parameters/regex.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a regex parameter looks like." />
 
 ### Example
