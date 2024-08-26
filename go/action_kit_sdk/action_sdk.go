@@ -67,8 +67,10 @@ type ActionWithMetricQuery[T any] interface {
 	QueryMetrics(ctx context.Context, request action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error)
 }
 
+type SignalHandlerCallBackFn func(os.Signal)
+
 // InstallSignalHandler registers a signal handler that stops all active actions on SIGINT, SIGTERM and SIGUSR1.
-func InstallSignalHandler() {
+func InstallSignalHandler(callbacks ...SignalHandlerCallBackFn) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 	go func(signals <-chan os.Signal) {
@@ -77,6 +79,11 @@ func InstallSignalHandler() {
 
 			log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
 			StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
+
+			for _, callback := range callbacks {
+				log.Debug().Str("signal", signalName).Msg("calling signal handler callback")
+				callback(s)
+			}
 
 			switch s {
 			case syscall.SIGINT:
