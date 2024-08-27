@@ -565,6 +565,7 @@ components:
             - header
             - bitrate
             - stressng-workers
+            - regex
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It

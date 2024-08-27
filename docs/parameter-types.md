@@ -20,6 +20,7 @@ Supported parameter types:
   * [`header`](#header)
   * [`bitrate`](#bitrate)
   * [`stressng-workers`](#stressng-workers)
+  * [`regex`](#regex)
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
@@ -604,5 +605,43 @@ Defines how many workers should be used for stressng
 ```json
 {
   "worker": null
+}
+```
+
+## `regex`
+
+Defines a regular expression, which is used to validate the input value as a regular expression.
+
+The validation will be done on server side with `java` regex flavor. 
+
+<img src="img/parameters/regex.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a regex parameter looks like." />
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "hostname",
+  "label": "Hostname to match",
+  "type": "regex",
+  "defaultValue": ".*"
+}
+```
+
+#### Configuration Value Received in `prepare` Call of Actions
+
+##### With a Value
+```json
+{
+  "hostname": ".*"
+}
+```
+
+##### Without a Value
+
+```json
+{
+  "hostname": null
 }
 ```
