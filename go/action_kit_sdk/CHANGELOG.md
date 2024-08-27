@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.10
+
+- add possibility to pass callback functions to InstallSignalHandler
+- update deps
+
 ## 1.1.9
 
 - update extension-kit
