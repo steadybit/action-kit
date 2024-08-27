@@ -45,12 +45,12 @@ func (o Opts) processArgs() []string {
 	return args
 }
 
-func New(targeProcess runc.LinuxProcessInfo, opts Opts) (*MemFill, error) {
+func New(targetProcess runc.LinuxProcessInfo, opts Opts) (*MemFill, error) {
 	args := append([]string{
 		"nsenter", "-t", "1", "-C", "--",
 		//when util-linux package >= 2.39 is broadly available we could also the cgroup change using nsenter,
-		"cgexec", "-g", fmt.Sprintf("memory:%s", targeProcess.CGroupPath),
-		"nsenter", "-t", strconv.Itoa(targeProcess.Pid), "-p", "-F", "--",
+		"cgexec", "-g", fmt.Sprintf("memory:%s", targetProcess.CGroupPath),
+		"nsenter", "-t", strconv.Itoa(targetProcess.Pid), "-p", "-F", "--",
 	},
 		opts.processArgs()...,
 	)
