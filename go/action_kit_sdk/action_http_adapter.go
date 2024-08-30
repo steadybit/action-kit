@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package action_kit_sdk
 
@@ -103,7 +103,6 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 			Message: unameInformation,
 		})
 	}
-
 
 	var convertedState action_kit_api.ActionState
 	err = extconversion.Convert(state, &convertedState)
