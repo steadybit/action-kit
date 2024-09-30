@@ -6,7 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/getkin/kin-openapi v0.127.0
-	github.com/go-resty/resty/v2 v2.15.2
+	github.com/go-resty/resty/v2 v2.15.3
 	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/rs/zerolog v1.33.0
