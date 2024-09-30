@@ -399,9 +399,17 @@ components:
             doing.
         kind:
           $ref: '#/components/schemas/ActionKind'
+        technology:
+          type: string
+          description: >-
+            Used for categorization of the action within user interfaces.
+            In most cases, this will be the technology that the extension is about to handle, for example `AWS`,
+            `Kubernetes` or `Host` or any custom technology you are writing an extension for.
         category:
           type: string
-          description: Used for categorization of the action within user interfaces.
+          description: >- 
+            Used for categorization of the action within user interfaces.
+            This is optional and mostly used as sub-category if certain actions should be grouped together.
         targetSelection:
           $ref: '#/components/schemas/TargetSelection'
         targetType:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.3
+
+- adding `technology` to `ActionDescription`
+
 ## 2.9.2
 
 - add `regex` to parameter type
