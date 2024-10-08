@@ -6,6 +6,7 @@ Supported widgets types:
 
 * [State Over Time](#state-over-time)
 * [Log Widget](#log-widget)
+* [Markdown Widget](#markdown-widget)
 
 ## State Over Time
 
@@ -94,16 +95,13 @@ You can provide data points for this widget through metrics. You can define metr
 This widget helps visualize the output of a log stream. For example, to show the output of a Kubernetes events. The screenshot below depicts how the [Kubernetes extension](https://github.com/steadybit/extension-kubernetes) uses this widget type to visualize the output of a Kubernetes events.
 ![Kubernetes Events](KubernetesEventsLog.png)
 
-
-
 ### Configuration
 
 The widget configuration describes from which events fields Steadybit should retrieve information. More specifically:
 
-- LogType that describes the log stream. e.g. "KUBERNETES_EVENTS". Must be the same as the one used in the action messages send (Message.Type).
-- Title of the log stream. e.g. "Kubernetes Events"
-- Type which is set to "com.steadybit.widget.log" / ComSteadybitWidgetLog constant.
-
+- `Type` which is set to "com.steadybit.widget.log" / ComSteadybitWidgetLog constant.
+- `Title` of the widget, e.g. "Kubernetes Events"
+- `LogType` specifies the type of messages, that should be displayed in the widget, e.g. "KUBERNETES_EVENTS". Must be the same as the one used in the action messages send (Message.Type).
 
 The following snippet is an example depicting the Kubernetes extension's configuration.
 
@@ -115,28 +113,66 @@ return action_kit_api.ActionDescription{
             Type:    action_kit_api.ComSteadybitWidgetLog,
             Title:   "Kubernetes Events",
             LogType: "KUBERNETES_EVENTS",
-            },
-        }),
+        },
+    }),
 }
 ```
-
 
 Each log that is displayed is a representation of a Message. Messages can be send to the platform during status and stop phase of the action. The message must in include the correct type as described above. The message can also include a payload of fields which is displayed in the log widget as tooltip.
 e.g.
 ```go
 action_kit_api.Message{
-      Message:   "Pulling image 'steadybit/bestseller-fashion'",
-      Type:      extutil.Ptr("KUBERNETES_EVENTS"),
-      Level:     action_kit_api.Info,
-      Timestamp: extutil.Ptr(event.LastTimestamp.Time),
-      Fields: extutil.Ptr(action_kit_api.MessageFields{
-          "reason":       event.Reason,
-          "cluster-name": clusterName,
-          "namespace":    event.Namespace,
-          "object":       strings.ToLower(event.InvolvedObject.Kind) + "/" + event.InvolvedObject.Name,
-      }),
-  }
+    Message:   "Pulling image 'steadybit/bestseller-fashion'",
+    Type:      extutil.Ptr("KUBERNETES_EVENTS"),
+    Level:     action_kit_api.Info,
+    Timestamp: extutil.Ptr(event.LastTimestamp.Time),
+    Fields: extutil.Ptr(action_kit_api.MessageFields{
+        "reason":       event.Reason,
+        "cluster-name": clusterName,
+        "namespace":    event.Namespace,
+        "object":       strings.ToLower(event.InvolvedObject.Kind) + "/" + event.InvolvedObject.Name,
+    }),
+}
 ```  
 
 ![Tooltip](./img/widgets/tooltip.png)
 
+## Markdown Widget
+
+With that Widget, you are able to render custom markdown content in the run view. This can be used to provide additional information or links to external resources. The screenshot shows the widget in action.
+![Markdown Widget](./img/widgets/markdown.png)
+
+### Configuration
+
+- `Type` which is set to "com.steadybit.widget.markdown" / ComSteadybitWidgetMarkdown constant.
+- `MessageType` specifies the type of messages, that should be displayed in the widget, e.g. "MY_CUSTOM_ACTION_RESULTS". Must be the same as the one used in the action messages send (Message.Type).
+- `Title` of the widget, e.g. "Example Markdown Content"
+- `Append` specifies if the content should be appended to the existing content or replace it.
+  - If set to `true`, the widget will append the content to the existing content of previous endpoint calls. For example, you can return some headings in the `start` call, append some progress information in the `status` calls and add a summary in the `stop` call. 
+  - If set to `false`, the widget will only show the last submitted content batch, grouped by `timestamp`. Older content will be displayed, when clicking on the timeline in the run view. To improve the performance, you should only return messages if the content has changed compared to the previous batch.
+
+Example:
+
+```go
+return action_kit_api.ActionDescription{
+	...
+    Widgets: extutil.Ptr([]action_kit_api.Widget{
+        action_kit_api.MarkdownWidget{
+            Type:    action_kit_api.ComSteadybitWidgetMarkdown,
+            Title:   "Example Markdown Content",
+            MessageType: "MY_CUSTOM_ACTION_RESULTS",
+            Append:  true,
+        },
+    }),
+}
+```
+
+The markdown content will be submitted to the platform in the representation of a `action_kit_api.Message`. Messages can be returned in all endpoints of the action. The message must in include the correct type as described above.
+e.g.
+```go
+action_kit_api.Message{
+    Message:   "# I will start now",
+    Type:      extutil.Ptr("MY_CUSTOM_ACTION_RESULTS"),
+    Timestamp: extutil.Ptr(time.now()),
+}
+```  
