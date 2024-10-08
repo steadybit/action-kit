@@ -55,6 +55,10 @@ func (p *PortRange) String() string {
 	return fmt.Sprintf("%d-%d", p.From, p.To)
 }
 
+func (p *PortRange) Overlap(other PortRange) bool {
+	return p.From <= other.To && p.To >= other.From
+}
+
 func ParsePortRange(raw string) (PortRange, error) {
 	parts := strings.Split(raw, "-")
 	if len(parts) > 2 {
@@ -159,6 +163,10 @@ func (nwp NetWithPortRange) String() string {
 		sb.WriteString(nwp.Comment)
 	}
 	return sb.String()
+}
+
+func (nwp NetWithPortRange) Overlap(other NetWithPortRange) bool {
+	return (nwp.PortRange.Overlap(other.PortRange) && nwp.Net.Contains(other.Net.IP)) || (other.PortRange.Overlap(nwp.PortRange) && other.Net.Contains(nwp.Net.IP))
 }
 
 func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPortRange {

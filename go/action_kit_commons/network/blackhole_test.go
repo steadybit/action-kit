@@ -73,12 +73,8 @@ rule del blackhole to ::/0 dport 1-65534
 			},
 			wantAddV4: []byte(`rule add blackhole to 0.0.0.0/0 ipproto udp dport 123
 rule add blackhole from 0.0.0.0/0 ipproto udp sport 123
-rule add to 192.168.2.1/32 ipproto udp dport 80 table main
-rule add from 192.168.2.1/32 ipproto udp sport 80 table main
 `),
-			wantDelV4: []byte(`rule del from 192.168.2.1/32 ipproto udp sport 80 table main
-rule del to 192.168.2.1/32 ipproto udp dport 80 table main
-rule del blackhole from 0.0.0.0/0 ipproto udp sport 123
+			wantDelV4: []byte(`rule del blackhole from 0.0.0.0/0 ipproto udp sport 123
 rule del blackhole to 0.0.0.0/0 ipproto udp dport 123
 `),
 			wantAddV6: []byte(`rule add blackhole to ::/0 ipproto udp dport 123

@@ -38,8 +38,7 @@ const handleInclude = "1:3"
 
 func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
 	var cmds []string
-
-	if filterCmds, err := tcCommandsForNets(f.Exclude, mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
+	if filterCmds, err := tcCommandsForNets(NecessaryExcludes(f.Exclude, f.Include), mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
 		cmds = append(cmds, filterCmds...)
 	} else {
 		return nil, err
@@ -52,6 +51,20 @@ func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
 	}
 
 	return cmds, nil
+}
+
+// NecessaryExcludes returns those excludes, which are overlapping with one of the includes.
+func NecessaryExcludes(excludes []NetWithPortRange, includes []NetWithPortRange) []NetWithPortRange {
+	result := make([]NetWithPortRange, 0, len(excludes))
+	for _, exclude := range excludes {
+		for _, include := range includes {
+			if include.Overlap(exclude) {
+				result = append(result, exclude)
+				break
+			}
+		}
+	}
+	return result
 }
 
 func tcCommandsForNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, parent, flowId string, prio int) ([]string, error) {
@@ -180,9 +193,10 @@ func writeStringForFilters(sb *strings.Builder, f Filter) {
 		sb.WriteString(inc.String())
 		sb.WriteString("\n")
 	}
-	if len(f.Exclude) > 0 {
+	excludes := NecessaryExcludes(f.Exclude, f.Include)
+	if len(excludes) > 0 {
 		sb.WriteString("but not from/to:\n")
-		for _, exc := range f.Exclude {
+		for _, exc := range excludes {
 			sb.WriteString(" ")
 			sb.WriteString(exc.String())
 			sb.WriteString("\n")

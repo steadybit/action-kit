@@ -40,7 +40,7 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s sport %s", mode, net.String(), ipprotoSelector, portRange.String()))
 	}
 
-	for _, nwp := range uniqueNetWithPortRange(o.Exclude) {
+	for _, nwp := range uniqueNetWithPortRange(NecessaryExcludes(o.Exclude, o.Include)) {
 		net := nwp.Net
 		portRange := nwp.PortRange
 
