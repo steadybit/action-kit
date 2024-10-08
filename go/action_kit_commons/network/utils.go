@@ -188,12 +188,12 @@ func getProtocol(net net.IPNet) (string, error) {
 
 func writeStringForFilters(sb *strings.Builder, f Filter) {
 	sb.WriteString("\nto/from:\n")
-	for _, inc := range f.Include {
+	for _, inc := range uniqueNetWithPortRange(f.Include) {
 		sb.WriteString(" ")
 		sb.WriteString(inc.String())
 		sb.WriteString("\n")
 	}
-	excludes := NecessaryExcludes(f.Exclude, f.Include)
+	excludes := NecessaryExcludes(uniqueNetWithPortRange(f.Exclude), f.Include)
 	if len(excludes) > 0 {
 		sb.WriteString("but not from/to:\n")
 		for _, exc := range excludes {

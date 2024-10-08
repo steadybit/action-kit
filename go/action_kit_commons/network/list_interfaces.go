@@ -13,14 +13,23 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
-	"runtime/trace"
 )
 
 type Interface struct {
-	Index    uint     `json:"ifindex"`
-	Name     string   `json:"ifname"`
-	LinkType string   `json:"link_type"`
-	Flags    []string `json:"flags"`
+	Index    uint       `json:"ifindex"`
+	Name     string     `json:"ifname"`
+	LinkType string     `json:"link_type"`
+	Flags    []string   `json:"flags"`
+	AddrInfo []AddrInfo `json:"addr_info"`
+}
+
+type AddrInfo struct {
+	Family    string `json:"family"`
+	Local     string `json:"local"`
+	PrefixLen uint   `json:"prefixlen"`
+	Scope     string `json:"scope"`
+	Label     string `json:"label"`
+	Broadcast string `json:"broadcast"`
 }
 
 func (i *Interface) HasFlag(f string) bool {
@@ -37,11 +46,44 @@ type ExtraMount struct {
 	Path   string `json:"path"`
 }
 
-func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]Interface, error) {
-	defer trace.StartRegion(ctx, "network.ListInterfaces").End()
-	id := getNextContainerId("ip-link", sidecar.IdSuffix)
+func ListInterfacesForAllNamespaces(ctx context.Context, r runc.Runc) ([]Interface, error) {
+	nsList, err := runc.ListNamespaces(ctx, "net")
+	if err != nil {
+		return nil, err
+	}
 
-	bundle, err := r.Create(ctx, sidecar.ImagePath, id)
+	var allIfcs []Interface
+	for _, ns := range nsList {
+		opts := SidecarOpts{TargetProcess: runc.LinuxProcessInfo{Namespaces: []runc.LinuxNamespace{ns}}}
+		if ifcs, err := ListInterfaces(ctx, r, opts); err == nil {
+			allIfcs = append(allIfcs, ifcs...)
+		} else {
+			return nil, err
+		}
+	}
+
+	return allIfcs, nil
+}
+
+func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]string, error) {
+	ifcs, err := ListInterfaces(ctx, r, sidecar)
+	if err != nil {
+		return nil, err
+	}
+
+	var ifcNames []string
+	for _, ifc := range ifcs {
+		if !ifc.HasFlag("LOOPBACK") {
+			ifcNames = append(ifcNames, ifc.Name)
+		}
+	}
+	return ifcNames, nil
+}
+
+func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]Interface, error) {
+	id := getNextContainerId("ip-addr", sidecar.IdSuffix)
+
+	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +102,7 @@ func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]In
 		}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithProcessArgs("ip", "-json", "link", "show")); err != nil {
+		runc.WithProcessArgs("ip", "--json", "address", "show", "up")); err != nil {
 		return nil, err
 	}
 
@@ -85,6 +127,14 @@ func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]In
 		return nil, fmt.Errorf("failed to unmarshal interfaces: %w", err)
 	}
 
+	//the json output has empty objects for non-up interfaces, we filter those.
+	var validInterfaces []Interface
+	for _, iface := range interfaces {
+		if len(iface.Name) > 0 {
+			validInterfaces = append(validInterfaces, iface)
+		}
+	}
+
 	log.Trace().Interface("interfaces", interfaces).Msg("listed network interfaces")
-	return interfaces, nil
+	return validInterfaces, nil
 }

@@ -30,7 +30,6 @@ var (
 type SidecarOpts struct {
 	TargetProcess runc.LinuxProcessInfo
 	IdSuffix      string
-	ImagePath     string
 }
 
 func Apply(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) error {
@@ -151,7 +150,7 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 	}
 
 	id := getNextContainerId("ip", sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, sidecar.ImagePath, id)
+	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return err
 	}
@@ -206,7 +205,7 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 	}
 
 	id := getNextContainerId("tc", sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, sidecar.ImagePath, id)
+	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return err
 	}

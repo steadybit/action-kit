@@ -239,7 +239,7 @@ type SidecarOpts struct {
 
 func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts, processArgs ...string) (runc.ContainerBundle, error) {
 	containerId := getNextContainerId(sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, sidecar.ImagePath, containerId)
+	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
 	}

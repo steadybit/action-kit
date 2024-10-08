@@ -53,7 +53,6 @@ func Test_generateAndRunCommands_should_serialize(t *testing.T) {
 			sidecar := SidecarOpts{
 				TargetProcess: runc.LinuxProcessInfo{},
 				IdSuffix:      "test",
-				ImagePath:     "__mocked__",
 			}
 
 			_ = Apply(context.Background(), runcMock, sidecar, &blackholeOpts)

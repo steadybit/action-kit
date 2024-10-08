@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -182,19 +183,43 @@ func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPo
 	return result
 }
 
-func uniqueNetWithPortRange(netWithPortRanges []NetWithPortRange) []NetWithPortRange {
-	var result []NetWithPortRange
-	for _, nwp := range netWithPortRanges {
-		found := false
-		for _, r := range result {
-			if r.Equal(nwp) {
+func uniqueNetWithPortRange(nwps []NetWithPortRange) []NetWithPortRange {
+	var unique []NetWithPortRange
+	for _, nwp := range nwps {
+		var found bool
+		for _, u := range unique {
+			if nwp.Equal(u) {
 				found = true
 				break
 			}
 		}
 		if !found {
-			result = append(result, nwp)
+			unique = append(unique, nwp)
 		}
 	}
-	return result
+	slices.SortFunc(unique, CompareNetWithPortRange)
+	return unique
+
+}
+
+func CompareNetWithPortRange(a, b NetWithPortRange) int {
+	if a.Net.String() < b.Net.String() {
+		return -1
+	}
+	if a.Net.String() > b.Net.String() {
+		return 1
+	}
+	if a.PortRange.From < b.PortRange.From {
+		return -1
+	}
+	if a.PortRange.From > b.PortRange.From {
+		return 1
+	}
+	if a.PortRange.To < b.PortRange.To {
+		return -1
+	}
+	if a.PortRange.To > b.PortRange.To {
+		return 1
+	}
+	return 0
 }

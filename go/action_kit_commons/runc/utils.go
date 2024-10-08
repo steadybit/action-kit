@@ -16,7 +16,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/trace"
 	"slices"
 	"strconv"
 	"strings"
@@ -134,6 +133,7 @@ type LinuxNamespace struct {
 	Type  specs.LinuxNamespaceType
 	Path  string
 	Inode uint64
+	Pid   int
 }
 
 type LinuxProcessInfo struct {
@@ -153,44 +153,64 @@ func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error
 }
 
 func readNamespaces(ctx context.Context, pid int) ([]LinuxNamespace, error) {
-	defer trace.StartRegion(ctx, "runc.readNamespaces").End()
-
-	sout, err := executeLsns(ctx, pid)
+	sout, err := executeLsns(ctx, "--task", strconv.Itoa(pid), "--output=ns,type,path,pid", "--noheadings", "--notruncate")
 	if err != nil {
 		return nil, err
 	}
 
+	return parseNamespaceList(sout)
+}
+
+func ListNamespaces(ctx context.Context, typ ...string) ([]LinuxNamespace, error) {
+	args := []string{"--output=inode,type,path,pid", "--noheadings", "--notruncate"}
+	for _, t := range typ {
+		args = append(args, "--type", t)
+	}
+
+	sout, err := executeLsns(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseNamespaceList(sout)
+}
+
+func parseNamespaceList(sout *bytes.Buffer) ([]LinuxNamespace, error) {
 	var namespaces []LinuxNamespace
 	for _, line := range strings.Split(strings.TrimSpace(sout.String()), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) != 3 {
+		if len(fields) != 4 {
 			continue
 		}
 		inode, err := strconv.ParseUint(fields[0], 10, 64)
 		if err != nil {
 			log.Warn().Err(err).Msgf("failed to parse inode %s. omitting inode namespace information", fields[0])
 		}
+		pid, _ := strconv.Atoi(fields[3])
 		ns := LinuxNamespace{
 			Inode: inode,
 			Type:  toRuncNamespaceType(fields[1]),
 			Path:  fields[2],
+			Pid:   pid,
 		}
 		namespaces = append(namespaces, ns)
 	}
 	return namespaces, nil
 }
 
-func executeLsns(ctx context.Context, pid int) (bytes.Buffer, error) {
+var executeLsns = executeLsnsImpl
+
+func executeLsnsImpl(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 	var lastErr error
 	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
 	for attempts := 0; attempts < 3; attempts++ {
 		var sout bytes.Buffer
 		var serr bytes.Buffer
-		cmd := RootCommandContext(ctx, "lsns", "--task", strconv.Itoa(pid), "--output=ns,type,path", "--noheadings")
+		cmd := RootCommandContext(ctx, "lsns", args...)
 		cmd.Stdout = &sout
 		cmd.Stderr = &serr
 		if err := cmd.Run(); err == nil {
-			return sout, nil
+			return &sout, nil
 		} else {
 			lastErr = fmt.Errorf("lsns %w: %s", err, serr.String())
 
@@ -200,7 +220,7 @@ func executeLsns(ctx context.Context, pid int) (bytes.Buffer, error) {
 			}
 		}
 	}
-	return bytes.Buffer{}, lastErr
+	return nil, lastErr
 }
 
 func toRuncNamespaceType(t string) specs.LinuxNamespaceType {
@@ -214,11 +234,7 @@ func toRuncNamespaceType(t string) specs.LinuxNamespaceType {
 	}
 }
 
-var listNamespaceUsingInode = listNamespaceUsingInodeImpl
-
 func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType ...specs.LinuxNamespaceType) error {
-	defer trace.StartRegion(ctx, "runc.NamespacesExists").End()
-
 	filtered := namespaces
 	if len(nsType) > 0 {
 		filtered = FilterNamespaces(namespaces, nsType...)
@@ -248,8 +264,6 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 }
 
 func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
-	defer trace.StartRegion(ctx, "runc.refreshNamespacesUsingInode").End()
-
 	if ns == nil || ns.Inode == 0 {
 		return
 	}
@@ -263,44 +277,30 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		Uint64("inode", ns.Inode).
 		Msg("refreshing namespace")
 
-	out, err := listNamespaceUsingInode(ctx, ns.Inode)
-
-	if err != nil {
+	if out, err := executeLsns(ctx, strconv.FormatUint(ns.Inode, 10), "--output=path", "--noheadings", "--notruncate"); err != nil {
 		log.Warn().Str("type", string(ns.Type)).
 			Err(err).
 			Str("path", ns.Path).
 			Uint64("inode", ns.Inode).
 			Msg("failed refreshing namespace")
-	}
+	} else {
+		for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) != 1 {
+				continue
+			}
 
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 1 {
-			continue
+			ns.Path = fields[0]
+			log.Trace().Str("type", string(ns.Type)).
+				Str("path", ns.Path).
+				Uint64("inode", ns.Inode).
+				Msg("refreshed namespace")
+			return
 		}
-
-		ns.Path = fields[0]
-		log.Trace().Str("type", string(ns.Type)).
-			Str("path", ns.Path).
-			Uint64("inode", ns.Inode).
-			Msg("refreshed namespace")
-		return
 	}
-}
-
-func listNamespaceUsingInodeImpl(ctx context.Context, inode uint64) (string, error) {
-	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "lsns", strconv.FormatUint(inode, 10), "--output=path", "--noheadings")
-	cmd.Stdout = &sout
-	cmd.Stderr = &serr
-	if err := cmd.Run(); err != nil {
-		return sout.String(), fmt.Errorf("lsns %w: %s", err, serr.String())
-	}
-	return sout.String(), nil
 }
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
-	defer trace.StartRegion(ctx, "runc.readCgroupPath").End()
 	var out bytes.Buffer
 	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
 	cmd.Stdout = &out
