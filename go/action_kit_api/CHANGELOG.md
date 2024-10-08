@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.9.3
+
+- adding `technology` to `ActionDescription`
+- adding `MarkdownWidget`
+
 ## 2.9.2
 
 - add `regex` to parameter type

@@ -174,6 +174,7 @@ components:
       anyOf:
         - $ref: '#/components/schemas/StateOverTimeWidget'
         - $ref: '#/components/schemas/LogWidget'
+        - $ref: '#/components/schemas/MarkdownWidget'
         - $ref: '#/components/schemas/PredefinedWidget'
     LogWidget:
       title: LogWidget
@@ -185,15 +186,48 @@ components:
           type: string
           enum: [com.steadybit.widget.log]
         title:
+          description: >-
+            The title of the widget. This will be displayed in the widget header.
           type: string
           maxLength: 128
         logType:
+          description: >-
+            The type of messages that should be displayed in the widget. Needs to match `type` in `action_kit_api.Message`.
           type: string
           maxLength: 128
       required:
         - type
         - logType
         - title
+    MarkdownWidget:
+      title: MarkdownWidget
+      description: >-
+        A widget that renders Markdown content.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [com.steadybit.widget.markdown]
+        title:
+          description: >-
+            The title of the widget. This will be displayed in the widget header.
+          type: string
+          maxLength: 128
+        messageType:
+          description: >-
+            The type of messages that should be displayed in the widget. Needs to match `type` in `action_kit_api.Message`.
+          type: string
+          maxLength: 128
+        append:
+          type: boolean
+          description: >-
+            If set to `true`, the widget will append the content to the existing content of previous endpoint calls. For example, you can return some headings in the `start` call, append some progress information in the `status` calls and add a summary in the `stop` call.
+            If set to `false`, the widget will only show the last submitted content batch, grouped by `timestamp`. Older content will be displayed, when clicking on the timeline in the run view. To improve the performance, you should only return messages with if the content has changed compared to the previous batch.
+      required:
+        - type
+        - title
+        - messageType
+        - append
     PredefinedWidget:
       title: PredefinedWidget
       description: >-
@@ -219,6 +253,8 @@ components:
           type: string
           enum: [com.steadybit.widget.state_over_time]
         title:
+          description: >-
+            The title of the widget. This will be displayed in the widget header.
           type: string
           maxLength: 128
         identity:
@@ -399,9 +435,17 @@ components:
             doing.
         kind:
           $ref: '#/components/schemas/ActionKind'
+        technology:
+          type: string
+          description: >-
+            Used for categorization of the action within user interfaces.
+            In most cases, this will be the technology that the extension is about to handle, for example `AWS`,
+            `Kubernetes` or `Host` or any custom technology you are writing an extension for.
         category:
           type: string
-          description: Used for categorization of the action within user interfaces.
+          description: >- 
+            Used for categorization of the action within user interfaces.
+            This is optional and mostly used as sub-category if certain actions should be grouped together.
         targetSelection:
           $ref: '#/components/schemas/TargetSelection'
         targetType:
