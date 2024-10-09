@@ -222,12 +222,21 @@ func GetActionList() action_kit_api.ActionList {
 }
 
 func monitorHeartbeat(executionId uuid.UUID, interval, timeout time.Duration) {
+	monitorHeartbeatWithCallback(executionId, interval, timeout, func() {
+		StopAction(context.Background(), executionId, "heartbeat timeout")
+	})
+}
+
+func monitorHeartbeatWithCallback(executionId uuid.UUID, interval, timeout time.Duration, callback func()) {
+	// Add some jitter to the interval to account for network latency and processing time,
+	// as we observed heartbeats always narrowly missing the specified interval.
+	extendedInterval := interval + min(interval/100*5, 500*time.Millisecond)
 	ch := make(chan time.Time, 1)
-	monitor := heartbeat.Notify(ch, interval, timeout)
+	monitor := heartbeat.Notify(ch, extendedInterval, timeout)
 	heartbeatMonitors.Store(executionId, monitor)
 	go func() {
 		for range ch {
-			StopAction(context.Background(), executionId, "heartbeat timeout")
+			callback()
 		}
 	}()
 }

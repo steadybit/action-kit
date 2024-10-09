@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.11
+
+- prevent extension heartbeat processing from stopping randomly
+
 ## 1.1.10
 
 - add possibility to pass callback functions to InstallSignalHandler

@@ -13,16 +13,32 @@ type Monitor struct {
 }
 
 func Notify(ch chan<- time.Time, interval, timeout time.Duration) *Monitor {
-	pulse := make(chan time.Time)
+	pulse := make(chan time.Time, 10)
 
 	go func(pulse <-chan time.Time, signal chan<- time.Time) {
 		last := time.Now()
+		log.Debug().
+			Dur("interval", interval).
+			Dur("timeout", timeout).
+			Time("last", last).
+			Msg("starting heartbeat")
 		for {
 			select {
 			case ts, ok := <-pulse:
 				if ok {
+					log.Trace().
+						Dur("interval", interval).
+						Dur("timeout", timeout).
+						Time("current", ts).
+						Time("last", last).
+						Msg("received heartbeat")
 					last = ts
 				} else {
+					log.Debug().
+						Dur("interval", interval).
+						Dur("timeout", timeout).
+						Time("last", last).
+						Msg("heartbeat stopped")
 					close(signal)
 					return
 				}
@@ -53,12 +69,10 @@ func Notify(ch chan<- time.Time, interval, timeout time.Duration) *Monitor {
 
 func (h *Monitor) RecordHeartbeat() {
 	log.Trace().Msg("received heartbeat")
-	select {
-	case h.pulse <- time.Now():
-	default:
-	}
+	h.pulse <- time.Now()
 }
 
 func (h *Monitor) Stop() {
+	log.Debug().Msg("closing heartbeat channel")
 	close(h.pulse)
 }
