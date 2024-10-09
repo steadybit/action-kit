@@ -46,25 +46,6 @@ type ExtraMount struct {
 	Path   string `json:"path"`
 }
 
-func ListInterfacesForAllNamespaces(ctx context.Context, r runc.Runc) ([]Interface, error) {
-	nsList, err := runc.ListNamespaces(ctx, "net")
-	if err != nil {
-		return nil, err
-	}
-
-	var allIfcs []Interface
-	for _, ns := range nsList {
-		opts := SidecarOpts{TargetProcess: runc.LinuxProcessInfo{Namespaces: []runc.LinuxNamespace{ns}}}
-		if ifcs, err := ListInterfaces(ctx, r, opts); err == nil {
-			allIfcs = append(allIfcs, ifcs...)
-		} else {
-			return nil, err
-		}
-	}
-
-	return allIfcs, nil
-}
-
 func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]string, error) {
 	ifcs, err := ListInterfaces(ctx, r, sidecar)
 	if err != nil {

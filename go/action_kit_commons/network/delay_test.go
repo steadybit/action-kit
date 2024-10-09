@@ -6,7 +6,6 @@ package network
 
 import (
 	"github.com/stretchr/testify/assert"
-	"net"
 	"testing"
 	"testing/iotest"
 	"time"
@@ -26,16 +25,15 @@ func TestDelayOpts_TcCommands(t *testing.T) {
 			opts: DelayOpts{
 				Filter: Filter{
 					Include: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny},
-						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny}, //should filter that duplicate
-						{Net: net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}, PortRange: PortRangeAny},
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+						mustParseNetWithPortRange("0.0.0.0/0", "*"), //should filter that duplicate
+						mustParseNetWithPortRange("::0/0", "*"),
 					},
 					Exclude: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}}, //should filter that duplicate
-						{Net: net.IPNet{IP: net.ParseIP("ff02::114"), Mask: net.CIDRMask(128, 128)}, PortRange: PortRange{From: 8000, To: 8999}},
-					},
-				},
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should filter that duplicate
+						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
+					}},
 				Delay:      100 * time.Millisecond,
 				Jitter:     10 * time.Millisecond,
 				Interfaces: []string{"eth0"},
@@ -89,12 +87,12 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 			opts: DelayOpts{
 				Filter: Filter{
 					Include: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(24, 32)}, PortRange: PortRange{From: 80, To: 80}},
+						mustParseNetWithPortRange("192.168.2.1/24", "80"),
 					},
 					Exclude: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 8080, To: 8080}}, //should be filtered, wrong port range
-						{Net: net.IPNet{IP: net.ParseIP("ff02::114"), Mask: net.CIDRMask(128, 128)}, PortRange: PortRangeAny},                    // should be filtered CIDR not overlapping
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "8080"), //should be filtered, wrong port range
+						mustParseNetWithPortRange("ff02::114/128", "*"),     // should be filtered CIDR not overlapping
 					},
 				},
 				Delay:      100 * time.Millisecond,
@@ -105,11 +103,11 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
-filter add dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.1/24 match ip sport 80 0xffff flowid 1:3
-filter add dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.1/24 match ip dport 80 0xffff flowid 1:3
+filter add dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.0/24 match ip sport 80 0xffff flowid 1:3
+filter add dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.0/24 match ip dport 80 0xffff flowid 1:3
 `),
-			wantDel: []byte(`filter del dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.1/24 match ip dport 80 0xffff flowid 1:3
-filter del dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.1/24 match ip sport 80 0xffff flowid 1:3
+			wantDel: []byte(`filter del dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.0/24 match ip dport 80 0xffff flowid 1:3
+filter del dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.0/24 match ip sport 80 0xffff flowid 1:3
 filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms

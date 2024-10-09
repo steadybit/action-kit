@@ -27,14 +27,14 @@ func TestBlackholeOpts_IpCommands(t *testing.T) {
 			opts: BlackholeOpts{
 				Filter: Filter{
 					Include: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny},
-						{Net: net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}, PortRange: PortRangeAny}, //should filter that duplicate
-						{Net: net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}, PortRange: PortRangeAny},
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+						mustParseNetWithPortRange("0.0.0.0/0", "*"), //should filter that duplicate
+						mustParseNetWithPortRange("::0/0", "*"),
 					},
 					Exclude: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}}, //should filter that duplicate
-						{Net: net.IPNet{IP: net.ParseIP("ff02::114"), Mask: net.CIDRMask(128, 128)}, PortRange: PortRange{From: 8000, To: 8999}},
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should filter that duplicate
+						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
 					},
 				},
 			},

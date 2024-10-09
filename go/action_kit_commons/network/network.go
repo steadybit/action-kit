@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+const maxTcCommands = 1000
+
 var (
 	runLock = utils.NewHashedKeyMutex(10)
 
@@ -30,6 +32,14 @@ var (
 type SidecarOpts struct {
 	TargetProcess runc.LinuxProcessInfo
 	IdSuffix      string
+}
+
+type ErrTooManyTcCommands struct {
+	Count int
+}
+
+func (e *ErrTooManyTcCommands) Error() string {
+	return fmt.Sprintf("too many tc commands: %d", e.Count)
 }
 
 func Apply(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) error {
@@ -202,6 +212,8 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 	defer trace.StartRegion(ctx, "network.executeTcCommands").End()
 	if len(cmds) == 0 {
 		return nil
+	} else if len(cmds) > maxTcCommands {
+		return &ErrTooManyTcCommands{Count: len(cmds)}
 	}
 
 	id := getNextContainerId("tc", sidecar.IdSuffix)

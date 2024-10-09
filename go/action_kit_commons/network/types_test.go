@@ -51,6 +51,11 @@ func TestParsePortRange(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			raw:     "*",
+			want:    PortRange{1, 65534},
+			wantErr: assert.NoError,
+		},
+		{
 			raw:     "1-65535",
 			want:    PortRange{},
 			wantErr: assert.Error,
@@ -235,52 +240,28 @@ func TestNetWithPortRange_Overlap(t *testing.T) {
 		want  bool
 	}{
 		{
-			name: "Overlap with same everything",
-			this: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)},
-				PortRange: PortRange{From: 80, To: 80},
-			},
-			other: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)},
-				PortRange: PortRange{From: 80, To: 80},
-			},
-			want: true,
+			name:  "Overlap with same everything",
+			this:  mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			other: mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			want:  true,
 		},
 		{
-			name: "Overlapping CIDR and Port Range",
-			this: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(24, 32)},
-				PortRange: PortRangeAny,
-			},
-			other: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.3"), Mask: net.CIDRMask(32, 32)},
-				PortRange: PortRange{From: 80, To: 80},
-			},
-			want: true,
+			name:  "Overlapping CIDR and Port Range",
+			this:  mustParseNetWithPortRange("192.168.2.1/24", "*"),
+			other: mustParseNetWithPortRange("192.168.2.3/32", "80"),
+			want:  true,
 		},
 		{
-			name: "No Overlapping Port Range",
-			this: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(24, 32)},
-				PortRange: PortRange{From: 0, To: 79},
-			},
-			other: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.3"), Mask: net.CIDRMask(32, 32)},
-				PortRange: PortRange{From: 80, To: 80},
-			},
-			want: false,
+			name:  "No Overlapping Port Range",
+			this:  mustParseNetWithPortRange("192.168.2.1/24", "1-79"),
+			other: mustParseNetWithPortRange("192.168.2.3/32", "80"),
+			want:  false,
 		},
 		{
-			name: "No Overlapping CIDR",
-			this: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(24, 32)},
-				PortRange: PortRangeAny,
-			},
-			other: NetWithPortRange{
-				Net:       net.IPNet{IP: net.ParseIP("192.168.3.1"), Mask: net.CIDRMask(32, 32)},
-				PortRange: PortRangeAny,
-			},
-			want: false,
+			name:  "No Overlapping CIDR",
+			this:  mustParseNetWithPortRange("192.168.2.1/24", "*"),
+			other: mustParseNetWithPortRange("192.168.3.1/32", "80"),
+			want:  false,
 		},
 	}
 
@@ -288,6 +269,99 @@ func TestNetWithPortRange_Overlap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, tt.this.Overlap(tt.other), "Overlap(%v, %v)", tt.this, tt.other)
 			assert.Equalf(t, tt.want, tt.other.Overlap(tt.this), "inverse Overlap(%v, %v)", tt.other, tt.this)
+		})
+	}
+}
+
+func TestPortRange_Contains(t *testing.T) {
+	tests := []struct {
+		name string
+		this PortRange
+		port uint16
+		want bool
+	}{
+		{
+			name: "Contains",
+			this: PortRange{From: 80, To: 80},
+			port: 80,
+			want: true,
+		},
+		{
+			name: "Contains range",
+			this: PortRange{From: 79, To: 81},
+			port: 80,
+			want: true,
+		},
+		{
+			name: "No Contains - below",
+			this: PortRange{From: 80, To: 80},
+			port: 79,
+		},
+		{
+			name: "No Contains - above",
+			this: PortRange{From: 80, To: 80},
+			port: 81,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.this.Contains(tt.port), "Contains(%v, %v)", tt.this, tt.port)
+		})
+	}
+}
+
+func Test_deduplicateNetWithPortRange(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  []NetWithPortRange
+		want []NetWithPortRange
+	}{
+		{name: "Empty"},
+		{
+			name: "Simple Duplicate",
+			arg: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			},
+			want: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			},
+		},
+		{
+			name: "Already covered by port range",
+			arg: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.1/32", "80-8999"),
+			},
+			want: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80-8999"),
+			},
+		},
+		{
+			name: "Already covered by cidr",
+			arg: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.0/24", "80"),
+			},
+			want: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.0/24", "80"),
+			},
+		},
+		{
+			name: "Cannot be deduped",
+			arg: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.0/24", "8080"),
+			},
+			want: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.0/24", "8080"),
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, deduplicateNetWithPortRange(tt.arg), "deduplicateNetWithPortRange(%v)", tt.arg)
 		})
 	}
 }

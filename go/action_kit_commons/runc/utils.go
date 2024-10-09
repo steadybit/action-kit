@@ -41,10 +41,10 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 }
 
 func RunCommandInBackground(cmd *exec.Cmd, logger zerolog.Logger) (*BackgroundState, error) {
-	var outb_stderr bytes.Buffer
+	var errb bytes.Buffer
 	pr, pw := io.Pipe()
 	cmd.Stdout = pw
-	cmd.Stderr = io.MultiWriter(&outb_stderr, pw)
+	cmd.Stderr = io.MultiWriter(&errb, pw)
 
 	go func() {
 		defer func() { _ = pr.Close() }()
@@ -80,7 +80,7 @@ func RunCommandInBackground(cmd *exec.Cmd, logger zerolog.Logger) (*BackgroundSt
 		r.exited = true
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			exitErr.Stderr = outb_stderr.Bytes()
+			exitErr.Stderr = errb.Bytes()
 			r.err = exitErr
 		} else {
 			r.err = err
@@ -143,7 +143,7 @@ type LinuxProcessInfo struct {
 }
 
 func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error) {
-	ns, nsErr := readNamespaces(ctx, pid)
+	ns, nsErr := ListNamespaces(ctx, pid)
 	cgroup, cgroupErr := readCgroupPath(ctx, pid)
 	return LinuxProcessInfo{
 		Pid:        pid,
@@ -152,30 +152,22 @@ func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error
 	}, errors.Join(nsErr, cgroupErr)
 }
 
-func readNamespaces(ctx context.Context, pid int) ([]LinuxNamespace, error) {
-	sout, err := executeLsns(ctx, "--task", strconv.Itoa(pid), "--output=ns,type,path,pid", "--noheadings", "--notruncate")
-	if err != nil {
-		return nil, err
+func ListNamespaces(ctx context.Context, pid int, typ ...string) ([]LinuxNamespace, error) {
+	args := []string{"--output=ns,type,path,pid", "--noheadings", "--notruncate"}
+
+	if pid > 0 {
+		args = append(args, "--task", strconv.Itoa(pid))
 	}
 
-	return parseNamespaceList(sout)
-}
-
-func ListNamespaces(ctx context.Context, typ ...string) ([]LinuxNamespace, error) {
-	args := []string{"--output=inode,type,path,pid", "--noheadings", "--notruncate"}
 	for _, t := range typ {
 		args = append(args, "--type", t)
 	}
 
-	sout, err := executeLsns(ctx)
+	sout, err := executeLsns(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseNamespaceList(sout)
-}
-
-func parseNamespaceList(sout *bytes.Buffer) ([]LinuxNamespace, error) {
 	var namespaces []LinuxNamespace
 	for _, line := range strings.Split(strings.TrimSpace(sout.String()), "\n") {
 		fields := strings.Fields(line)
@@ -202,25 +194,23 @@ var executeLsns = executeLsnsImpl
 
 func executeLsnsImpl(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 	var lastErr error
+	var sout bytes.Buffer
 	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
 	for attempts := 0; attempts < 3; attempts++ {
-		var sout bytes.Buffer
-		var serr bytes.Buffer
 		cmd := RootCommandContext(ctx, "lsns", args...)
 		cmd.Stdout = &sout
-		cmd.Stderr = &serr
 		if err := cmd.Run(); err == nil {
-			return &sout, nil
+			break
 		} else {
-			lastErr = fmt.Errorf("lsns %w: %s", err, serr.String())
-
+			lastErr = err
+			sout.Reset()
 			var exiterr *exec.ExitError
 			if errors.As(err, &exiterr) && exiterr.ExitCode() != 1 {
 				break
 			}
 		}
 	}
-	return nil, lastErr
+	return &sout, lastErr
 }
 
 func toRuncNamespaceType(t string) specs.LinuxNamespaceType {

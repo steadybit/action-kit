@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package network
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"strings"
@@ -38,13 +39,14 @@ const handleInclude = "1:3"
 
 func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
 	var cmds []string
-	if filterCmds, err := tcCommandsForNets(NecessaryExcludes(f.Exclude, f.Include), mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
+	include := deduplicateNetWithPortRange(f.Include)
+	if filterCmds, err := tcCommandsForNets(necessaryExcludes(deduplicateNetWithPortRange(f.Exclude), include), mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
 		cmds = append(cmds, filterCmds...)
 	} else {
 		return nil, err
 	}
 
-	if filterCmds, err := tcCommandsForNets(f.Include, mode, ifc, "1:", handleInclude, len(cmds)); err == nil {
+	if filterCmds, err := tcCommandsForNets(include, mode, ifc, "1:", handleInclude, len(cmds)); err == nil {
 		cmds = append(cmds, filterCmds...)
 	} else {
 		return nil, err
@@ -53,8 +55,8 @@ func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
 	return cmds, nil
 }
 
-// NecessaryExcludes returns those excludes, which are overlapping with one of the includes.
-func NecessaryExcludes(excludes []NetWithPortRange, includes []NetWithPortRange) []NetWithPortRange {
+// necessaryExcludes returns the excludes, which are overlapping with one of the includes.
+func necessaryExcludes(excludes []NetWithPortRange, includes []NetWithPortRange) []NetWithPortRange {
 	result := make([]NetWithPortRange, 0, len(excludes))
 	for _, exclude := range excludes {
 		for _, include := range includes {
@@ -69,7 +71,7 @@ func NecessaryExcludes(excludes []NetWithPortRange, includes []NetWithPortRange)
 
 func tcCommandsForNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, parent, flowId string, prio int) ([]string, error) {
 	var cmds []string
-	for _, nwp := range uniqueNetWithPortRange(netWithPortRanges) {
+	for _, nwp := range netWithPortRanges {
 		protocol, err := getProtocol(nwp.Net)
 		if err != nil {
 			return nil, err
@@ -188,12 +190,13 @@ func getProtocol(net net.IPNet) (string, error) {
 
 func writeStringForFilters(sb *strings.Builder, f Filter) {
 	sb.WriteString("\nto/from:\n")
-	for _, inc := range uniqueNetWithPortRange(f.Include) {
+	include := deduplicateNetWithPortRange(f.Include)
+	for _, inc := range include {
 		sb.WriteString(" ")
 		sb.WriteString(inc.String())
 		sb.WriteString("\n")
 	}
-	excludes := NecessaryExcludes(uniqueNetWithPortRange(f.Exclude), f.Include)
+	excludes := necessaryExcludes(deduplicateNetWithPortRange(f.Exclude), include)
 	if len(excludes) > 0 {
 		sb.WriteString("but not from/to:\n")
 		for _, exc := range excludes {
@@ -202,4 +205,33 @@ func writeStringForFilters(sb *strings.Builder, f Filter) {
 			sb.WriteString("\n")
 		}
 	}
+}
+
+func ComputeExcludesForOwnIpAndPorts(port, healthPort uint16) []NetWithPortRange {
+	ownIps := GetOwnIPs()
+	nets := IpsToNets(ownIps)
+
+	log.Debug().Msgf("Adding own ip %s to exclude list (Ports %d and %d)", ownIps, port, healthPort)
+
+	var exclHealth, exclPort []NetWithPortRange
+	rPort := PortRange{From: port, To: port}
+	if healthPort > 0 {
+		if healthPort == port+1 {
+			rPort.To = healthPort
+		} else if healthPort == port-1 {
+			rPort.From = healthPort
+		} else if healthPort != port {
+			exclHealth = NewNetWithPortRanges(nets, PortRange{From: healthPort, To: healthPort})
+			for i := range exclHealth {
+				exclHealth[i].Comment = "ext. health port"
+			}
+		}
+	}
+
+	exclPort = NewNetWithPortRanges(nets, rPort)
+	for i := range exclPort {
+		exclPort[i].Comment = "ext. port"
+	}
+
+	return append(exclPort, exclHealth...)
 }
