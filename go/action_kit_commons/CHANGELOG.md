@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.8
+
+- refa: Fail early if we know, that we generated too many tc commands
+- refa: Only use these exclusion rules which are deemed necessary for the includes
+
 ## 1.2.7
 
 - refa: use nsenter instead of runc for running fill memory attacks
