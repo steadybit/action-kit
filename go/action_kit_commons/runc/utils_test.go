@@ -1,6 +1,7 @@
 package runc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +19,8 @@ const (
 )
 
 func Test_RefreshNamespacesUsingInode(t *testing.T) {
-	listNamespaceUsingInode = fakeListNamespaceUsingInode
-	defer func() { listNamespaceUsingInode = listNamespaceUsingInodeImpl }()
+	executeLsns = fakeExecuteLsns
+	defer func() { executeLsns = executeLsnsImpl }()
 
 	tests := []struct {
 		name     string
@@ -81,9 +82,9 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 	}
 }
 
-func fakeListNamespaceUsingInode(_ context.Context, inode uint64) (string, error) {
-	if inode == presentInode {
-		return resolvedPath, nil
+func fakeExecuteLsns(_ context.Context, args ...string) (*bytes.Buffer, error) {
+	if args[0] == strconv.FormatUint(presentInode, 10) {
+		return bytes.NewBufferString(resolvedPath), nil
 	}
-	return "", fmt.Errorf("no such inode")
+	return nil, fmt.Errorf("no such inode")
 }

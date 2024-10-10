@@ -4,9 +4,10 @@
 package network
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -55,10 +56,22 @@ func (p *PortRange) String() string {
 	return fmt.Sprintf("%d-%d", p.From, p.To)
 }
 
+func (p *PortRange) Overlap(other PortRange) bool {
+	return p.From <= other.To && p.To >= other.From
+}
+
+func (p *PortRange) Contains(port uint16) bool {
+	return p.From <= port && p.To >= port
+}
+
 func ParsePortRange(raw string) (PortRange, error) {
 	parts := strings.Split(raw, "-")
 	if len(parts) > 2 {
 		return PortRange{}, fmt.Errorf("invalid port range \"%s\": invalid syntax", raw)
+	}
+
+	if parts[0] == "*" {
+		return PortRangeAny, nil
 	}
 
 	from, err := strconv.Atoi(parts[0])
@@ -143,22 +156,41 @@ type NetWithPortRange struct {
 	Comment   string
 }
 
-func (nwp NetWithPortRange) Equal(o NetWithPortRange) bool {
-	return nwp.PortRange == o.PortRange && nwp.Net.IP.Equal(o.Net.IP) && bytes.Equal(nwp.Net.Mask, o.Net.Mask)
+func mustParseNetWithPortRange(net, port string) NetWithPortRange {
+	parsedNet, err := ParseCIDR(net)
+	if err != nil {
+		panic(err)
+	}
+	parsedPort, err := ParsePortRange(port)
+	if err != nil {
+		panic(err)
+	}
+	return NetWithPortRange{Net: *parsedNet, PortRange: parsedPort}
 }
 
 func (nwp NetWithPortRange) String() string {
 	var sb strings.Builder
 	sb.WriteString(nwp.Net.String())
 	if nwp.PortRange != PortRangeAny {
-		sb.WriteString(" port ")
+		sb.WriteString(" ")
 		sb.WriteString(nwp.PortRange.String())
 	}
 	if nwp.Comment != "" {
-		sb.WriteString(" #")
+		sb.WriteString(" # ")
 		sb.WriteString(nwp.Comment)
 	}
 	return sb.String()
+}
+
+func (nwp NetWithPortRange) Overlap(other NetWithPortRange) bool {
+	return (nwp.PortRange.Overlap(other.PortRange) && nwp.Net.Contains(other.Net.IP)) || (other.PortRange.Overlap(nwp.PortRange) && other.Net.Contains(nwp.Net.IP))
+}
+
+// Contains checks if the given NetWithPortRange is contained in the current NetWithPortRange
+func (nwp NetWithPortRange) Contains(other NetWithPortRange) bool {
+	return nwp.PortRange.Contains(other.PortRange.To) &&
+		nwp.PortRange.Contains(other.PortRange.From) &&
+		nwp.Net.Contains(other.Net.IP)
 }
 
 func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPortRange {
@@ -174,19 +206,50 @@ func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPo
 	return result
 }
 
-func uniqueNetWithPortRange(netWithPortRanges []NetWithPortRange) []NetWithPortRange {
-	var result []NetWithPortRange
-	for _, nwp := range netWithPortRanges {
+func deduplicateNetWithPortRange(nwps []NetWithPortRange) []NetWithPortRange {
+	slices.SortFunc(nwps, CompareNetWithPortRange)
+
+	var deduplicated []NetWithPortRange
+	for _, nwp := range nwps {
 		found := false
-		for _, r := range result {
-			if r.Equal(nwp) {
+		for i, o := range deduplicated {
+			if o.Contains(nwp) {
+				found = true
+				log.Trace().Msgf("Deduplicating %s with %s", nwp, o)
+				break
+			} else if nwp.Contains(o) {
+				log.Trace().Msgf("Deduplicating %s with %s", o, nwp)
+				deduplicated[i] = nwp
 				found = true
 				break
 			}
 		}
 		if !found {
-			result = append(result, nwp)
+			deduplicated = append(deduplicated, nwp)
 		}
 	}
-	return result
+
+	return deduplicated
+}
+
+func CompareNetWithPortRange(a, b NetWithPortRange) int {
+	if a.Net.String() < b.Net.String() {
+		return -1
+	}
+	if a.Net.String() > b.Net.String() {
+		return 1
+	}
+	if a.PortRange.From < b.PortRange.From {
+		return -1
+	}
+	if a.PortRange.From > b.PortRange.From {
+		return 1
+	}
+	if a.PortRange.To < b.PortRange.To {
+		return -1
+	}
+	if a.PortRange.To > b.PortRange.To {
+		return 1
+	}
+	return 0
 }

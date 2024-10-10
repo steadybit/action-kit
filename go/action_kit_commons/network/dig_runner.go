@@ -27,7 +27,7 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 	defer trace.StartRegion(ctx, "RuncDigRunner.Run").End()
 	id := getNextContainerId("dig", r.Sidecar.IdSuffix)
 
-	bundle, err := r.Runc.Create(ctx, r.Sidecar.ImagePath, id)
+	bundle, err := r.Runc.Create(ctx, "/", id)
 	if err != nil {
 		return nil, err
 	}

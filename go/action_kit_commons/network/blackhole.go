@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package network
 
@@ -26,7 +26,8 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		ipprotoSelector = fmt.Sprintf(" ipproto %s", o.IpProto)
 	}
 
-	for _, nwp := range uniqueNetWithPortRange(o.Include) {
+	include := deduplicateNetWithPortRange(o.Include)
+	for _, nwp := range include {
 		net := nwp.Net
 		portRange := nwp.PortRange
 
@@ -40,7 +41,7 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s sport %s", mode, net.String(), ipprotoSelector, portRange.String()))
 	}
 
-	for _, nwp := range uniqueNetWithPortRange(o.Exclude) {
+	for _, nwp := range necessaryExcludes(deduplicateNetWithPortRange(o.Exclude), include) {
 		net := nwp.Net
 		portRange := nwp.PortRange
 
