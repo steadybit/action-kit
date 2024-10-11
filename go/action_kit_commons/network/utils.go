@@ -37,16 +37,21 @@ func getFamily(net net.IPNet) (Family, error) {
 const handleExclude = "1:1"
 const handleInclude = "1:3"
 
-func tcCommandsForFilter(mode Mode, f *Filter, ifc string) ([]string, error) {
-	var cmds []string
+func optimizeFilter(f Filter) Filter {
 	include := deduplicateNetWithPortRange(f.Include)
-	if filterCmds, err := tcCommandsForNets(necessaryExcludes(deduplicateNetWithPortRange(f.Exclude), include), mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
+	exclude := deduplicateNetWithPortRange(necessaryExcludes(f.Exclude, include))
+	return Filter{Include: include, Exclude: exclude}
+}
+
+func tcCommandsForFilter(mode Mode, f Filter, ifc string) ([]string, error) {
+	var cmds []string
+	if filterCmds, err := tcCommandsForNets(f.Exclude, mode, ifc, "1:", handleExclude, len(cmds)); err == nil {
 		cmds = append(cmds, filterCmds...)
 	} else {
 		return nil, err
 	}
 
-	if filterCmds, err := tcCommandsForNets(include, mode, ifc, "1:", handleInclude, len(cmds)); err == nil {
+	if filterCmds, err := tcCommandsForNets(f.Include, mode, ifc, "1:", handleInclude, len(cmds)); err == nil {
 		cmds = append(cmds, filterCmds...)
 	} else {
 		return nil, err
@@ -190,16 +195,14 @@ func getProtocol(net net.IPNet) (string, error) {
 
 func writeStringForFilters(sb *strings.Builder, f Filter) {
 	sb.WriteString("\nto/from:\n")
-	include := deduplicateNetWithPortRange(f.Include)
-	for _, inc := range include {
+	for _, inc := range f.Include {
 		sb.WriteString(" ")
 		sb.WriteString(inc.String())
 		sb.WriteString("\n")
 	}
-	excludes := necessaryExcludes(deduplicateNetWithPortRange(f.Exclude), include)
-	if len(excludes) > 0 {
+	if len(f.Exclude) > 0 {
 		sb.WriteString("but not from/to:\n")
-		for _, exc := range excludes {
+		for _, exc := range f.Exclude {
 			sb.WriteString(" ")
 			sb.WriteString(exc.String())
 			sb.WriteString("\n")
@@ -215,13 +218,12 @@ func ComputeExcludesForOwnIpAndPorts(port, healthPort uint16) []NetWithPortRange
 
 	var exclHealth, exclPort []NetWithPortRange
 	rPort := PortRange{From: port, To: port}
-	if healthPort > 0 {
-		if healthPort == port+1 {
-			rPort.To = healthPort
-		} else if healthPort == port-1 {
-			rPort.From = healthPort
-		} else if healthPort != port {
-			exclHealth = NewNetWithPortRanges(nets, PortRange{From: healthPort, To: healthPort})
+	if healthPort > 0 && healthPort != port {
+		rHealth := PortRange{From: healthPort, To: healthPort}
+		if rPort.IsNeighbor(rHealth) {
+			rPort = rPort.Merge(rHealth)
+		} else {
+			exclHealth = NewNetWithPortRanges(nets, rHealth)
 			for i := range exclHealth {
 				exclHealth[i].Comment = "ext. health port"
 			}

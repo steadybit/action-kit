@@ -21,6 +21,21 @@ func TestDelayOpts_TcCommands(t *testing.T) {
 		wantErr      bool
 	}{
 		{
+			name: "delay too many filters",
+			opts: DelayOpts{
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
+				Interfaces: []string{"eth0"},
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: generateNWPs(2000),
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "delay",
 			opts: DelayOpts{
 				Filter: Filter{
@@ -126,18 +141,25 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 			}()
 
 			gotAdd, err := tt.opts.TcCommands(ModeAdd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 
 			gotDel, err := tt.opts.TcCommands(ModeDelete)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 		})
 	}
 }

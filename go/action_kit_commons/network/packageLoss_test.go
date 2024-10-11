@@ -29,6 +29,7 @@ func TestPackageLossOpts_TcCommands(t *testing.T) {
 					},
 					Exclude: []NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should deduplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
 					},
 				},
@@ -79,6 +80,20 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 `),
 			wantErr: false,
 		},
+		{
+			name: "loss",
+			opts: PackageLossOpts{
+				Loss:       90,
+				Interfaces: []string{"eth0"},
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: generateNWPs(2000),
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -90,18 +105,24 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 			}()
 
 			gotAdd, err := tt.opts.TcCommands(ModeAdd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 
 			gotDel, err := tt.opts.TcCommands(ModeDelete)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 		})
 	}
 }

@@ -4,6 +4,7 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"net"
@@ -23,10 +24,9 @@ const (
 )
 
 var (
-	NetAny = []net.IPNet{
-		{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)},
-		{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)},
-	}
+	NetAnyIpv4 = net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}
+	NetAnyIpv6 = net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}
+	NetAny     = []net.IPNet{NetAnyIpv4, NetAnyIpv6}
 )
 
 type Opts interface {
@@ -56,12 +56,20 @@ func (p *PortRange) String() string {
 	return fmt.Sprintf("%d-%d", p.From, p.To)
 }
 
+func (p *PortRange) Merge(other PortRange) PortRange {
+	return PortRange{From: min(p.From, other.From), To: max(p.To, other.To)}
+}
+
 func (p *PortRange) Overlap(other PortRange) bool {
 	return p.From <= other.To && p.To >= other.From
 }
 
 func (p *PortRange) Contains(port uint16) bool {
 	return p.From <= port && p.To >= port
+}
+
+func (p *PortRange) IsNeighbor(other PortRange) bool {
+	return p.To+1 == other.From || other.To+1 == p.From
 }
 
 func ParsePortRange(raw string) (PortRange, error) {
@@ -207,7 +215,7 @@ func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPo
 }
 
 func deduplicateNetWithPortRange(nwps []NetWithPortRange) []NetWithPortRange {
-	slices.SortFunc(nwps, CompareNetWithPortRange)
+	slices.SortFunc(nwps, NetWithPortRange.Compare)
 
 	var deduplicated []NetWithPortRange
 	for _, nwp := range nwps {
@@ -232,24 +240,58 @@ func deduplicateNetWithPortRange(nwps []NetWithPortRange) []NetWithPortRange {
 	return deduplicated
 }
 
-func CompareNetWithPortRange(a, b NetWithPortRange) int {
-	if a.Net.String() < b.Net.String() {
+func (nwp NetWithPortRange) Compare(b NetWithPortRange) int {
+	if c := bytes.Compare(nwp.Net.IP, b.Net.IP); c != 0 {
+		return c
+	}
+	if nwp.PortRange.From < b.PortRange.From {
 		return -1
 	}
-	if a.Net.String() > b.Net.String() {
+	if nwp.PortRange.From > b.PortRange.From {
 		return 1
 	}
-	if a.PortRange.From < b.PortRange.From {
+	if nwp.PortRange.To < b.PortRange.To {
 		return -1
 	}
-	if a.PortRange.From > b.PortRange.From {
-		return 1
-	}
-	if a.PortRange.To < b.PortRange.To {
-		return -1
-	}
-	if a.PortRange.To > b.PortRange.To {
+	if nwp.PortRange.To > b.PortRange.To {
 		return 1
 	}
 	return 0
+}
+
+func (nwp NetWithPortRange) merge(b NetWithPortRange) NetWithPortRange {
+	return NetWithPortRange{
+		Net:       mergeIPNet(nwp.Net, b.Net),
+		PortRange: nwp.PortRange.Merge(b.PortRange),
+	}
+}
+
+func mergeIPNet(a net.IPNet, b net.IPNet) net.IPNet {
+	onesA, sizeA := a.Mask.Size()
+	onesB, sizeB := b.Mask.Size()
+
+	size := max(sizeA, sizeB)
+	onesA += size - sizeA
+	onesB += size - sizeB
+	ones := min(onesA, onesB)
+
+	ipA := a.IP.To4()
+	ipB := b.IP.To4()
+	if ipA == nil || ipB == nil {
+		ipA = a.IP.To16()
+		ipB = b.IP.To16()
+	} else if size == 128 {
+		ones = max(0, ones-96)
+		size = 32
+	}
+
+	for i := ones; i > 0; i-- {
+		mask := net.CIDRMask(i, size)
+		ip := ipA.Mask(mask)
+
+		if ip.Equal(ipB.Mask(mask)) {
+			return net.IPNet{IP: ip, Mask: mask}
+		}
+	}
+	return net.IPNet{IP: make([]byte, len(ipA)), Mask: net.CIDRMask(0, size)}
 }

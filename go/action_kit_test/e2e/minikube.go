@@ -659,13 +659,14 @@ func (m *Minikube) ListPods(ctx context.Context, namespace, matchLabels string) 
 
 func (m *Minikube) TailLogPrefixed(ctx context.Context, pod metav1.Object, prefix string) {
 	reader, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{Follow: true}).Stream(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error().Err(err).Msg("failed to tail logs")
 	}
 	defer func() { _ = reader.Close() }()
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		fmt.Printf("%s%s\n", prefix, scanner.Text())
+
+	_, err = io.Copy(&prefixWriter{prefix: []byte(prefix), w: os.Stdout}, reader)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to tail logs")
 	}
 }
 func (m *Minikube) TailLog(ctx context.Context, pod metav1.Object) {

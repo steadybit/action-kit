@@ -6,6 +6,7 @@ package network
 
 import (
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"testing"
 	"testing/iotest"
 )
@@ -25,10 +26,20 @@ func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 				Bandwidth:  "1bit",
 				Interfaces: []string{"eth0"},
 			},
-			wantAdd: []byte(`
-`),
-			wantDel: []byte(`
-`),
+			wantErr: true,
+		},
+		{
+			name: "bandwidth too many filters",
+			opts: LimitBandwidthOpts{
+				Bandwidth:  "8bit",
+				Interfaces: []string{"eth0"},
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: generateNWPs(2000),
+				},
+			},
 			wantErr: true,
 		},
 		{
@@ -41,6 +52,7 @@ func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 					},
 					Exclude: []NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should deduplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
 					},
 				},
@@ -102,18 +114,32 @@ qdisc del dev eth0 root handle 1: htb default 30
 			}()
 
 			gotAdd, err := tt.opts.TcCommands(ModeAdd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+				}
 				return
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
 
 			gotDel, err := tt.opts.TcCommands(ModeDelete)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
+				}
 				return
+			} else {
+				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
 		})
 	}
+}
+
+func generateNWPs(i int) []NetWithPortRange {
+	nwps := make([]NetWithPortRange, i)
+	for j := 1; j <= i; j++ {
+		nwps[j-1] = mustParseNetWithPortRange("192.168.2.1", strconv.Itoa(j*2))
+	}
+	return nwps
 }

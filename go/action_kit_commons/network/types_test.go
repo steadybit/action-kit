@@ -365,3 +365,168 @@ func Test_deduplicateNetWithPortRange(t *testing.T) {
 		})
 	}
 }
+
+func TestPortRange_IsNeighbor(t *testing.T) {
+	tests := []struct {
+		name  string
+		this  PortRange
+		other PortRange
+		want  bool
+	}{
+		{
+			name:  "Neighbor below",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 78, To: 79},
+			want:  true,
+		},
+		{
+			name:  "Neighbor above",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 81, To: 82},
+			want:  true,
+		},
+		{
+			name:  "Not a neighbor",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 78, To: 78},
+		},
+		{
+			name:  "Same not a neighbor",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 80, To: 80},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.this.IsNeighbor(tt.other), "IsNeighbor(%v,%v)", tt.this, tt.other)
+		})
+	}
+}
+
+func Test_mergeIPNet(t *testing.T) {
+	tests := []struct {
+		name string
+		a    net.IPNet
+		b    net.IPNet
+		want net.IPNet
+	}{
+		{
+			name: "Merge ipv4 same CIDR",
+			a:    mustParseCIDR("192.168.2.1/32"),
+			b:    mustParseCIDR("192.168.2.1/32"),
+			want: mustParseCIDR("192.168.2.1/32"),
+		},
+		{
+			name: "Merge ipv4 to any",
+			a:    mustParseCIDR("192.168.2.1/32"),
+			b:    mustParseCIDR("10.88.135.144/32"),
+			want: mustParseCIDR("0.0.0.0/0"),
+		},
+		{
+			name: "Merge ipv4",
+			a:    mustParseCIDR("192.168.2.1/30"),
+			b:    mustParseCIDR("192.168.3.1/29"),
+			want: mustParseCIDR("192.168.2.0/23"),
+		},
+		{
+			name: "Merge ipv4",
+			a:    mustParseCIDR("192.168.2.1/30"),
+			b:    mustParseCIDR("192.168.0.0/16"),
+			want: mustParseCIDR("192.168.0.0/16"),
+		},
+
+		{
+			name: "Merge ipv6 same CIDR",
+			a:    mustParseCIDR("411e:93a2:0ac7:7691:03ee:fc81:1ccc:3659/128"),
+			b:    mustParseCIDR("411e:93a2:0ac7:7691:03ee:fc81:1ccc:3659/128"),
+			want: mustParseCIDR("411e:93a2:0ac7:7691:03ee:fc81:1ccc:3659/128"),
+		},
+		{
+			name: "Merge ipv6 to any",
+			a:    mustParseCIDR("011e:93a2:0ac7:7691:03ee:fc81:1ccc:3659/128"),
+			b:    mustParseCIDR("a11e:93a2:0ac7:7691:03ee:fc81:1ccc:3659/128"),
+			want: mustParseCIDR("::/0"),
+		},
+		{
+			name: "Merge ipv6",
+			a:    mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:90da:3910/126"),
+			b:    mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:70da:3900/120"),
+			want: mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:70da:0000/96"),
+		},
+		{
+			name: "Merge ipv6",
+			a:    mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:90da:3910/126"),
+			b:    mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:70da:0000/96"),
+			want: mustParseCIDR("eaee:b05c:c118:f2d3:77ba:ea75:70da:0000/96"),
+		},
+
+		{
+			name: "Merge ipv4 disguised same cidr",
+			a:    mustParseCIDR("192.168.2.1/32"),
+			b:    mustParseCIDR("::ffff:c0a8:201/128"),
+			want: mustParseCIDR("192.168.2.1/32"),
+		},
+
+		{
+			name: "Merge ipv4 with ipv6 cidr",
+			a:    mustParseCIDR("192.168.2.1/32"),
+			b:    mustParseCIDR("::ffff:c0a8:301/125"),
+			want: mustParseCIDR("192.168.2.0/23"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, mergeIPNet(tt.a, tt.b), "mergeIPNet(%v, %v)", tt.a, tt.b)
+			assert.Equalf(t, tt.want, mergeIPNet(tt.b, tt.a), "mergeIPNet(%v, %v)", tt.a, tt.b)
+		})
+	}
+}
+
+func mustParseCIDR(s string) net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return *n
+}
+
+func TestPortRange_Merge(t *testing.T) {
+	tests := []struct {
+		name  string
+		this  PortRange
+		other PortRange
+		want  PortRange
+	}{
+		{
+			name:  "Merge with same range",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 80, To: 80},
+			want:  PortRange{From: 80, To: 80},
+		},
+		{
+			name:  "Merge with bigger range",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 79, To: 81},
+			want:  PortRange{From: 79, To: 81},
+		},
+		{
+			name:  "Merge with before range",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 1, To: 1},
+			want:  PortRange{From: 1, To: 80},
+		},
+		{
+			name:  "Merge with after range",
+			this:  PortRange{From: 80, To: 80},
+			other: PortRange{From: 1000, To: 1000},
+			want:  PortRange{From: 80, To: 1000},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, tt.this.Merge(tt.other), "Merge(%v, %v)", tt.this, tt.other)
+			assert.Equalf(t, tt.want, tt.other.Merge(tt.this), "Merge(%v, %v)", tt.other, tt.other)
+		})
+	}
+}
