@@ -27,10 +27,10 @@ The widget configuration describes from which metric fields Steadybit should ret
 - `identity.from`: Maps to the name of a metric field containing a unique identifier per desired chart row within the UI.
 - `label.from`: Maps to the name of a metric field containing a human-readable label per desired chart row within the UI.
 - `state.from`: Maps to the name of a metric field containing the current state at any time. Supported values for this field are:
-  - `danger`
-  - `warn`
-  - `info`
-  - `success`
+  - `danger` - ![#f4857d](https://placehold.co/10x20/f4857d/f4857d.png)![#ed5d50](https://placehold.co/10x20/ed5d50/ed5d50.png)
+  - `warn` - ![#F9D34C](https://placehold.co/10x20/F9D34C/F9D34C.png)![#F99F4C](https://placehold.co/10x20/F99F4C/F99F4C.png)
+  - `info` - ![#d5d8e0](https://placehold.co/10x20/d5d8e0/d5d8e0.png)![#cbced9](https://placehold.co/10x20/cbced9/cbced9.png)
+  - `success` - ![#4ab3ae](https://placehold.co/20x20/4ab3ae/4ab3ae.png)
 - `tooltip.from`: Maps to the name of a metric field containing the current tooltip at any time.
 - `url.from`: Maps to the name of a metric field containing a URL. When available, it causes a chart segment to turn into a hyperlink.
 - `value.hide`: Controls whether the metric values carry meaning and should be shown.
