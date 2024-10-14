@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- Update to golang 1.23
+
 ## 1.2.16
 
 - Fix: tail of extension log aborted on huge lines
