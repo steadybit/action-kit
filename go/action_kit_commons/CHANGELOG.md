@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.9
+
+- fix: Try aggregating huge list of excludes for network attacks to reduce tc rules needed
+
 ## 1.2.8
 
 - refa: Fail early if we know, that we generated too many tc commands
