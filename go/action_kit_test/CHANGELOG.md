@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.16
+
+- Fix: tail of extension log aborted on huge lines
+
 ## 1.2.15
 
 - Add endpoint validation helper
