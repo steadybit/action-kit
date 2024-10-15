@@ -1,4 +1,3 @@
-
 openapi: 3.1.0
 info:
   title: Steadybit ActionKit API
@@ -184,7 +183,7 @@ components:
       properties:
         type:
           type: string
-          enum: [com.steadybit.widget.log]
+          enum: [ com.steadybit.widget.log ]
         title:
           description: >-
             The title of the widget. This will be displayed in the widget header.
@@ -207,7 +206,7 @@ components:
       properties:
         type:
           type: string
-          enum: [com.steadybit.widget.markdown]
+          enum: [ com.steadybit.widget.markdown ]
         title:
           description: >-
             The title of the widget. This will be displayed in the widget header.
@@ -236,7 +235,7 @@ components:
       properties:
         type:
           type: string
-          enum: [com.steadybit.widget.predefined]
+          enum: [ com.steadybit.widget.predefined ]
         predefinedWidgetId:
           type: string
           maxLength: 128
@@ -251,7 +250,7 @@ components:
       properties:
         type:
           type: string
-          enum: [com.steadybit.widget.state_over_time]
+          enum: [ com.steadybit.widget.state_over_time ]
         title:
           description: >-
             The title of the widget. This will be displayed in the widget header.
@@ -443,7 +442,7 @@ components:
             `Kubernetes` or `Host` or any custom technology you are writing an extension for.
         category:
           type: string
-          description: >- 
+          description: >-
             Used for categorization of the action within user interfaces.
             This is optional and mostly used as sub-category if certain actions should be grouped together.
         targetSelection:
@@ -460,7 +459,7 @@ components:
           description: >-
             Deprecated: use `TargetSelection.selectionTemplates` instead.
         timeControl:
-            $ref: '#/components/schemas/TimeControl'
+          $ref: '#/components/schemas/TimeControl'
         parameters:
           type: array
           description: >-
@@ -511,11 +510,11 @@ components:
         name:
           type: string
           description: >-
-              The name of the protected Endpoint. For reference/debugging purposes only.
+            The name of the protected Endpoint. For reference/debugging purposes only.
         url:
           type: string
           description: >-
-              The URL of the protected Endpoint.
+            The URL of the protected Endpoint.
         portMin:
           type: integer
           description: >-
@@ -523,11 +522,11 @@ components:
           minimum: 0
           maximum: 65535
         portMax:
-            type: integer
-            description: >-
-                The maximum port number that is allowed to be used for the Endpoint.
-            minimum: 0
-            maximum: 65535
+          type: integer
+          description: >-
+            The maximum port number that is allowed to be used for the Endpoint.
+          minimum: 0
+          maximum: 65535
         cidr:
           type: string
           description: >-
@@ -629,7 +628,7 @@ components:
             interface. The lower the value, the higher the position.
         minValue:
           type: integer
-          description: >- 
+          description: >-
             The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
         maxValue:
           type: integer
@@ -744,7 +743,7 @@ components:
         experimentUri:
           type: string
           description: >-
-              The experiment URI of the experiment that is currently being executed.
+            The experiment URI of the experiment that is currently being executed.
         executionId:
           type: integer
           description: >-
@@ -752,7 +751,7 @@ components:
         executionUri:
           type: string
           description: >-
-              The execution URI of the current execution.
+            The execution URI of the current execution.
     ActionState:
       title: Action State
       description: >-
