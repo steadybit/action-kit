@@ -392,6 +392,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LineChartWidgetTooltipContent'
+      required:
+        - additionalContent
     LineChartWidgetTooltipContent:
       title: LineChartWidgetTooltipContent
       type: object
