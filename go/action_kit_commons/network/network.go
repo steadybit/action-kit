@@ -92,13 +92,13 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	}
 
 	if len(ipCommandsV4) > 0 {
-		if _, ipErr := executeIpCommands(ctx, r, sidecar, FamilyV4, ipCommandsV4); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
 	if len(ipCommandsV6) > 0 {
-		if _, ipErr := executeIpCommands(ctx, r, sidecar, FamilyV6, ipCommandsV6); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
@@ -133,7 +133,7 @@ func logCurrentIpRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 		return
 	}
 
-	stdout, err := executeIpCommands(ctx, r, sidecar, family, []string{"rule show"})
+	stdout, err := executeIpCommands(ctx, r, sidecar, []string{"rule show"}, "-family", string(family))
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current ip rules")
 		return
@@ -190,7 +190,9 @@ func defaultIpv6Supported() bool {
 	return true
 }
 
-func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, cmds []string) (string, error) {
+var executeIpCommands = executeIpCommandsImpl
+
+func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string, extraArgs ...string) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
@@ -208,7 +210,7 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
-	processArgs := []string{"ip", "-family", string(family), "-force", "-batch", "-"}
+	processArgs := append([]string{"ip", "-force", "-batch", "-"}, extraArgs...)
 	if err = bundle.EditSpec(
 		runc.WithHostname(fmt.Sprintf("ip-%s", id)),
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
@@ -219,7 +221,7 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 		return "", err
 	}
 
-	log.Debug().Strs("cmds", cmds).Str("family", string(family)).Msg("running ip commands")
+	log.Debug().Strs("cmds", cmds).Strs("extraArgs", extraArgs).Msg("running ip commands")
 	var outb bytes.Buffer
 	err = r.Run(ctx, bundle, runc.IoOpts{
 		Stdin:  ToReader(cmds),
