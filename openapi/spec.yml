@@ -167,6 +167,14 @@ components:
         Widgets that will be rendered in the experiment result view after an experiment has finished.
       type: array
       items:
+        description: >-
+          A widget that can be rendered in the experiment result view after an experiment has finished.
+          Any of
+            - `action_kit_api.StateOverTimeWidget`
+            - `action_kit_api.LogWidget`
+            - `action_kit_api.MarkdownWidget`
+            - `action_kit_api.PredefinedWidget`
+            - `action_kit_api.LineChartWidget`
         $ref: '#/components/schemas/Widget'
     Widget:
       title: Widget
@@ -175,6 +183,7 @@ components:
         - $ref: '#/components/schemas/LogWidget'
         - $ref: '#/components/schemas/MarkdownWidget'
         - $ref: '#/components/schemas/PredefinedWidget'
+        - $ref: '#/components/schemas/LineChartWidget'
     LogWidget:
       title: LogWidget
       description: >-
@@ -242,6 +251,165 @@ components:
       required:
         - type
         - predefinedWidgetId
+    LineChartWidget:
+      title: LineChartWidget
+      description: >-
+        A widget that shows a line chart.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ com.steadybit.widget.line_chart ]
+        title:
+          description: >-
+            The title of the widget. This will be displayed in the widget header.
+          type: string
+          maxLength: 128
+        identity:
+          $ref: '#/components/schemas/LineChartWidgetIdentityConfig'
+        grouping:
+          description: >-
+            Optional configuration to group some data points in the line chart. Groups can be colored and a summary can be shown in an Pie chart next to the line chart.
+          type: object
+          properties:
+            showSummary:
+              type: boolean
+              description: >-
+                If set to `true`, a pie chart will be shown next to the line chart. The pie chart will show the summary of the groups and can be used to filter data points in the line chart.
+              default: true
+            groups:
+              type: array
+              description: >-
+                A list of groups that should be displayed in the line chart. Each group can be colored and a matcher can be defined to match the data points that should be part of this group.
+              items:
+              $ref: '#/components/schemas/LineChartWidgetGroup'
+        tooltip:
+          $ref: '#/components/schemas/LineChartWidgetTooltipConfig'
+      required:
+        - type
+        - title
+        - identity
+    LineChartWidgetIdentityConfig:
+      title: LineChartWidgetIdentityConfig
+      type: object
+      properties:
+        metricName:
+          description: >-
+            The name of the metrics that should be considered for this line chart.
+          type: string
+        from:
+          description: >-
+            The name of a metric field containing a unique identifier per desired line chart within the UI.
+          type: string
+      required:
+        - metricName
+        - from
+    LineChartWidgetGroup:
+      title: LineChartWidgetGroup
+      description: >-
+        A group of data points in the line chart.
+      type: object
+      properties:
+        title:
+          description: >-
+            The title of the group. This will be displayed in the tooltip and the pie chart summary of the widget
+          type: string
+        color:
+          description: >-
+            The color of the group. This will be used to color the matching data points in the line chart.
+          type: string
+          format: color
+        matcher:
+          description: >-
+            The matcher that should be used to match the data points that should be part of this group.
+            Any of
+             - `action_kit_api.LineChartWidgetGroupMatcherFallback`
+             - `action_kit_api.LineChartWidgetGroupMatcherKeyEqualsValue`
+             - `action_kit_api.LineChartWidgetGroupMatcherNotEmpty`
+          type: array
+          items:
+            $ref: '#/components/schemas/LineChartWidgetGroupMatcher'
+    LineChartWidgetGroupMatcher:
+      anyOf:
+        - $ref: '#/components/schemas/LineChartWidgetGroupMatcherFallback'
+        - $ref: '#/components/schemas/LineChartWidgetGroupMatcherKeyEqualsValue'
+        - $ref: '#/components/schemas/LineChartWidgetGroupMatcherNotEmpty'
+    LineChartWidgetGroupMatcherFallback:
+      description: >-
+        A fallback matcher that will match all data points that are not matched by any other matcher in the group.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher.fallback ]
+      required:
+        - type
+    LineChartWidgetGroupMatcherKeyEqualsValue:
+      description: >-
+        A matcher that will match all data points where the value of the specified key equals the specified value.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher.key_equals_value ]
+        key:
+          type: string
+        value:
+          type: string
+      required:
+        - type
+        - key
+        - value
+    LineChartWidgetGroupMatcherNotEmpty:
+      description: >-
+        A matcher that will match all data points where the value of the specified key is not empty.
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher.not_empty ]
+        key:
+          type: string
+      required:
+        - type
+        - key
+    LineChartWidgetTooltipConfig:
+      title: LineChartWidgetTooltipConfig
+      type: object
+      properties:
+        metricValueUnit:
+          description: >-
+            Optional unit of the metric value that should be displayed in the tooltip.
+          type: string
+        metricValueTitle:
+          description: >-
+            Optional title of the metric value that should be displayed in the tooltip.
+          type: string
+        additionalContent:
+          description: >-
+            Additional content that should be displayed in the tooltip. This can be used to show additional information about the data points in the line chart.
+          type: array
+          items:
+            $ref: '#/components/schemas/LineChartWidgetTooltipContent'
+    LineChartWidgetTooltipContent:
+      title: LineChartWidgetTooltipContent
+      type: object
+      properties:
+        title:
+          description: >-
+            The title of the additional content. This will be displayed as caption for the value in the tooltip.
+          type: string
+        from:
+          description: >-
+            The name of a metric field containing the value for this additional content.
+          type: string
+        unit:
+          description: >-
+            Optional unit which should be added next to the value in the tooltip.
+          type: string
+      required:
+        - title
+        - from
     StateOverTimeWidget:
       title: StateOverTimeWidget
       description: >-
@@ -280,6 +448,8 @@ components:
       type: object
       properties:
         from:
+          description: >-
+            The name of a metric field containing a unique identifier per desired chart row within the UI.
           type: string
       required:
         - from
@@ -288,6 +458,8 @@ components:
       type: object
       properties:
         from:
+          description: >-
+            The name of a metric field containing a human-readable label per desired chart row within the UI.
           type: string
       required:
         - from
@@ -296,6 +468,8 @@ components:
       type: object
       properties:
         from:
+          description: >-
+            The name of a metric field containing the current tooltip at any time.
           type: string
       required:
         - from
@@ -304,12 +478,16 @@ components:
       type: object
       properties:
         from:
+          description: >-
+            The name of a metric field containing a URL. When available, it causes a chart segment to turn into a hyperlink.
           type: string
     StateOverTimeWidgetStateConfig:
       title: StateOverTimeWidgetStateConfig
       type: object
       properties:
         from:
+          description: >-
+            The name of a metric field containing the current state at any time.
           type: string
       required:
         - from
@@ -646,7 +824,11 @@ components:
             Define if for a type = 'string' with options, if only the options should be allowed or also free text. Default is true.
         options:
           type: array
-          description: Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
+          description: >-
+            Optional options for the `string`, `string[]` and `string_array` parameter types. Which result in suggestions for end-users.
+            Any of:
+             - `action_kit_api.ExplicitParameterOption`
+             - `action_kit_api.ParameterOptionsFromTargetAttribute`
           items:
             $ref: '#/components/schemas/ParameterOption'
           uniqueItems: true

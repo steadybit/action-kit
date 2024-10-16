@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.4
+
+- adding `LineChartWidget`
+
 ## 2.9.3
 
 - adding `technology` to `ActionDescription`
