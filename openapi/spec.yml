@@ -332,27 +332,26 @@ components:
             The color of the group. This will be used to color the matching data points in the line chart.
           type: string
           format: color
-        fallback:
-          description: >-
-            If `true`, this group will match all data points that are not matched by any other group. No matcher is required for this group.
-          type: boolean
         matcher:
           $ref: '#/components/schemas/LineChartWidgetGroupMatcher'
       required:
         - title
         - color
+        - matcher
     LineChartWidgetGroupMatcher:
       description: >-
         The matcher that should be used to match the data points that should be part of this group.
         Any of
+         - `action_kit_api.LineChartWidgetGroupMatcherFallback`
          - `action_kit_api.LineChartWidgetGroupMatcherKeyEqualsValue`
          - `action_kit_api.LineChartWidgetGroupMatcherNotEmpty`
       anyOf:
+        - $ref: '#/components/schemas/LineChartWidgetGroupMatcherFallback'
         - $ref: '#/components/schemas/LineChartWidgetGroupMatcherKeyEqualsValue'
         - $ref: '#/components/schemas/LineChartWidgetGroupMatcherNotEmpty'
     LineChartWidgetGroupMatcherFallback:
       description: >-
-        A fallback matcher that will match all data points that are not matched by any other matcher in the group.
+        A fallback matcher that will match all data points that are not matched by any other group.
       type: object
     LineChartWidgetGroupMatcherKeyEqualsValue:
       description: >-
