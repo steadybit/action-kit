@@ -315,6 +315,8 @@ components:
             A list of groups that should be displayed in the line chart. Each group can be colored and a matcher can be defined to match the data points that should be part of this group.
           items:
             $ref: '#/components/schemas/LineChartWidgetGroup'
+      required:
+        - groups
     LineChartWidgetGroup:
       title: LineChartWidgetGroup
       description: >-
