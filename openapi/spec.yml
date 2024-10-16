@@ -276,21 +276,7 @@ components:
         identity:
           $ref: '#/components/schemas/LineChartWidgetIdentityConfig'
         grouping:
-          description: >-
-            Optional configuration to group some data points in the line chart. Groups can be colored and a summary can be shown in an Pie chart next to the line chart.
-          type: object
-          properties:
-            showSummary:
-              type: boolean
-              description: >-
-                If set to `true`, a pie chart will be shown next to the line chart. The pie chart will show the summary of the groups and can be used to filter data points in the line chart.
-              default: true
-            groups:
-              type: array
-              description: >-
-                A list of groups that should be displayed in the line chart. Each group can be colored and a matcher can be defined to match the data points that should be part of this group.
-              items:
-                $ref: '#/components/schemas/LineChartWidgetGroup'
+          $ref: '#/components/schemas/LineChartWidgetGroupingConfig'
         tooltip:
           $ref: '#/components/schemas/LineChartWidgetTooltipConfig'
       required:
@@ -312,6 +298,23 @@ components:
       required:
         - metricName
         - from
+    LineChartWidgetGroupingConfig:
+      title: LineChartWidgetGroupingConfig
+      description: >-
+        Optional configuration to group some data points in the line chart. Groups can be colored and a summary can be shown in an Pie chart next to the line chart.
+      type: object
+      properties:
+        showSummary:
+          type: boolean
+          description: >-
+            If set to `true`, a pie chart will be shown next to the line chart. The pie chart will show the summary of the groups and can be used to filter data points in the line chart.
+          default: true
+        groups:
+          type: array
+          description: >-
+            A list of groups that should be displayed in the line chart. Each group can be colored and a matcher can be defined to match the data points that should be part of this group.
+          items:
+            $ref: '#/components/schemas/LineChartWidgetGroup'
     LineChartWidgetGroup:
       title: LineChartWidgetGroup
       description: >-
