@@ -167,17 +167,17 @@ components:
         Widgets that will be rendered in the experiment result view after an experiment has finished.
       type: array
       items:
-        description: >-
-          A widget that can be rendered in the experiment result view after an experiment has finished.
-          Any of
-            - `action_kit_api.StateOverTimeWidget`
-            - `action_kit_api.LogWidget`
-            - `action_kit_api.MarkdownWidget`
-            - `action_kit_api.PredefinedWidget`
-            - `action_kit_api.LineChartWidget`
         $ref: '#/components/schemas/Widget'
     Widget:
       title: Widget
+      description: >-
+        A widget that can be rendered in the experiment result view after an experiment has finished.
+        Any of
+          - `action_kit_api.StateOverTimeWidget`
+          - `action_kit_api.LogWidget`
+          - `action_kit_api.MarkdownWidget`
+          - `action_kit_api.PredefinedWidget`
+          - `action_kit_api.LineChartWidget`
       anyOf:
         - $ref: '#/components/schemas/StateOverTimeWidget'
         - $ref: '#/components/schemas/LogWidget'
@@ -191,6 +191,8 @@ components:
       type: object
       properties:
         type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetLog`.
           type: string
           enum: [ com.steadybit.widget.log ]
         title:
@@ -214,6 +216,8 @@ components:
       type: object
       properties:
         type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetMarkdown`.
           type: string
           enum: [ com.steadybit.widget.markdown ]
         title:
@@ -243,6 +247,8 @@ components:
       type: object
       properties:
         type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetPredefined`.
           type: string
           enum: [ com.steadybit.widget.predefined ]
         predefinedWidgetId:
@@ -258,6 +264,8 @@ components:
       type: object
       properties:
         type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetLineChart`.
           type: string
           enum: [ com.steadybit.widget.line_chart ]
         title:
@@ -282,7 +290,7 @@ components:
               description: >-
                 A list of groups that should be displayed in the line chart. Each group can be colored and a matcher can be defined to match the data points that should be part of this group.
               items:
-              $ref: '#/components/schemas/LineChartWidgetGroup'
+                $ref: '#/components/schemas/LineChartWidgetGroup'
         tooltip:
           $ref: '#/components/schemas/LineChartWidgetTooltipConfig'
       required:
@@ -319,45 +327,38 @@ components:
             The color of the group. This will be used to color the matching data points in the line chart.
           type: string
           format: color
-        matcher:
+        fallback:
           description: >-
-            The matcher that should be used to match the data points that should be part of this group.
-            Any of
-             - `action_kit_api.LineChartWidgetGroupMatcherFallback`
-             - `action_kit_api.LineChartWidgetGroupMatcherKeyEqualsValue`
-             - `action_kit_api.LineChartWidgetGroupMatcherNotEmpty`
-          type: array
-          items:
-            $ref: '#/components/schemas/LineChartWidgetGroupMatcher'
+            If `true`, this group will match all data points that are not matched by any other group. No matcher is required for this group.
+          type: boolean
+        matcher:
+          $ref: '#/components/schemas/LineChartWidgetGroupMatcher'
+      required:
+        - title
+        - color
     LineChartWidgetGroupMatcher:
+      description: >-
+        The matcher that should be used to match the data points that should be part of this group.
+        Any of
+         - `action_kit_api.LineChartWidgetGroupMatcherKeyEqualsValue`
+         - `action_kit_api.LineChartWidgetGroupMatcherNotEmpty`
       anyOf:
-        - $ref: '#/components/schemas/LineChartWidgetGroupMatcherFallback'
         - $ref: '#/components/schemas/LineChartWidgetGroupMatcherKeyEqualsValue'
         - $ref: '#/components/schemas/LineChartWidgetGroupMatcherNotEmpty'
     LineChartWidgetGroupMatcherFallback:
       description: >-
         A fallback matcher that will match all data points that are not matched by any other matcher in the group.
       type: object
-      properties:
-        type:
-          type: string
-          enum: [ com.steadybit.widget.line_chart.group_matcher.fallback ]
-      required:
-        - type
     LineChartWidgetGroupMatcherKeyEqualsValue:
       description: >-
         A matcher that will match all data points where the value of the specified key equals the specified value.
       type: object
       properties:
-        type:
-          type: string
-          enum: [ com.steadybit.widget.line_chart.group_matcher.key_equals_value ]
         key:
           type: string
         value:
           type: string
       required:
-        - type
         - key
         - value
     LineChartWidgetGroupMatcherNotEmpty:
@@ -365,13 +366,9 @@ components:
         A matcher that will match all data points where the value of the specified key is not empty.
       type: object
       properties:
-        type:
-          type: string
-          enum: [ com.steadybit.widget.line_chart.group_matcher.not_empty ]
         key:
           type: string
       required:
-        - type
         - key
     LineChartWidgetTooltipConfig:
       title: LineChartWidgetTooltipConfig
@@ -417,6 +414,8 @@ components:
       type: object
       properties:
         type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetStateOverTime`.
           type: string
           enum: [ com.steadybit.widget.state_over_time ]
         title:
