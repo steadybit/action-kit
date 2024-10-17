@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.10
+
+- feat: add helper to detect cilium
+
 ## 1.2.9
 
 - fix: Try aggregating huge list of excludes for network attacks to reduce tc rules needed
