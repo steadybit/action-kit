@@ -353,16 +353,30 @@ components:
       description: >-
         A fallback matcher that will match all data points that are not matched by any other group.
       type: object
+      properties:
+        type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetLineChartGroupMatcherFallback`.
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher_fallback ]
+      required:
+        - type
     LineChartWidgetGroupMatcherKeyEqualsValue:
       description: >-
         A matcher that will match all data points where the value of the specified key equals the specified value.
       type: object
       properties:
+        type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetLineChartGroupMatcherKeyEqualsValue`.
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher_key_equals_value ]
         key:
           type: string
         value:
           type: string
       required:
+        - type
         - key
         - value
     LineChartWidgetGroupMatcherNotEmpty:
@@ -370,9 +384,15 @@ components:
         A matcher that will match all data points where the value of the specified key is not empty.
       type: object
       properties:
+        type:
+          description: >-
+            The type of the widget. Needs to be set to `action_kit_api.ComSteadybitWidgetLineChartGroupMatcherNotEmpty`.
+          type: string
+          enum: [ com.steadybit.widget.line_chart.group_matcher_not_empty ]
         key:
           type: string
       required:
+        - type
         - key
     LineChartWidgetTooltipConfig:
       title: LineChartWidgetTooltipConfig
