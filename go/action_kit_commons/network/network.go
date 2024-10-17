@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package network
 
@@ -14,7 +14,6 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os/exec"
-	"runtime/trace"
 	"slices"
 	"strconv"
 	"sync"
@@ -52,7 +51,6 @@ func Revert(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) er
 }
 
 func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts, mode Mode) error {
-	defer trace.StartRegion(ctx, "network.generateAndRunCommands").End()
 	ipCommandsV4, err := opts.IpCommands(FamilyV4, mode)
 	if err != nil {
 		return err
@@ -82,21 +80,45 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	}
 
 	if len(ipCommandsV4) > 0 {
-		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV4, ipCommandsV4); ipErr != nil {
+		logCurrentIpRules(ctx, r, sidecar, FamilyV4, "before")
+	}
+
+	if len(ipCommandsV6) > 0 {
+		logCurrentIpRules(ctx, r, sidecar, FamilyV6, "before")
+	}
+
+	if len(tcCommands) > 0 {
+		logCurrentTcRules(ctx, r, sidecar, "before")
+	}
+
+	if len(ipCommandsV4) > 0 {
+		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
 	if len(ipCommandsV6) > 0 {
-		if ipErr := executeIpCommands(ctx, r, sidecar, FamilyV6, ipCommandsV6); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
 
 	if len(tcCommands) > 0 {
-		if tcErr := executeTcCommands(ctx, r, sidecar, tcCommands); tcErr != nil {
+		if _, tcErr := executeTcCommands(ctx, r, sidecar, tcCommands); tcErr != nil {
 			err = errors.Join(err, FilterBatchErrors(tcErr, mode, tcCommands))
 		}
+	}
+
+	if len(ipCommandsV4) > 0 {
+		logCurrentIpRules(ctx, r, sidecar, FamilyV4, "after")
+	}
+
+	if len(ipCommandsV6) > 0 {
+		logCurrentIpRules(ctx, r, sidecar, FamilyV6, "after")
+	}
+
+	if len(tcCommands) > 0 {
+		logCurrentTcRules(ctx, r, sidecar, "after")
 	}
 
 	if mode == ModeDelete {
@@ -104,6 +126,20 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	}
 
 	return err
+}
+
+func logCurrentIpRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, when string) {
+	if !log.Trace().Enabled() {
+		return
+	}
+
+	stdout, err := executeIpCommands(ctx, r, sidecar, []string{"rule show"}, "-family", string(family))
+	if err != nil {
+		log.Trace().Err(err).Msg("failed to get current ip rules")
+		return
+	} else {
+		log.Trace().Str("family", string(family)).Str("when", when).Str("rules", stdout).Msg("current ip rules")
+	}
 }
 
 func pushActiveTc(netNsId string, opts Opts) error {
@@ -154,16 +190,17 @@ func defaultIpv6Supported() bool {
 	return true
 }
 
-func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, cmds []string) error {
-	defer trace.StartRegion(ctx, "network.executeIpCommands").End()
+var executeIpCommands = executeIpCommandsImpl
+
+func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string, extraArgs ...string) (string, error) {
 	if len(cmds) == 0 {
-		return nil
+		return "", nil
 	}
 
 	id := getNextContainerId("ip", sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		if err := bundle.Remove(); err != nil {
@@ -173,7 +210,7 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
-	processArgs := []string{"ip", "-family", string(family), "-force", "-batch", "-"}
+	processArgs := append([]string{"ip", "-force", "-batch", "-"}, extraArgs...)
 	if err = bundle.EditSpec(
 		runc.WithHostname(fmt.Sprintf("ip-%s", id)),
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
@@ -181,10 +218,10 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 		runc.WithCapabilities("CAP_NET_ADMIN"),
 		runc.WithProcessArgs(processArgs...),
 	); err != nil {
-		return err
+		return "", err
 	}
 
-	log.Debug().Strs("cmds", cmds).Str("family", string(family)).Msg("running ip commands")
+	log.Debug().Strs("cmds", cmds).Strs("extraArgs", extraArgs).Msg("running ip commands")
 	var outb bytes.Buffer
 	err = r.Run(ctx, bundle, runc.IoOpts{
 		Stdin:  ToReader(cmds),
@@ -202,23 +239,44 @@ func executeIpCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, fa
 	}()
 	if err != nil {
 		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
-			return parsed
+			return "", parsed
 		}
-		return fmt.Errorf("%s ip failed: %w, output: %s", id, err, outb.String())
+		return "", fmt.Errorf("%s ip failed: %w, output: %s", id, err, outb.String())
 	}
-	return nil
+	return outb.String(), nil
 }
 
-func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string) error {
-	defer trace.StartRegion(ctx, "network.executeTcCommands").End()
+func logCurrentTcRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, s string) {
+	if !log.Trace().Enabled() {
+		return
+	}
+
+	stdout, err := executeTcCommands(ctx, r, sidecar, []string{"qdisc show"})
+	if err != nil {
+		log.Trace().Err(err).Msg("failed to get current tc rules")
+		return
+	} else {
+		log.Trace().Str("when", s).Str("rules", stdout).Msg("current tc qdisc")
+	}
+
+	stdout, err = executeTcCommands(ctx, r, sidecar, []string{"filter show"})
+	if err != nil {
+		log.Trace().Err(err).Msg("failed to get current tc rules")
+		return
+	} else {
+		log.Trace().Str("when", s).Str("rules", stdout).Msg("current tc filter")
+	}
+}
+
+func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string) (string, error) {
 	if len(cmds) == 0 {
-		return nil
+		return "", nil
 	}
 
 	id := getNextContainerId("tc", sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		if err := bundle.Remove(); err != nil {
@@ -236,7 +294,7 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 		runc.WithCapabilities("CAP_NET_ADMIN"),
 		runc.WithProcessArgs(processArgs...),
 	); err != nil {
-		return err
+		return "", err
 	}
 
 	log.Debug().Strs("cmds", cmds).Msg("running tc commands")
@@ -257,11 +315,11 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 	}()
 	if err != nil {
 		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
-			return parsed
+			return "", parsed
 		}
-		return fmt.Errorf("%s tc failed: %w, output: %s", id, err, outb.String())
+		return "", fmt.Errorf("%s tc failed: %w, output: %s", id, err, outb.String())
 	}
-	return nil
+	return outb.String(), nil
 }
 
 func getNetworkNsIdentifier(namespaces []runc.LinuxNamespace) string {

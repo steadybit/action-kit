@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
@@ -78,9 +79,9 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 	state := a.action.NewEmptyState()
 	result, err := a.action.Prepare(r.Context(), &state, *prepareActionRequestBody)
 	if err != nil {
-		extensionError, isExtensionError := err.(extension_kit.ExtensionError)
-		if isExtensionError {
-			exthttp.WriteError(w, extensionError)
+		var extErr *extension_kit.ExtensionError
+		if errors.As(err, &extErr) {
+			exthttp.WriteError(w, *extErr)
 		} else {
 			exthttp.WriteError(w, extension_kit.ToError("Failed to prepare.", err))
 		}

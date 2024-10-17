@@ -26,8 +26,8 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		ipprotoSelector = fmt.Sprintf(" ipproto %s", o.IpProto)
 	}
 
-	include := deduplicateNetWithPortRange(o.Include)
-	for _, nwp := range include {
+	filter := optimizeFilter(o.Filter)
+	for _, nwp := range filter.Include {
 		net := nwp.Net
 		portRange := nwp.PortRange
 
@@ -41,7 +41,7 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s sport %s", mode, net.String(), ipprotoSelector, portRange.String()))
 	}
 
-	for _, nwp := range necessaryExcludes(deduplicateNetWithPortRange(o.Exclude), include) {
+	for _, nwp := range filter.Exclude {
 		net := nwp.Net
 		portRange := nwp.PortRange
 

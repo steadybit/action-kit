@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.12
+
+- fix error handling in actionHttpAdapter.handlePrepare
+
 ## 1.1.11
 
 - prevent extension heartbeat processing from stopping randomly

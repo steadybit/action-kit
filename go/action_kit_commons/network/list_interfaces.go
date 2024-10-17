@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package network
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"strings"
 )
 
 type Interface struct {
@@ -30,6 +27,16 @@ type AddrInfo struct {
 	Scope     string `json:"scope"`
 	Label     string `json:"label"`
 	Broadcast string `json:"broadcast"`
+}
+
+type Route struct {
+	Dst      string   `json:"dst"`
+	Gateway  string   `json:"gateway"`
+	Dev      string   `json:"dev"`
+	Flags    []string `json:"flags"`
+	Protocol string   `json:"protocol"`
+	Prefsrc  string   `json:"prefsrc"`
+	Scope    string   `json:"scope"`
 }
 
 func (i *Interface) HasFlag(f string) bool {
@@ -61,50 +68,35 @@ func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar Sid
 	return ifcNames, nil
 }
 
+func HasCiliumIpRoutes(ctx context.Context, r runc.Runc, sidecar SidecarOpts) (bool, error) {
+	out, err := executeIpCommands(ctx, r, sidecar, []string{"route list"}, "--json")
+	if err != nil {
+		return false, err
+	}
+
+	var rules []Route
+	if err = json.Unmarshal([]byte(out), &rules); err != nil {
+		return false, fmt.Errorf("failed to unmarshal rules: %w", err)
+	}
+
+	log.Trace().Interface("rules", rules).Msg("listed routes")
+
+	for _, rule := range rules {
+		if strings.HasPrefix(rule.Dev, "cilium_") {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]Interface, error) {
-	id := getNextContainerId("ip-addr", sidecar.IdSuffix)
-
-	bundle, err := r.Create(ctx, "/", id)
+	out, err := executeIpCommands(ctx, r, sidecar, []string{"address show up"}, "--json")
 	if err != nil {
 		return nil, err
-	}
-	defer func() {
-		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to remove bundle")
-		}
-	}()
-
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
-
-	if err = bundle.EditSpec(
-		runc.WithHostname(fmt.Sprintf("ip-link-show-%s", id)),
-		runc.WithAnnotations(map[string]string{
-			"com.steadybit.sidecar": "true",
-		}),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithProcessArgs("ip", "--json", "address", "show", "up")); err != nil {
-		return nil, err
-	}
-
-	var outb, errb bytes.Buffer
-	err = r.Run(ctx, bundle, runc.IoOpts{Stdout: &outb, Stderr: &errb})
-	defer func() {
-		if err := r.Delete(context.Background(), id, true); err != nil {
-			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
-				level = zerolog.DebugLevel
-			}
-			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
-		}
-	}()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list interfaces: %w: %s", err, errb.String())
 	}
 
 	var interfaces []Interface
-	err = json.Unmarshal(outb.Bytes(), &interfaces)
-	if err != nil {
+	if err = json.Unmarshal([]byte(out), &interfaces); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal interfaces: %w", err)
 	}
 
