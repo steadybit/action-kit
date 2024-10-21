@@ -295,9 +295,19 @@ components:
           description: >-
             The name of a metric field containing a unique identifier per desired line chart within the UI.
           type: string
+        mode:
+          description: >-
+            If there are multiple values by evaluating `from`, how should the widgets be rendered?
+             - `com.steadybit.widget.line_chart.identity_mode.select` - A single widget is rendered and the user can select the value that should be displayed in the widget.
+             - `com.steadybit.widget.line_chart.identity_mode.widget-per-value` - A separate widget is rendered per given value.
+          type: string
+          enum:
+            - com.steadybit.widget.line_chart.identity_mode.select
+            - com.steadybit.widget.line_chart.identity_mode.widget-per-value
       required:
         - metricName
         - from
+        - mode
     LineChartWidgetGroupingConfig:
       title: LineChartWidgetGroupingConfig
       description: >-
