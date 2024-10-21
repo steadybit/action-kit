@@ -318,7 +318,6 @@ components:
           type: boolean
           description: >-
             If set to `true`, a pie chart will be shown next to the line chart. The pie chart will show the summary of the groups and can be used to filter data points in the line chart.
-          default: true
         groups:
           type: array
           description: >-
