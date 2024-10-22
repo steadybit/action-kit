@@ -7,5 +7,6 @@ output-options:
   exclude-schemas:
     - ParameterOption
     - Widget
+    - LineChartWidgetGroupMatcher
 additional-imports:
   - package: "github.com/google/uuid"
