@@ -56,6 +56,7 @@ type ExtraMount struct {
 func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]string, error) {
 	ifcs, err := ListInterfaces(ctx, r, sidecar)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to list interfaces")
 		return nil, err
 	}
 

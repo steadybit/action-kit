@@ -238,7 +238,10 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 		}
 	}()
 	if err != nil {
+		log.Warn().Str("output", outb.String()).Msg("failed to run ip commands")
+		log.Warn().Err(err).Msg("failed to run ip commands")
 		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
+			log.Debug().Err(parsed).Msg("parsed error")
 			return "", parsed
 		}
 		return "", fmt.Errorf("%s ip failed: %w, output: %s", id, err, outb.String())
