@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package action_kit_sdk
 
@@ -7,12 +7,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extlogging"
+	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -33,6 +36,7 @@ type ActionOperations struct {
 	basePath    string
 	description action_kit_api.ActionDescription
 	calls       <-chan Call
+	action      *ExampleAction
 }
 
 type TestCase struct {
@@ -58,6 +62,14 @@ func Test_SDK(t *testing.T) {
 			Name: "should stop actions on heartbeat timeout",
 			Fn:   testcaseHeartbeatTimeout,
 		},
+		{
+			Name: "should return error from prepare",
+			Fn:   testCasePrepareWithGenericError,
+		},
+		{
+			Name: "should return extension error from prepare",
+			Fn:   testCasePrepareWithExtensionKitError,
+		},
 	}
 	calls := make(chan Call, 1024)
 	defer close(calls)
@@ -65,14 +77,14 @@ func Test_SDK(t *testing.T) {
 	serverPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	go func(calls chan<- Call) {
-		action := NewExampleAction(calls)
+	action := NewExampleAction(calls)
+	go func(action *ExampleAction) {
 		extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
 		InstallSignalHandler()
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
-	}(calls)
+	}(action)
 	time.Sleep(1 * time.Second)
 
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
@@ -85,6 +97,7 @@ func Test_SDK(t *testing.T) {
 			description: description,
 			executionId: uuid.New(),
 			calls:       calls,
+			action:      action,
 		}
 
 		op.resetCalls()
@@ -97,8 +110,10 @@ func Test_SDK(t *testing.T) {
 }
 
 func testcaseSimple(t *testing.T, op ActionOperations) {
-	state := op.prepare(t)
+	result, _ := op.prepare(t)
+	assertPrepareResult(t, *result)
 	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
+	state := result.State
 
 	state = op.start(t, state)
 	op.assertCall(t, "Start", toExampleState(state))
@@ -139,7 +154,9 @@ func testcaseWithFileUpload(t *testing.T, op ActionOperations) {
 }
 
 func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
-	state := op.prepare(t)
+	result, _ := op.prepare(t)
+	state := result.State
+
 	state = op.start(t, state)
 	op.resetCalls()
 
@@ -154,7 +171,9 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 }
 
 func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
-	state := op.prepare(t)
+	result, _ := op.prepare(t)
+	state := result.State
+
 	state = op.start(t, state)
 	op.resetCalls()
 
@@ -165,6 +184,20 @@ func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 	assert.Equal(t, "Action was stopped by extension: heartbeat timeout", statusResult.Error.Title)
+}
+
+func testCasePrepareWithGenericError(t *testing.T, op ActionOperations) {
+	op.action.prepareError = fmt.Errorf("this is a test error")
+	_, response := op.prepare(t)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "Failed to prepare.", Detail: extutil.Ptr("this is a test error")}, response)
+	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
+}
+
+func testCasePrepareWithExtensionKitError(t *testing.T, op ActionOperations) {
+	op.action.prepareError = extutil.Ptr(extension_kit.ToError("this is a test error", errors.New("with some setails")))
+	_, response := op.prepare(t)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "this is a test error", Detail: extutil.Ptr("with some setails")}, response)
+	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
 }
 
 func listExtension(t *testing.T, path string) string {
@@ -195,7 +228,7 @@ func describe(t *testing.T, actionPath string) action_kit_api.ActionDescription 
 	return response
 }
 
-func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
+func (op *ActionOperations) prepare(t *testing.T) (*action_kit_api.PrepareResult, *action_kit_api.ActionKitError) {
 	prepareBody := action_kit_api.PrepareActionRequestBody{
 		ExecutionId: op.executionId,
 		Target: &action_kit_api.Target{
@@ -209,17 +242,26 @@ func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
 			"duration": "10s",
 		},
 	}
+
 	jsonBody, err := json.Marshal(prepareBody)
 	require.NoError(t, err)
-	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), "application/json", bodyReader)
-	require.NoError(t, err)
-	body, err := io.ReadAll(res.Body)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Prepare.Path), "application/json", bytes.NewReader(jsonBody))
+
+	if res.StatusCode != http.StatusOK {
+		var response action_kit_api.ActionKitError
+		err = json.NewDecoder(res.Body).Decode(&response)
+		require.NoError(t, err)
+		return nil, &response
+	}
+
 	require.NoError(t, err)
 	var response action_kit_api.PrepareResult
-	err = json.Unmarshal(body, &response)
+	err = json.NewDecoder(res.Body).Decode(&response)
 	require.NoError(t, err)
+	return &response, nil
+}
 
+func assertPrepareResult(t *testing.T, response action_kit_api.PrepareResult) {
 	assert.Equal(t, "This is a test Message from Prepare", (*response.Messages)[0].Message)
 	assert.Equal(t, "10s", response.State["Duration"])
 	assert.Equal(t, "Prepare", response.State["TestStep"])
@@ -233,8 +275,6 @@ func (op *ActionOperations) prepare(t *testing.T) action_kit_api.ActionState {
 	state, err := statePersister.GetState(context.Background(), executionIds[0])
 	require.NoError(t, err)
 	assert.Equal(t, "Prepare", (*state).State["TestStep"])
-
-	return response.State
 }
 
 func (op *ActionOperations) prepareWithFileUpload(t *testing.T) action_kit_api.ActionState {

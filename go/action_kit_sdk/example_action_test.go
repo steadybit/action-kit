@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
 package action_kit_sdk
 
@@ -17,7 +17,8 @@ type Call struct {
 }
 
 type ExampleAction struct {
-	calls chan<- Call
+	calls        chan<- Call
+	prepareError error
 }
 
 type ExampleState struct {
@@ -31,7 +32,7 @@ type ExampleConfig struct {
 	InputFile string
 }
 
-func NewExampleAction(calls chan<- Call) Action[ExampleState] {
+func NewExampleAction(calls chan<- Call) *ExampleAction {
 	return &ExampleAction{calls: calls}
 }
 
@@ -106,6 +107,11 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 	if err := extconversion.Convert(request.Config, &config); err != nil {
 		return nil, extension_kit.ToError("Failed to unmarshal the config.", err)
 	}
+
+	if action.prepareError != nil {
+		return nil, action.prepareError
+	}
+
 	state.Duration = config.Duration
 	state.InputFile = config.InputFile
 	state.TestStep = "Prepare"
