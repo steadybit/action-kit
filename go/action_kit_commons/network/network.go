@@ -246,6 +246,7 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 		}
 		return "", fmt.Errorf("%s ip failed: %w, output: %s", id, err, outb.String())
 	}
+	log.Trace().Str("output", outb.String()).Msg("ran ip commands")
 	return outb.String(), nil
 }
 
