@@ -222,11 +222,11 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 	}
 
 	log.Debug().Strs("cmds", cmds).Strs("extraArgs", extraArgs).Msg("running ip commands")
-	var outb bytes.Buffer
+	var outb, errb bytes.Buffer
 	err = r.Run(ctx, bundle, runc.IoOpts{
 		Stdin:  ToReader(cmds),
 		Stdout: &outb,
-		Stderr: &outb,
+		Stderr: &errb,
 	})
 	defer func() {
 		if err := r.Delete(context.Background(), id, true); err != nil {
@@ -238,15 +238,20 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 		}
 	}()
 	if err != nil {
-		log.Warn().Str("output", outb.String()).Msg("failed to run ip commands")
-		log.Warn().Err(err).Msg("failed to run ip commands")
+		log.Warn().
+			Str("output", outb.String()).Err(err).
+			Str("error", errb.String()).
+			Msg("failed to run ip commands")
 		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
 			log.Debug().Err(parsed).Msg("parsed error")
 			return "", parsed
 		}
-		return "", fmt.Errorf("%s ip failed: %w, output: %s", id, err, outb.String())
+		return "", fmt.Errorf("%s ip failed: %w, output: %s, error: %s", id, err, outb.String(), errb.String())
 	}
-	log.Trace().Str("output", outb.String()).Msg("ran ip commands")
+	log.Trace().
+		Str("output", outb.String()).
+		Str("error", errb.String()).
+		Msg("ran ip commands")
 	return outb.String(), nil
 }
 
