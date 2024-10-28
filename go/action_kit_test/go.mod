@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/rs/zerolog v1.33.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.3
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.4
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.2
 	github.com/steadybit/extension-kit v1.8.18
