@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.11
+
+- fix: executeIpCommands, split stdout and stderr
+
 ## 1.2.10
 
 - feat: add helper to detect cilium
