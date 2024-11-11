@@ -57,7 +57,7 @@ func TestHeartbeat_timeout_should_close_channel(t *testing.T) {
 			case <-w:
 				return
 			case <-ch:
-				if i.Add(1) > 1 {
+				if i.Add(1) == 1 {
 					t.Error("callback called multiple times")
 				}
 			}
