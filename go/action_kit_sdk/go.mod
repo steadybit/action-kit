@@ -10,7 +10,7 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.4
 	github.com/steadybit/extension-kit v1.8.21
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/sys v0.26.0
+	golang.org/x/sys v0.27.0
 )
 
 require (
