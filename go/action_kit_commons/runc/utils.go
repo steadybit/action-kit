@@ -196,7 +196,7 @@ func executeLsnsImpl(ctx context.Context, args ...string) (*bytes.Buffer, error)
 	var lastErr error
 	var sout bytes.Buffer
 	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
-	for attempts := 0; attempts < 3; attempts++ {
+	for attempts := 0; attempts < 5; attempts++ {
 		cmd := RootCommandContext(ctx, "lsns", args...)
 		cmd.Stdout = &sout
 		if err := cmd.Run(); err == nil {
