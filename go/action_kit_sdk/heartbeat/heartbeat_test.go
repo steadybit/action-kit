@@ -4,6 +4,7 @@
 package heartbeat
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -38,7 +39,31 @@ func TestHeartbeat_should_not_timeout(t *testing.T) {
 
 	select {
 	case <-ch:
-		t.Fatal("callback should have not been called")
+		t.Fatal("callback should not have been called")
 	default:
 	}
+}
+
+func TestHeartbeat_timeout_should_close_channel(t *testing.T) {
+	i := atomic.Uint32{}
+	w := make(chan interface{})
+	ch := make(chan time.Time)
+	hb := Notify(ch, 10*time.Millisecond, 20*time.Millisecond)
+	defer hb.Stop()
+
+	go func() {
+		for {
+			select {
+			case <-w:
+				return
+			case <-ch:
+				if i.Add(1) > 1 {
+					t.Error("callback called multiple times")
+				}
+			}
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	w <- nil
 }

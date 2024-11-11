@@ -55,6 +55,7 @@ func Notify(ch chan<- time.Time, interval, timeout time.Duration) *Monitor {
 						Time("last", last).
 						Msg("no heartbeat received")
 					signal <- time.Now()
+					return
 				} else {
 					log.Trace().Msg("missed heartbeat")
 				}

@@ -118,6 +118,7 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 		log.Error().
 			Err(err).
 			Str("executionId", executionId.String()).
+			Str("reason", reason).
 			Msgf("state cannot be loaded, cannot stop active action")
 		return
 	}
@@ -127,6 +128,7 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 		log.Error().
 			Str("actionId", persistedState.ActionId).
 			Str("executionId", persistedState.ExecutionId.String()).
+			Str("reason", reason).
 			Msgf("action is not registered, cannot stop active action")
 		return
 	}
@@ -140,6 +142,7 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 			log.Error().
 				Str("actionId", persistedState.ActionId).
 				Str("executionId", persistedState.ExecutionId.String()).
+				Str("reason", reason).
 				Err(err).
 				Msg("failed to convert state, cannot stop active action")
 			return
@@ -157,6 +160,7 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 			log.Warn().
 				Str("actionId", persistedState.ActionId).
 				Str("executionId", persistedState.ExecutionId.String()).
+				Str("reason", reason).
 				Err(err.(error)).
 				Msg("failed stopping active action")
 			return
@@ -167,6 +171,7 @@ func StopAction(ctx context.Context, executionId uuid.UUID, reason string) {
 			log.Debug().
 				Str("actionId", persistedState.ActionId).
 				Str("executionId", persistedState.ExecutionId.String()).
+				Str("reason", reason).
 				Err(err).
 				Msg("failed deleting persisted state")
 		}
