@@ -4,6 +4,7 @@
 package heartbeat
 
 import (
+	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -56,8 +57,8 @@ func TestHeartbeat_timeout_should_close_channel(t *testing.T) {
 			select {
 			case <-w:
 				return
-			case <-ch:
-				if i.Add(1) == 1 {
+			case v := <-ch:
+				if (v != time.Time{}) && (i.Add(1) > 1) {
 					t.Error("callback called multiple times")
 				}
 			}
@@ -66,4 +67,5 @@ func TestHeartbeat_timeout_should_close_channel(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 	w <- nil
+	assert.Equal(t, i.Load(), uint32(1))
 }
