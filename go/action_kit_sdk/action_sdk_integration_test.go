@@ -15,6 +15,7 @@ import (
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extlogging"
+	"github.com/steadybit/extension-kit/extsignals"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,7 @@ func Test_SDK(t *testing.T) {
 		extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		InstallSignalHandler()
+		extsignals.ActivateSignalHandlers()
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(action)
 	time.Sleep(1 * time.Second)
@@ -154,6 +155,8 @@ func testcaseWithFileUpload(t *testing.T, op ActionOperations) {
 }
 
 func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
+	extsignals.RemoveSignalHandlersByName("Termination", "StopExtensionHTTP")
+
 	result, _ := op.prepare(t)
 	state := result.State
 

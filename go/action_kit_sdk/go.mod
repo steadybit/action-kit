@@ -8,7 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.4
-	github.com/steadybit/extension-kit v1.8.21
+	github.com/steadybit/extension-kit v1.8.22
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sys v0.27.0
 )

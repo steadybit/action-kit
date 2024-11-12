@@ -13,6 +13,7 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
+	"github.com/steadybit/extension-kit/extsignals"
 	"golang.org/x/sys/unix"
 	"net/http"
 	"os"
@@ -67,9 +68,11 @@ type ActionWithMetricQuery[T any] interface {
 	QueryMetrics(ctx context.Context, request action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error)
 }
 
+// Deprecated: InstallSignalHandler is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
 type SignalHandlerCallBackFn func(os.Signal)
 
 // InstallSignalHandler registers a signal handler that stops all active actions on SIGINT, SIGTERM and SIGUSR1.
+// Deprecated: InstallSignalHandler is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
 func InstallSignalHandler(callbacks ...SignalHandlerCallBackFn) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
@@ -201,6 +204,19 @@ func handleCoverageCounters(w http.ResponseWriter, _ *http.Request, _ []byte) {
 }
 
 func RegisterAction[T any](a Action[T]) {
+	//register "StopActions" signal handler with the first registered action
+	if len(registeredActions) == 0 {
+		extsignals.AddSignalHandler(extsignals.SignalHandler{
+			Handler: func(signal os.Signal) {
+				signalName := unix.SignalName(signal.(syscall.Signal))
+
+				log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
+				StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
+			},
+			Order: extsignals.OrderStopActions,
+			Name:  "StopActions",
+		})
+	}
 	adapter := newActionHttpAdapter(a)
 	registeredActions[adapter.description.Id] = a
 	adapter.registerHandlers()
