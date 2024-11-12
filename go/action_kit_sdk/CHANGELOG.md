@@ -1,10 +1,12 @@
 # Changelog
 
-## 1.1.13
+## 1.1.14
 
 - improve heartbeat handling
 - support signal handler provided by extension-kit / deprecated own signal handler
 - update dependencies
+
+## 1.1.13
 
 ## 1.1.12
 

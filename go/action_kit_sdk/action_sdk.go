@@ -68,6 +68,7 @@ type ActionWithMetricQuery[T any] interface {
 	QueryMetrics(ctx context.Context, request action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error)
 }
 
+// SignalHandlerCallBackFn is a callback function that is called when a signal is received.
 // Deprecated: SignalHandlerCallBackFn is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
 type SignalHandlerCallBackFn func(os.Signal)
 
