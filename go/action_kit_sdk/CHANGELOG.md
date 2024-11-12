@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.13
+
+- improve heartbeat handling
+- support signal handler provided by extension-kit / deprecated own signal handler
+- update dependencies
+
 ## 1.1.12
 
 - fix error handling in actionHttpAdapter.handlePrepare
