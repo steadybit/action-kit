@@ -68,7 +68,7 @@ type ActionWithMetricQuery[T any] interface {
 	QueryMetrics(ctx context.Context, request action_kit_api.QueryMetricsRequestBody) (*action_kit_api.QueryMetricsResult, error)
 }
 
-// Deprecated: InstallSignalHandler is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
+// Deprecated: SignalHandlerCallBackFn is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
 type SignalHandlerCallBackFn func(os.Signal)
 
 // InstallSignalHandler registers a signal handler that stops all active actions on SIGINT, SIGTERM and SIGUSR1.
