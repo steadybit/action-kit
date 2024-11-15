@@ -130,6 +130,21 @@ components:
              * `exactly_one` - Exactly one target must be selected. The execution will fail if more than one target is selected.
              * `all` - All selected targets will be used. The ui will not show a percentage randomizer for the target selection.
              * `none` - Default. There are no restriction in place for the number of targets. The ui will show a percentage randomizer for the target selection.
+        defaultBlastRadiusRandomizer:
+          $ref: '#/components/schemas/BlastRadiusRandomizer'
+        defaultSelection:
+          type: string
+          enum:
+            - all
+            - none
+          description: >-
+            The default selection of the targets in the UI if no query is provided by the user.
+            * 'all' All targets will be selected by default
+            * 'none' (default) No targets will be selected by default
+        title:
+          type: string
+          description: >-
+            The title of the target selection. This is optional and only required in special cases. The ui will show a default title if this field is not set.
       required:
         - targetType
     TargetSelectionTemplates:
@@ -161,6 +176,22 @@ components:
       required:
         - label
         - query
+    BlastRadiusRandomizer:
+      type: object
+      description: >-
+        The default blast radius randomizer configuration for the action. (Default: 100 percent)
+      properties:
+        mode:
+          type: string
+          enum:
+            - percentage
+            - maximum
+          description: >-
+            The mode of the randomizer. If set to `percentage`, the platform will pick n percent of the selected targets. If set to `maximum`, the randomizer pick n targets.
+        value:
+          type: integer
+          description: >-
+            If the mode is set to `percentage`, the value is the percentage of the selected targets. If the mode is set to `maximum`, the value is the number of targets.
     Widgets:
       title: Widgets
       description: >-
@@ -821,6 +852,7 @@ components:
             - bitrate
             - stressng-workers
             - regex
+            - target-selection
           description: >-
             What kind of value this parameter is capturing. The type selection
             influences the `config` passed as part of the `PrepareRequest`. It
