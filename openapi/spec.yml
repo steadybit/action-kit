@@ -192,6 +192,9 @@ components:
           type: integer
           description: >-
             If the mode is set to `percentage`, the value is the percentage of the selected targets. If the mode is set to `maximum`, the value is the number of targets.
+      required:
+        - mode
+        - value
     Widgets:
       title: Widgets
       description: >-
