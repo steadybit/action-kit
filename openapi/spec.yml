@@ -696,14 +696,14 @@ components:
         targetType:
           type: string
           deprecated: true
-          description: >-
-            Deprecated: use `TargetSelection.targetType` instead.
+          x-deprecated-reason: >-
+            Use `TargetSelection.targetType` instead.
         targetSelectionTemplates:
           allOf:
             - $ref: '#/components/schemas/TargetSelectionTemplates'
           deprecated: true
-          description: >-
-            Deprecated: use `TargetSelection.selectionTemplates` instead.
+          x-deprecated-reason: >-
+            Use `TargetSelection.selectionTemplates` instead.
         timeControl:
           $ref: '#/components/schemas/TimeControl'
         parameters:
@@ -870,9 +870,9 @@ components:
             advanced section within the user interface.
         order:
           type: integer
-          description: >-
-            You can define this fields to order the parameters in the user
-            interface. The lower the value, the higher the position.
+          deprecated: true
+          x-deprecated-reason: >-
+            The position in the list will determine the order.
         minValue:
           type: integer
           description: >-
