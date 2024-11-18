@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.9.5
+
+- deprecated parameter order, the position in the list will be used to determine the order
+- optional target selection enhancements
+
 ## 2.9.4
 
 - adding `LineChartWidget`
