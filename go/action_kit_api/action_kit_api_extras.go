@@ -54,15 +54,3 @@ const (
 	// Deprecated: Use action_kit_api.ActionParameterTypeStringUrl instead.
 	Url ActionParameterType = "url"
 )
-
-const (
-	// All - All target selection quantity restriction.
-	// Deprecated: Use action_kit_api.TargetSelectionQuantityRestrictionAll instead.
-	All TargetSelectionQuantityRestriction = "all"
-	// ExactlyOne - ExactlyOne target selection quantity restriction.
-	// Deprecated: Use action_kit_api.TargetSelectionQuantityRestrictionExactlyOne instead.
-	ExactlyOne TargetSelectionQuantityRestriction = "exactly_one"
-	// None - None target selection quantity restriction.
-	// Deprecated: Use action_kit_api.TargetSelectionQuantityRestrictionExactlyNone instead.
-	None TargetSelectionQuantityRestriction = "none"
-)
