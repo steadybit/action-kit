@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.6
+
+- deprecated enum constants
+
 ## 2.9.5
 
 - deprecated parameter order, the position in the list will be used to determine the order

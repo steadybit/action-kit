@@ -124,6 +124,10 @@ components:
             - exactly_one
             - all
             - none
+          x-enum-varnames:
+            - QuantityRestrictionExactlyOne
+            - QuantityRestrictionAll
+            - QuantityRestrictionNone
           description: >-
             How many targets should be selected by the user.
             Values: 
@@ -137,6 +141,9 @@ components:
           enum:
             - include_all
             - include_none
+          x-enum-varnames:
+            - MissingQuerySelectionIncludeAll
+            - MissingQuerySelectionIncludeNone
           description: >-
             The default selection of the targets in the UI if no query is provided by the user.
             * 'include_all' All targets will be selected by default
