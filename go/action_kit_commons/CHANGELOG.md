@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.12
+
+- refa: add network.NoopOpts for testing purposes
+
 ## 1.2.11
 
 - fix: executeIpCommands, split stdout and stderr
