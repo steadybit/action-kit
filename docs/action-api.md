@@ -168,7 +168,7 @@ The user can always adjust the blast radius in the experiment editor. Only relev
 
 If the user does not provide a target selection, the action can decide how to proceed. The following values are supported:
 - `"missingQuerySelection": "include_none"` - default - No targets will be included, the experiment will be invalid.
-- `"missingQuerySelection": "include_all"` - default - All available targets will be included, the experiment will be valid and all targets will be used if no blast radius is limiting the selection.
+- `"missingQuerySelection": "include_all"` - All available targets will be included, the experiment will be valid and all targets will be used if no blast radius is limiting the selection.
 
 ### Time Control
 
