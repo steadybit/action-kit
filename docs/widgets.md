@@ -207,7 +207,7 @@ You need to provide data points for this widget through metrics. You can define 
 ## Log Widget
 
 This widget helps visualize the output of a log stream. For example, to show the output of a Kubernetes events. The screenshot below depicts how the [Kubernetes extension](https://github.com/steadybit/extension-kubernetes) uses this widget type to visualize the output of a Kubernetes events.
-![Kubernetes Events](KubernetesEventsLog.png)
+![Kubernetes Events](img/widgets/KubernetesEventsLog.png)
 
 ### Configuration
 
