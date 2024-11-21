@@ -5,25 +5,28 @@ supposed to take. This document explains what the supported parameter types are 
 
 Supported parameter types:
 
-  * [`boolean`](#boolean)
-  * [`duration`](#duration)
-  * [`integer`](#integer)
-  * [`percentage`](#percentage)
-  * [`string`](#string)
-  * [`string_array`](#string_array)
-  * [`password`](#password)
-  * [`file`](#file)
-  * [`key_value`](#key_value)
-  * [`textarea`](#textarea)
-  * [`url`](#url)
-  * [`separator`](#separator)
-  * [`header`](#header)
-  * [`bitrate`](#bitrate)
-  * [`stressng-workers`](#stressng-workers)
-  * [`regex`](#regex)
+* [`boolean`](#boolean)
+* [`duration`](#duration)
+* [`integer`](#integer)
+* [`percentage`](#percentage)
+* [`string`](#string)
+* [`string_array`](#string_array)
+* [`password`](#password)
+* [`file`](#file)
+* [`key_value`](#key_value)
+* [`textarea`](#textarea)
+* [`url`](#url)
+* [`separator`](#separator)
+* [`header`](#header)
+* [`bitrate`](#bitrate)
+* [`stressng-workers`](#stressng-workers)
+* [`regex`](#regex)
+* [`target-selection`](#target-selection)
+
 ## `boolean`
 
-Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is defined.
+Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is
+defined.
 
 <img src="img/parameters/boolean.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a boolean parameter looks like. Depicting a textual label and a toggle component." />
 
@@ -43,6 +46,7 @@ Either `true` or `false` values. With optional support for `null` when `required
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "activateOrder66": true
@@ -59,9 +63,11 @@ Either `true` or `false` values. With optional support for `null` when `required
 
 ## `duration`
 
-A time duration. Renders appropriate UI controls that facilitate time inputs—exposed as `number`s representing milliseconds to extensions.
+A time duration. Renders appropriate UI controls that facilitate time inputs—exposed as `number`s representing
+milliseconds to extensions.
 
-**Note:** Make sure to name the field `duration` should you desire that the experiment editor uses a duration field to visualize the expected length of an action.
+**Note:** Make sure to name the field `duration` should you desire that the experiment editor uses a duration field to
+visualize the expected length of an action.
 
 <img src="img/parameters/duration.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a duration parameter looks like. Depicting a textual label and an input for a numeric value followed by a time unit selector." />
 
@@ -81,6 +87,7 @@ A time duration. Renders appropriate UI controls that facilitate time inputs—e
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "jarJarBinksSongDuration": 5000 // milliseconds
@@ -117,6 +124,7 @@ Any integer number.
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "starWarsEpisode": 5
@@ -133,7 +141,8 @@ Any integer number.
 
 ## `percentage`
 
-`percentage` is a variation of the `integer` parameter that renders more appropriate user interface controls. A value of 0% is represented as the number `0`. 100% is represented as the number `100`.
+`percentage` is a variation of the `integer` parameter that renders more appropriate user interface controls. A value of
+0% is represented as the number `0`. 100% is represented as the number `100`.
 
 <img src="img/parameters/percentage.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a percentage parameter looks like. Depicting a textual label and an input for a numeric value." />
 
@@ -153,6 +162,7 @@ Any integer number.
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "deathStarEnergyLevel": 69
@@ -169,7 +179,8 @@ Any integer number.
 
 ## `string`
 
-Strings are the most fundamental parameter type. They represent arbitrary character sequences just like you would expect.
+Strings are the most fundamental parameter type. They represent arbitrary character sequences just like you would
+expect.
 
 **Note:** It is the responsibility of an extension to decide what to do when receiving an empty string.
 
@@ -230,13 +241,17 @@ Strings are the most fundamental parameter type. They represent arbitrary charac
   ]
 }
 ```
-#### Parameter optionsOnly
-Indicates if the action should only support the provided options or if the user can enter a custom value. If `optionsOnly` is set to `true` or is left out, the user can only select from the provided options. If `optionsOnly` is set to `false`, the user can select from the provided options or enter a custom value.
 
+#### Parameter optionsOnly
+
+Indicates if the action should only support the provided options or if the user can enter a custom value. If
+`optionsOnly` is set to `true` or is left out, the user can only select from the provided options. If `optionsOnly` is
+set to `false`, the user can select from the provided options or enter a custom value.
 
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "fullName": "Admiral Ackbar"
@@ -261,11 +276,13 @@ Indicates if the action should only support the provided options or if the user 
 
 ## `string_array`
 
-You can use the `string_array` type for multiple textual inputs. 
+You can use the `string_array` type for multiple textual inputs.
 
 <img src="img/parameters/string_array_open.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a string[] / string_array parameter looks like when interacting with the input field. Depicting an overlay showing selectable options." />
 
-You may define options that users can select. Options are either explicit, i.e., fixed and known in advance (identifiable by the `label` and `value` properties). Or options based on target attributes' values (identifiable by the `attribute` property).
+You may define options that users can select. Options are either explicit, i.e., fixed and known in advance (
+identifiable by the `label` and `value` properties). Or options based on target attributes' values (identifiable by the
+`attribute` property).
 
 ### Example
 
@@ -306,6 +323,7 @@ You may define options that users can select. Options are either explicit, i.e.,
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "lightsaberCombatForm": ["soresu"]
@@ -320,7 +338,6 @@ You may define options that users can select. Options are either explicit, i.e.,
 }
 ```
 
-
 ##### Without any Input
 
 ```json
@@ -331,15 +348,20 @@ You may define options that users can select. Options are either explicit, i.e.,
 
 ## `password`
 
-The `password` parameter behaves like the `string` parameter type, except for the visual presentation in the Steadybit user interface.
+The `password` parameter behaves like the `string` parameter type, except for the visual presentation in the Steadybit
+user interface.
 
 <img src="img/parameters/password.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a password parameter looks like. Depicting a textual label and a password input." />
 
 ## `file`
 
-Files can be uploaded and passed to actions through a parameter of the `file` type. Uploaded files are delivered to actions in base64 encoding. Through the optional `acceptedFileTypes` option you can restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers) may be selected by users.
+Files can be uploaded and passed to actions through a parameter of the `file` type. Uploaded files are delivered to
+actions in base64 encoding. Through the optional `acceptedFileTypes` option you can
+restrict [what kind of files](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers)
+may be selected by users.
 
-If an action has a parameter of the `file` type, the [prepare](./action-api.md#preparation) request will be a `multipart/form-data` request. The files will be parts of the request body.
+If an action has a parameter of the `file` type, the [prepare](./action-api.md#preparation) request will be a
+`multipart/form-data` request. The files will be parts of the request body.
 
 <img src="img/parameters/file.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a file parameter looks like. Depicting a textual label and a drop area for files." />
 
@@ -359,12 +381,12 @@ If an action has a parameter of the `file` type, the [prepare](./action-api.md#p
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "schematics": "WW91IGFyZSBxdWl0ZSBjdXJpb3VzISBIZXJlLCBoYXZlIGEgY29va2llISBBbHNvLCBjaGVjayBvdXQgaHR0cHM6Ly9zdGFyd2Fycy5mYW5kb20uY29tL3dpa2kvRGVhdGhfU3Rhcl9wbGFucyE="
 }
 ```
-
 
 ##### Without a Value
 
@@ -395,6 +417,7 @@ For key/value pairs, e.g., tags, labels and environment variables, we support a 
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "env": [
@@ -405,7 +428,6 @@ For key/value pairs, e.g., tags, labels and environment variables, we support a 
   ]
 }
 ```
-
 
 ##### Without a Value
 
@@ -436,12 +458,12 @@ For a large string, we support a `textarea` parameter type.
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "body": "looooooong string"
 }
 ```
-
 
 ##### Without a Value
 
@@ -472,12 +494,12 @@ For URLs, we support a `url` parameter type.
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "targetUrl": "https://steadybit.com"
 }
 ```
-
 
 ##### Without a Value
 
@@ -506,6 +528,7 @@ For a common separator in the settings field list, we support a `separator` para
 ```
 
 #### Configuration Value Received in `prepare` Call of Actions
+
 you will not recieve values for this parameter type
 
 ## `header`
@@ -527,15 +550,17 @@ For a common header in the settings field list, we support a `header` parameter 
 ```
 
 #### Configuration Value Received in `prepare` Call of Actions
+
 you will not recieve values for this parameter type
 
 ## `bitrate`
 
 Defines a bitrate with value and unit E.g.:
- * 1024kbps: 1024 Kilobytes per second
- * 10mbps: 10 Megabytes per second
- * 64kbit: 64 Kilobits per second
- * 10mbit: 10 Megabits per second
+
+* 1024kbps: 1024 Kilobytes per second
+* 10mbps: 10 Megabytes per second
+* 64kbit: 64 Kilobits per second
+* 10mbit: 10 Megabits per second
 
 <img src="img/parameters/bitrate.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a bitrate parameter looks like. Depicting a textual label and a toggle component." />
 
@@ -555,6 +580,7 @@ Defines a bitrate with value and unit E.g.:
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "bandwidth": "1024kbit"
@@ -569,12 +595,12 @@ Defines a bitrate with value and unit E.g.:
 }
 ```
 
-
 ## `stressng-workers`
 
 Defines how many workers should be used for stressng
+
 * 0: all cpu cores
-* >0: number of workers
+* > 0: number of workers
 
 <img src="img/parameters/stressng-workers.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a stressng-workers parameter looks like. Depicting a textual label and a toggle component." />
 
@@ -594,6 +620,7 @@ Defines how many workers should be used for stressng
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "worker": 0
@@ -612,7 +639,7 @@ Defines how many workers should be used for stressng
 
 Defines a regular expression, which is used to validate the input value as a regular expression.
 
-The validation will be done on server side with `java` regex flavor. 
+The validation will be done on server side with `java` regex flavor.
 
 <img src="img/parameters/regex.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a regex parameter looks like." />
 
@@ -632,6 +659,7 @@ The validation will be done on server side with `java` regex flavor.
 #### Configuration Value Received in `prepare` Call of Actions
 
 ##### With a Value
+
 ```json
 {
   "hostname": ".*"
@@ -643,5 +671,22 @@ The validation will be done on server side with `java` regex flavor.
 ```json
 {
   "hostname": null
+}
+```
+
+## `target-selection`
+
+This is a dummy parameter type to allow to specify the position of the target selection in the UI. If this is not added
+to the list of parameters, the target selection will always be rendered at the top in the action settings sidebar.
+
+### Example
+
+#### Parameter Definition
+
+```json
+{
+  "name": "-",
+  "label": "Filter location",
+  "type": "target-selection"
 }
 ```

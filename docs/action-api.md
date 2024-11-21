@@ -87,6 +87,12 @@ documentation.
       "type": "warning",
       "content": "This can be dangerous! Please have a look [here](https://foo.bar/baz) first."
     },
+    "quantityRestriction": "none",
+    "missingQuerySelection": "include_none",
+    "defaultBlastRadius": {
+      "mode": "percentage",
+      "value": 100
+    },
     "parameters": [
       {
         "label": "Wait for rollout completion?",
@@ -152,6 +158,17 @@ Actions can fine tune the target selection in the ui. The following values are s
   value and is usually the correct setting for all actions of kind "Attack".
 - `"quantityRestriction": "ExactlyOne"` - The user must select exactly one target. The restriction will be validated as soon as you start the experiment.
 - `"quantityRestriction": "All"` - The user needs to define the target selection, but the Steadybit ui will not show the randomization part, e.g. `50%`.
+
+#### Default Blast Radius
+
+The default blast radius is set to 100%. All targets specified by the query will be used. The action can define a different default blast radius, like "use a single target". 
+The user can always adjust the blast radius in the experiment editor. Only relevant for `"quantityRestriction": "None"`.
+
+#### Missing Query Selection
+
+If the user does not provide a target selection, the action can decide how to proceed. The following values are supported:
+- `"missingQuerySelection": "include_none"` - default - No targets will be included, the experiment will be invalid.
+- `"missingQuerySelection": "include_all"` - default - All available targets will be included, the experiment will be valid and all targets will be used if no blast radius is limiting the selection.
 
 ### Time Control
 
