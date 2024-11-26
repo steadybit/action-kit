@@ -133,7 +133,6 @@ type LinuxNamespace struct {
 	Type  specs.LinuxNamespaceType
 	Path  string
 	Inode uint64
-	Pid   int
 }
 
 type LinuxProcessInfo struct {
@@ -153,7 +152,7 @@ func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error
 }
 
 func ListNamespaces(ctx context.Context, pid int, typ ...string) ([]LinuxNamespace, error) {
-	args := []string{"--output=ns,type,path,pid", "--noheadings", "--notruncate"}
+	args := []string{"--output=ns,type,path", "--noheadings", "--notruncate"}
 
 	if pid > 0 {
 		args = append(args, "--task", strconv.Itoa(pid))
@@ -171,19 +170,17 @@ func ListNamespaces(ctx context.Context, pid int, typ ...string) ([]LinuxNamespa
 	var namespaces []LinuxNamespace
 	for _, line := range strings.Split(strings.TrimSpace(sout.String()), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) != 4 {
+		if len(fields) != 3 {
 			continue
 		}
 		inode, err := strconv.ParseUint(fields[0], 10, 64)
 		if err != nil {
 			log.Warn().Err(err).Msgf("failed to parse inode %s. omitting inode namespace information", fields[0])
 		}
-		pid, _ := strconv.Atoi(fields[3])
 		ns := LinuxNamespace{
 			Inode: inode,
 			Type:  toRuncNamespaceType(fields[1]),
 			Path:  fields[2],
-			Pid:   pid,
 		}
 		namespaces = append(namespaces, ns)
 	}
