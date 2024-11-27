@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,17 @@ type BackgroundState struct {
 	cond   *sync.Cond
 	exited bool
 	err    error
+}
+
+var executeListNamespaces = executeListNamespaceLsns
+var executeRefreshNamespace = executeRefreshNamespaceLsns
+
+func init() {
+	if os.Getenv("STEADYBIT_EXTENSION_ENABLE_INTERNAL_NAMESPACE_RESOLUTION") != "" {
+		log.Info().Msgf("Enabling file based namespace handling")
+		executeListNamespaces = executeListNamespacesFilesystem
+		executeRefreshNamespace = executeRefreshNamespaceFilesystem
+	}
 }
 
 func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*BackgroundState, error) {
@@ -151,14 +163,26 @@ func ReadLinuxProcessInfo(ctx context.Context, pid int) (LinuxProcessInfo, error
 	}, errors.Join(nsErr, cgroupErr)
 }
 
-func ListNamespaces(ctx context.Context, pid int, typ ...string) ([]LinuxNamespace, error) {
-	args := []string{"--output=ns,type,path", "--noheadings", "--notruncate"}
-
-	if pid > 0 {
-		args = append(args, "--task", strconv.Itoa(pid))
+func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNamespace, error) {
+	if pid <= 0 {
+		return nil, fmt.Errorf("invalid pid %d", pid)
 	}
 
-	for _, t := range typ {
+	namespaces, err := executeListNamespaces(ctx, pid, types...)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(namespaces, func(i, j int) bool {
+		return namespaces[i].Inode < namespaces[j].Inode
+	})
+
+	return namespaces, nil
+}
+
+func executeListNamespaceLsns(ctx context.Context, pid int, types ...string) ([]LinuxNamespace, error) {
+	args := []string{"--task", strconv.Itoa(pid), "--output=ns,type,path", "--noheadings", "--notruncate"}
+	for _, t := range types {
 		args = append(args, "--type", t)
 	}
 
@@ -187,9 +211,7 @@ func ListNamespaces(ctx context.Context, pid int, typ ...string) ([]LinuxNamespa
 	return namespaces, nil
 }
 
-var executeLsns = executeLsnsImpl
-
-func executeLsnsImpl(ctx context.Context, args ...string) (*bytes.Buffer, error) {
+func executeLsns(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 	var lastErr error
 	var sout bytes.Buffer
 	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
@@ -219,6 +241,85 @@ func toRuncNamespaceType(t string) specs.LinuxNamespaceType {
 	default:
 		return specs.LinuxNamespaceType(t)
 	}
+}
+
+// nsTypes contains known namespace type names.
+// It does not fully match golang constants defined by type LinuxNamespaceType.
+var nsTypes = []string{
+	"mnt", "uts", "ipc", "pid", "net", "cgroup", "user", "time",
+}
+
+// executeListNamespacesFilesystem reads namespace information from the filesystem without
+// requiring an external dependency.
+func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...string) ([]LinuxNamespace, error) {
+	if len(types) == 0 {
+		types = nsTypes
+	}
+	var nsPaths []string
+	for _, nsType := range types {
+		nsPaths = append(nsPaths, fmt.Sprintf("/proc/%d/ns/%s", pid, nsType))
+	}
+	links, err := executeReadlink(ctx, nsPaths...)
+	if err != nil {
+		// Don't return an error as the given pid could already be gone.
+		return nil, nil
+	}
+	var namespaces []LinuxNamespace
+	for _, link := range links {
+		nsType, inode := parseInodeFromString(link)
+		if inode == 0 {
+			continue
+		}
+		// Find namespace started by a lower pid to point to a potentially more stable path.
+		path := executeRefreshNamespace(ctx, inode, nsType)
+		if path == "" {
+			// No better namespace found, build up path manually.
+			// nsPaths can not be used, as it may contain missing types and, hence, no result
+			// in the readlink response.
+			path = fmt.Sprintf("/proc/%d/ns/%s", pid, nsType)
+		}
+		ns := LinuxNamespace{
+			Inode: inode,
+			Type:  toRuncNamespaceType(nsType),
+			Path:  path,
+		}
+		namespaces = append(namespaces, ns)
+	}
+	return namespaces, nil
+}
+
+func executeReadlink(ctx context.Context, nsPaths ...string) ([]string, error) {
+	var sout bytes.Buffer
+	cmd := RootCommandContext(ctx, "readlink", nsPaths...)
+	cmd.Stdout = &sout
+	err := cmd.Run()
+	if err != nil {
+		log.Trace().Err(err).Msgf("failed to execute readlink")
+		return nil, err
+	}
+	lines := strings.Split(sout.String(), "\n")
+	var links []string
+	for _, line := range lines {
+		if line != "" {
+			links = append(links, line)
+		}
+	}
+	return links, nil
+}
+
+func parseInodeFromString(link string) (string, uint64) {
+	parts := strings.Split(link, ":")
+	if len(parts) != 2 {
+		log.Trace().Msgf("unexpected link format %s", link)
+		return "", 0
+	}
+	inodePart := strings.TrimRight(strings.TrimLeft(parts[1], "["), "]")
+	inode, err := strconv.ParseUint(inodePart, 10, 64)
+	if err != nil {
+		log.Trace().Err(err).Msgf("unexpected inod format %s", inodePart)
+		return "", 0
+	}
+	return parts[0], inode
 }
 
 func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType ...specs.LinuxNamespaceType) error {
@@ -264,27 +365,58 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		Uint64("inode", ns.Inode).
 		Msg("refreshing namespace")
 
-	if out, err := executeLsns(ctx, strconv.FormatUint(ns.Inode, 10), "--output=path", "--noheadings", "--notruncate"); err != nil {
+	nsPath := executeRefreshNamespace(ctx, ns.Inode, string(ns.Type))
+	if nsPath == "" {
 		log.Warn().Str("type", string(ns.Type)).
-			Err(err).
 			Str("path", ns.Path).
 			Uint64("inode", ns.Inode).
 			Msg("failed refreshing namespace")
-	} else {
-		for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
-			fields := strings.Fields(line)
-			if len(fields) != 1 {
-				continue
-			}
+		return
+	}
 
-			ns.Path = fields[0]
-			log.Trace().Str("type", string(ns.Type)).
-				Str("path", ns.Path).
-				Uint64("inode", ns.Inode).
-				Msg("refreshed namespace")
-			return
+	ns.Path = nsPath
+}
+
+// executeRefreshNamespaceLsns uses "lsns" to look up the namespace file path of the given inode and type.
+func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) string {
+	out, err := executeLsns(ctx, strconv.FormatUint(inode, 10), "--type", ns, "--output=path", "--noheadings", "--notruncate")
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 1 {
+			continue
+		}
+		return fields[0]
+	}
+	return ""
+}
+
+// executeRefreshNamespaceFilesystem looks up the path to the namespace file, referencing
+// the given inode and type, in /proc/*/ns with the lowest pid.
+func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, ns string) string {
+	nsPaths, err := filepath.Glob(fmt.Sprintf("/proc/[0-9]*/ns/%s", ns))
+	if err != nil {
+		log.Trace().Err(err).Msgf("could not read ns glob")
+		return ""
+	}
+	// Sort paths as procfs does not guarantee any order.
+	sort.Slice(nsPaths, func(i, j int) bool {
+		return nsPaths[i] < nsPaths[j]
+	})
+	for _, nsPath := range nsPaths {
+		links, err := executeReadlink(ctx, nsPath)
+		if err != nil {
+			continue
+		}
+		for _, link := range links {
+			if _, i := parseInodeFromString(link); i == inode {
+				return nsPath
+			}
 		}
 	}
+	return ""
 }
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
