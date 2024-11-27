@@ -28,7 +28,7 @@ func Test_calculateDiskUsage(t *testing.T) {
 				Available: 60228480,
 			},
 			wantErr: false,
-		},{
+		}, {
 			name: "success 2",
 			args: args{
 				lines: `Filesystem      Mounted on      Type    File            1K-blocks     Available    Used
@@ -52,7 +52,7 @@ func Test_calculateDiskUsage(t *testing.T) {
 				Available: 69225984,
 			},
 			wantErr: false,
-		},  {
+		}, {
 			name: "success 4",
 			args: args{
 				lines: `Filesystem           1024-blocks    Used Available Capacity Mounted on

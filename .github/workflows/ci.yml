@@ -63,9 +63,10 @@ jobs:
           cache-dependency-path: ./go/action_kit_commons
           go-version: '1.22'
       - name: Audit
+        # Execute go tests with sudo to be able to start lsns.
         run: |
           go mod download
-          make audit
+          sudo make audit
 
   go-action-kit-test:
     runs-on: ubuntu-latest
