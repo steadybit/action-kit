@@ -53,7 +53,7 @@ func newActionHttpAdapter[T any](action Action[T]) *actionHttpAdapter[T] {
 	}
 	var hasFileParameter bool
 	for _, parameter := range description.Parameters {
-		if parameter.Type == action_kit_api.File {
+		if parameter.Type == action_kit_api.ActionParameterTypeFile {
 			hasFileParameter = true
 			break
 		}

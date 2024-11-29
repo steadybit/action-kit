@@ -64,13 +64,13 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 			{
 				Name:         "duration",
 				Label:        "Duration",
-				Type:         action_kit_api.Duration,
+				Type:         action_kit_api.ActionParameterTypeDuration,
 				DefaultValue: extutil.Ptr("10s"),
 			},
 			{
 				Name:     "inputFile",
 				Label:    "Input File",
-				Type:     action_kit_api.File,
+				Type:     action_kit_api.ActionParameterTypeFile,
 				Required: extutil.Ptr(true),
 				AcceptedFileTypes: extutil.Ptr([]string{
 					".txt",
@@ -79,7 +79,7 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 			{
 				Name:     "inputFile2",
 				Label:    "Input File 2 (optional)",
-				Type:     action_kit_api.File,
+				Type:     action_kit_api.ActionParameterTypeFile,
 				Required: extutil.Ptr(false),
 				AcceptedFileTypes: extutil.Ptr([]string{
 					".txt",
