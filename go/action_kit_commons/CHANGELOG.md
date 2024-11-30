@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.13
+
+- feat: add configuration option to change namespace listing method
+
 ## 1.2.12
 
 - refa: add network.NoopOpts for testing purposes
