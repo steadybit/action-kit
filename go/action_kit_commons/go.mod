@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/moby/sys/capability v0.4.0
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.10.0
