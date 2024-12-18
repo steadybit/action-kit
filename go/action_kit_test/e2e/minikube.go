@@ -229,13 +229,13 @@ func WithDefaultMinikube(t *testing.T, ext ExtensionFactory, testCases []WithMin
 	WithMinikube(t, DefaultMinikubeOpts(), ext, testCases)
 }
 
-func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCases []WithMinikubeTestCase) {
+func WithMinikube(t *testing.T, mOpts MinikubeOpts, extFactory ExtensionFactory, testCases []WithMinikubeTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"})
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		err := ext.CreateImage()
+		err := extFactory.CreateImage()
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
@@ -268,9 +268,11 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, ext ExtensionFactory, testCa
 			}
 
 			wg.Wait()
-			extension, err := ext.Start(minikube)
+			extension, err := extFactory.Start(minikube)
+			if err != nil {
+				defer func() { _ = extension.stop() }()
+			}
 			require.NoError(t, err)
-			defer func() { _ = extension.stop() }()
 
 			for _, tc := range testCases {
 				t.Run(tc.Name, func(t *testing.T) {
@@ -621,8 +623,7 @@ func (m *Minikube) PortForward(pod metav1.Object, remotePort uint16, stopCh <-ch
 
 	chErr := make(chan error)
 	go func() {
-		err = forwarder.ForwardPorts()
-		if err != nil {
+		if err = forwarder.ForwardPorts(); err != nil {
 			chErr <- err
 		}
 	}()
@@ -659,9 +660,13 @@ func (m *Minikube) ListPods(ctx context.Context, namespace, matchLabels string) 
 
 func (m *Minikube) TailLogPrefixed(ctx context.Context, pod metav1.Object, prefix string) {
 	reader, err := m.GetClient().CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &corev1.PodLogOptions{Follow: true}).Stream(ctx)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		log.Error().Err(err).Msg("failed to tail logs")
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			log.Error().Err(err).Msg("failed to tail logs")
+		}
+		return
 	}
+
 	defer func() { _ = reader.Close() }()
 
 	_, err = io.Copy(&prefixWriter{prefix: []byte(prefix), w: os.Stdout}, reader)

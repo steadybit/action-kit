@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- Add options to reconfigure the extension without restarting minikube
+
 ## 1.3.0
 
 - Update to golang 1.23

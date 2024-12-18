@@ -1,6 +1,9 @@
 module github.com/steadybit/action-kit/go/action_kit_test
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.4
+
 require (
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/go-resty/resty/v2 v2.16.2
