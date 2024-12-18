@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -262,7 +263,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
-	if err := bundle.EditSpec(
+	editors := []runc.SpecEditor{
 		runc.WithHostname(containerId),
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
@@ -271,18 +272,24 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
-		runc.WithCapabilities("CAP_SYS_RESOURCE"),
 		runc.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
-	); err != nil {
-		return nil, err
 	}
 
-	success = true
+	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
+		editors = append(editors, runc.WithCapabilities("CAP_SYS_RESOURCE"))
+	} else {
+		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
+	}
 
+	if err := bundle.EditSpec(editors...); err != nil {
+		return nil, err
+	}
+	
+	success = true
 	return bundle, nil
 }
 

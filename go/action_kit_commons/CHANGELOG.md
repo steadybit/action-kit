@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.14
+
+- feat: make cap_sys_resource optional for resource attacks
+
 ## 1.2.13
 
 - feat: add configuration option to change namespace listing method
