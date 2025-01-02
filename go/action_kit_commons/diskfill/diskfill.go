@@ -272,6 +272,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
+		runc.WithCapabilities("CAP_DAC_OVERRIDE"),
 		runc.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
@@ -288,7 +289,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 	if err := bundle.EditSpec(editors...); err != nil {
 		return nil, err
 	}
-	
+
 	success = true
 	return bundle, nil
 }

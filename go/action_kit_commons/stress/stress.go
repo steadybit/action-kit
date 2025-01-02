@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -98,7 +99,11 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 		}
 	}
 
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)
+	dcmd, _ := runc.RootCommandContext(ctx, "nsenter", "-t", "1", "-m", "--", "/bin/sh -c 'echo BEGIN-mounts-in-init; cat /proc/self/mounts | grep \" / \"; ls -la /; echo END-mounts-in-init;'").CombinedOutput()
+	log.Trace().Str("output", string(dcmd)).Msg("mounts in init")
+
+	dcmd, _ = runc.RootCommandContext(ctx, "/bin/sh", "-c", ",echo BEGIN-mounts-in-ext; cat /proc/self/mounts | grep \" / \"; ls -la "+filepath.Join(bundle.Path(), "rootfs", mountPointInContainer)+"; echo END-mounts-in-ext;'").CombinedOutput()
+	log.Trace().Str("output", string(dcmd)).Msg("mounts in extension")
 
 	processArgs := append([]string{"stress-ng"}, opts.Args()...)
 
@@ -112,6 +117,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
 		runc.WithDisableOOMKiller(),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)),
+		runc.WithCapabilities("CAP_DAC_OVERRIDE"),
 		runc.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
