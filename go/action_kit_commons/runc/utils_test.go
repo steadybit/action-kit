@@ -2,6 +2,7 @@ package runc
 
 import (
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -80,9 +81,9 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 	}
 }
 
-func fakeExecuteRefresh(_ context.Context, inode uint64, _ string) string {
+func fakeExecuteRefresh(_ context.Context, inode uint64, _ string) (string, error) {
 	if inode == presentInode {
-		return resolvedPath
+		return resolvedPath, nil
 	}
-	return ""
+	return "", fmt.Errorf("refresh error")
 }

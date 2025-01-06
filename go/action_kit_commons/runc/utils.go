@@ -213,15 +213,16 @@ func executeListNamespaceLsns(ctx context.Context, pid int, types ...string) ([]
 
 func executeLsns(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 	var lastErr error
-	var sout bytes.Buffer
+	var sout, serr bytes.Buffer
 	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
 	for attempts := 0; attempts < 5; attempts++ {
 		cmd := RootCommandContext(ctx, "lsns", args...)
 		cmd.Stdout = &sout
+		cmd.Stderr = &serr
 		if err := cmd.Run(); err == nil {
 			break
 		} else {
-			lastErr = err
+			lastErr = fmt.Errorf("error executing lsns: out: %s; err:%s; cause: %w", sout.String(), serr.String(), err)
 			sout.Reset()
 			var exiterr *exec.ExitError
 			if errors.As(err, &exiterr) && exiterr.ExitCode() != 1 {
@@ -271,11 +272,17 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...stri
 			continue
 		}
 		// Find namespace started by a lower pid to point to a potentially more stable path.
-		path := executeRefreshNamespace(ctx, inode, nsType)
-		if path == "" {
+		path, err := executeRefreshNamespace(ctx, inode, nsType)
+		if err != nil {
 			// No better namespace found, build up path manually.
 			// nsPaths can not be used, as it may contain missing types and, hence, no result
 			// in the readlink response.
+			log.Warn().
+				Err(err).
+				Str("type", nsType).
+				Int("pid", pid).
+				Uint64("inode", inode).
+				Msg("failed refreshing namespace")
 			path = fmt.Sprintf("/proc/%d/ns/%s", pid, nsType)
 		}
 		ns := LinuxNamespace{
@@ -336,7 +343,7 @@ func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType .
 		RefreshNamespace(ctx, &ns)
 
 		if _, err := os.Lstat(ns.Path); err != nil && os.IsNotExist(err) {
-			return fmt.Errorf("namespace %s doesn't exist", ns.Path)
+			return fmt.Errorf("namespace %s doesn't exist: %w", ns.Path, err)
 		}
 	}
 
@@ -365,9 +372,11 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		Uint64("inode", ns.Inode).
 		Msg("refreshing namespace")
 
-	nsPath := executeRefreshNamespace(ctx, ns.Inode, string(ns.Type))
-	if nsPath == "" {
-		log.Warn().Str("type", string(ns.Type)).
+	nsPath, err := executeRefreshNamespace(ctx, ns.Inode, string(ns.Type))
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("type", string(ns.Type)).
 			Str("path", ns.Path).
 			Uint64("inode", ns.Inode).
 			Msg("failed refreshing namespace")
@@ -378,45 +387,47 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 }
 
 // executeRefreshNamespaceLsns uses "lsns" to look up the namespace file path of the given inode and type.
-func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) string {
+func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) (string, error) {
 	out, err := executeLsns(ctx, strconv.FormatUint(inode, 10), "--type", ns, "--output=path", "--noheadings", "--notruncate")
 	if err != nil {
-		return ""
+		return "", err
 	}
 	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) != 1 {
 			continue
 		}
-		return fields[0]
+		return fields[0], nil
 	}
-	return ""
+	return "", fmt.Errorf("no namespace found by lsns, output: %s", out)
 }
 
 // executeRefreshNamespaceFilesystem looks up the path to the namespace file, referencing
 // the given inode and type, in /proc/*/ns with the lowest pid.
-func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, ns string) string {
+func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, ns string) (string, error) {
 	nsPaths, err := filepath.Glob(fmt.Sprintf("/proc/[0-9]*/ns/%s", ns))
 	if err != nil {
-		log.Trace().Err(err).Msgf("could not read ns glob")
-		return ""
+		return "", fmt.Errorf("failed to read ns glob: %w", err)
 	}
 	// Sort paths as procfs does not guarantee any order.
 	sort.Slice(nsPaths, func(i, j int) bool {
 		return nsPaths[i] < nsPaths[j]
 	})
+	processErrors := make([]error, 0, len(nsPaths))
 	for _, nsPath := range nsPaths {
 		links, err := executeReadlink(ctx, nsPath)
 		if err != nil {
+			processErrors = append(processErrors, err)
 			continue
 		}
 		for _, link := range links {
 			if _, i := parseInodeFromString(link); i == inode {
-				return nsPath
+				return nsPath, nil
 			}
 		}
+		processErrors = append(processErrors, fmt.Errorf("inode not found in %s, %v", nsPath, links))
 	}
-	return ""
+	return "", fmt.Errorf("failed to process ns paths: %v", processErrors)
 }
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
