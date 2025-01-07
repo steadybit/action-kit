@@ -141,6 +141,18 @@ func FilterNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []
 	return result
 }
 
+func RemoveNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []LinuxNamespace {
+	result := make([]LinuxNamespace, 0, len(ns))
+	for _, n := range ns {
+		for _, t := range types {
+			if n.Type != t {
+				result = append(result, n)
+			}
+		}
+	}
+	return result
+}
+
 type LinuxNamespace struct {
 	Type  specs.LinuxNamespaceType
 	Path  string
@@ -173,11 +185,78 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 		return nil, err
 	}
 
+	if len(types) == 0 || slices.Contains(types, "net") {
+		namedNamespace, err := executeListNamedNetworkNamespace(ctx, pid)
+		if err != nil && !errors.Is(err, exec.ErrNotFound) {
+			log.Warn().Err(err).Msgf("failed to list named network namespace for pid %d", pid)
+		}
+		if namedNamespace != nil {
+			namespaces = RemoveNamespaces(namespaces, specs.NetworkNamespace)
+			namespaces = append(namespaces, *namedNamespace)
+		}
+	}
+
 	sort.Slice(namespaces, func(i, j int) bool {
 		return namespaces[i].Inode < namespaces[j].Inode
 	})
 
 	return namespaces, nil
+}
+
+func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNamespace, error) {
+	var sout bytes.Buffer
+	cmd := RootCommandContext(ctx, "ip", "netns", "identify", strconv.Itoa(pid))
+	cmd.Stdout = &sout
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(sout.String(), "\n")
+	for _, line := range lines {
+		if line != "" {
+			path := fmt.Sprintf("/var/run/netns/%s", strings.TrimSpace(line))
+			inodes, err := executeReadInodes(ctx, path)
+			if err != nil {
+				return nil, err
+			}
+			if len(inodes) > 0 {
+				namespace := &LinuxNamespace{
+					Type:  specs.NetworkNamespace,
+					Path:  path,
+					Inode: inodes[0],
+				}
+				return namespace, nil
+			}
+		}
+	}
+	// No named network namespace found, that's fine.
+	return nil, nil
+}
+
+func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
+	var sout bytes.Buffer
+	args := []string{"-L", "-c", "%i"}
+	args = append(args, paths...)
+	cmd := RootCommandContext(ctx, "stat", args...)
+	cmd.Stdout = &sout
+	err := cmd.Run()
+	if err != nil {
+		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
+		return nil, err
+	}
+	var inodes []uint64
+	lines := strings.Split(sout.String(), "\n")
+	for _, line := range lines {
+		if line != "" {
+			inode, err := strconv.ParseUint(strings.TrimSpace(line), 10, 64)
+			if err != nil {
+				log.Trace().Err(err).Msgf("failed to parse inode %s", line)
+				continue
+			}
+			inodes = append(inodes, inode)
+		}
+	}
+	return inodes, nil
 }
 
 func executeListNamespaceLsns(ctx context.Context, pid int, types ...string) ([]LinuxNamespace, error) {
@@ -260,6 +339,7 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...stri
 	for _, nsType := range types {
 		nsPaths = append(nsPaths, fmt.Sprintf("/proc/%d/ns/%s", pid, nsType))
 	}
+	// Use readlink and not stat as the returned links contain the inode and namespace type.
 	links, err := executeReadlink(ctx, nsPaths...)
 	if err != nil {
 		// Don't return an error as the given pid could already be gone.
@@ -360,6 +440,11 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 
 func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 	if ns == nil || ns.Inode == 0 {
+		return
+	}
+
+	if strings.HasPrefix(ns.Path, "/var/run/netns") {
+		// named network namespace, no need to refresh
 		return
 	}
 
