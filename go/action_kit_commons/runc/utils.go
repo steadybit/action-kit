@@ -227,15 +227,15 @@ func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNames
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
-	if err != nil {
-		return nil, err
-	}
 
 	log.Trace().
 		Int("pid", pid).
 		Str("out", sout.String()).
 		Str("err", serr.String()).
-		Msgf("Executed ip command: %s %v", cmd.Path, cmd.Args)
+		Msgf("Executed ip command: %v", cmd.Args)
+	if err != nil {
+		return nil, err
+	}
 
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
@@ -264,21 +264,22 @@ func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNames
 
 func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 	var sout, serr bytes.Buffer
-	args := []string{"-L", "-c", "%i"}
+	args := []string{"-t", "1", "-m", "-n", "--", "stat", "-L", "-c", "%i"}
 	args = append(args, paths...)
-	cmd := RootCommandContext(ctx, "stat", args...)
+	cmd := RootCommandContext(ctx, "nsenter", args...)
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
-	if err != nil {
-		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
-		return nil, err
-	}
 
 	log.Trace().
 		Str("out", sout.String()).
 		Str("err", serr.String()).
-		Msgf("Executed stat command: %s %v", cmd.Path, cmd.Args)
+		Msgf("Executed stat command: %v", cmd.Args)
+
+	if err != nil {
+		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
+		return nil, err
+	}
 
 	var inodes []uint64
 	lines := strings.Split(sout.String(), "\n")
@@ -338,7 +339,7 @@ func executeLsns(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 			log.Trace().
 				Str("out", sout.String()).
 				Str("err", serr.String()).
-				Msgf("Executed lsns command: %s %v", cmd.Path, cmd.Args)
+				Msgf("Executed lsns command: %v", cmd.Args)
 			break
 		} else {
 			lastErr = fmt.Errorf("error executing lsns: out: %s; err:%s; cause: %w", sout.String(), serr.String(), err)
