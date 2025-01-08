@@ -32,12 +32,16 @@ type BackgroundState struct {
 
 var executeListNamespaces = executeListNamespaceLsns
 var executeRefreshNamespace = executeRefreshNamespaceLsns
+var netNsDir = "/var/run/netns"
 
 func init() {
 	if os.Getenv("STEADYBIT_EXTENSION_ENABLE_INTERNAL_NAMESPACE_RESOLUTION") != "" {
 		log.Info().Msgf("Enabling file based namespace handling")
 		executeListNamespaces = executeListNamespacesFilesystem
 		executeRefreshNamespace = executeRefreshNamespaceFilesystem
+	}
+	if os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR") != "" {
+		netNsDir = os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR")
 	}
 }
 
@@ -234,7 +238,7 @@ func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNames
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
 		if line != "" {
-			path := fmt.Sprintf("/var/run/netns/%s", strings.TrimSpace(line))
+			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(line))
 			inodes, err := executeReadInodes(ctx, path)
 			if err != nil {
 				return nil, err
@@ -477,7 +481,7 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		return
 	}
 
-	if strings.HasPrefix(ns.Path, "/var/run/netns") {
+	if strings.HasPrefix(ns.Path, netNsDir) {
 		log.Trace().
 			Str("type", string(ns.Type)).
 			Str("path", ns.Path).
