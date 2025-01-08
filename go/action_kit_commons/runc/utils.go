@@ -186,11 +186,21 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 	}
 
 	if len(types) == 0 || slices.Contains(types, "net") {
+		log.Trace().
+			Int("pid", pid).
+			Msgf("Listing named network namespace for pid %d", pid)
+
 		namedNamespace, err := executeListNamedNetworkNamespace(ctx, pid)
 		if err != nil && !errors.Is(err, exec.ErrNotFound) {
 			log.Warn().Err(err).Msgf("failed to list named network namespace for pid %d", pid)
 		}
 		if namedNamespace != nil {
+			log.Trace().
+				Int("pid", pid).
+				Str("type", string(namedNamespace.Type)).
+				Str("path", namedNamespace.Path).
+				Uint64("inode", namedNamespace.Inode).
+				Msgf("Found named network namespace for pid %d", pid)
 			namespaces = RemoveNamespaces(namespaces, specs.NetworkNamespace)
 			namespaces = append(namespaces, *namedNamespace)
 		}
@@ -200,17 +210,27 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 		return namespaces[i].Inode < namespaces[j].Inode
 	})
 
+	log.Debug().Msgf("Listed namespaces for pid %d and types %v: %+v", pid, types, namespaces)
+
 	return namespaces, nil
 }
 
 func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNamespace, error) {
-	var sout bytes.Buffer
+	var sout, serr bytes.Buffer
 	cmd := RootCommandContext(ctx, "ip", "netns", "identify", strconv.Itoa(pid))
 	cmd.Stdout = &sout
+	cmd.Stderr = &serr
 	err := cmd.Run()
 	if err != nil {
 		return nil, err
 	}
+
+	log.Trace().
+		Int("pid", pid).
+		Str("out", sout.String()).
+		Str("err", serr.String()).
+		Msgf("Executed ip command: %s %v", cmd.Path, cmd.Args)
+
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
 		if line != "" {
@@ -230,20 +250,30 @@ func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNames
 		}
 	}
 	// No named network namespace found, that's fine.
+	log.Trace().
+		Int("pid", pid).
+		Msgf("No named network namespace found for pid %d", pid)
 	return nil, nil
 }
 
 func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
-	var sout bytes.Buffer
+	var sout, serr bytes.Buffer
 	args := []string{"-L", "-c", "%i"}
 	args = append(args, paths...)
 	cmd := RootCommandContext(ctx, "stat", args...)
 	cmd.Stdout = &sout
+	cmd.Stderr = &serr
 	err := cmd.Run()
 	if err != nil {
 		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
 		return nil, err
 	}
+
+	log.Trace().
+		Str("out", sout.String()).
+		Str("err", serr.String()).
+		Msgf("Executed stat command: %s %v", cmd.Path, cmd.Args)
+
 	var inodes []uint64
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
@@ -299,6 +329,10 @@ func executeLsns(ctx context.Context, args ...string) (*bytes.Buffer, error) {
 		cmd.Stdout = &sout
 		cmd.Stderr = &serr
 		if err := cmd.Run(); err == nil {
+			log.Trace().
+				Str("out", sout.String()).
+				Str("err", serr.String()).
+				Msgf("Executed lsns command: %s %v", cmd.Path, cmd.Args)
 			break
 		} else {
 			lastErr = fmt.Errorf("error executing lsns: out: %s; err:%s; cause: %w", sout.String(), serr.String(), err)
@@ -444,15 +478,25 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 	}
 
 	if strings.HasPrefix(ns.Path, "/var/run/netns") {
-		// named network namespace, no need to refresh
+		log.Trace().
+			Str("type", string(ns.Type)).
+			Str("path", ns.Path).
+			Uint64("inode", ns.Inode).
+			Msg("named network namespace, no need to refresh")
 		return
 	}
 
 	if _, err := os.Lstat(ns.Path); err == nil {
+		log.Trace().
+			Str("type", string(ns.Type)).
+			Str("path", ns.Path).
+			Uint64("inode", ns.Inode).
+			Msg("namespace path still existing, no need to refresh")
 		return
 	}
 
-	log.Trace().Str("type", string(ns.Type)).
+	log.Trace().
+		Str("type", string(ns.Type)).
 		Str("path", ns.Path).
 		Uint64("inode", ns.Inode).
 		Msg("refreshing namespace")
@@ -467,6 +511,12 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 			Msg("failed refreshing namespace")
 		return
 	}
+
+	log.Trace().
+		Str("type", string(ns.Type)).
+		Str("path", ns.Path).
+		Uint64("inode", ns.Inode).
+		Msg("refreshed namespace")
 
 	ns.Path = nsPath
 }
