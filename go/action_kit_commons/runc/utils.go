@@ -220,8 +220,10 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 }
 
 func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNamespace, error) {
+	// Execute the ip with the network and mount namespaces of the root process
+	// to actually be able to list named network namespaces.
 	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "ip", "netns", "identify", strconv.Itoa(pid))
+	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-m", "-n", "--", "ip", "netns", "identify", strconv.Itoa(pid))
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
