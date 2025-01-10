@@ -28,44 +28,39 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	}
 
 	networkNamespaceName := "namespace-test"
-	cmd := RootCommandContext(context.Background(), "ip", "netns", "add", networkNamespaceName)
-	err := cmd.Run()
-	sout, _ := cmd.Output()
+	sout, err := RootCommandContext(context.Background(), "ip", "netns", "add", networkNamespaceName).CombinedOutput()
 	assert.NoErrorf(t, err, "Output: %q", sout)
-
-	// Verify named network namespace is discovered in lookup by starting a new process in that namespace.
-	control := make(chan struct{})
-	var process *exec.Cmd
-	go func() {
-		process = RootCommandContext(context.Background(), "ip", "netns", "exec", networkNamespaceName, "sh", "-c", "while : ; do sleep 1 ; done")
-		err = process.Start()
-		assert.NoError(t, err)
-		fmt.Printf("Started process in network namespace %q with pid %d\n", networkNamespaceName, cmd.Process.Pid)
-		control <- struct{}{}
-		<-control
-		defer process.Process.Kill()
+	defer func() {
+		_ = RootCommandContext(context.Background(), "ip", "netns", "delete", networkNamespaceName).Run()
 	}()
 
-	<-control
+	// Verify named network namespace is discovered in lookup by starting a new process in that namespace.
+	process := RootCommandContext(context.Background(), "ip", "netns", "exec", networkNamespaceName, "sleep", "60")
+	err = process.Start()
+	assert.NoError(t, err)
 	pid := process.Process.Pid
+	fmt.Printf("Started process in network namespace %q with pid %d\n", networkNamespaceName, pid)
+
 	executeListNamespaces = executeListNamespaceLsns
 	lsns, e := ListNamespaces(context.Background(), pid)
 	assert.NoError(t, e, "Could not list namespaces via lsns")
 	lsnsNet := FilterNamespaces(lsns, specs.NetworkNamespace)
-	assert.True(t, strings.HasPrefix(lsnsNet[0].Path, "/var/run/netns/"))
 
 	executeListNamespaces = executeListNamespacesFilesystem
 	fs, e := ListNamespaces(context.Background(), pid)
 	assert.NoError(t, e, "Could not list namespaces via the filesystem")
 	fsNet := FilterNamespaces(fs, specs.NetworkNamespace)
-	assert.True(t, strings.HasPrefix(fsNet[0].Path, "/var/run/netns/"))
 
 	assert.Equal(t, lsns, fs)
 
-	control <- struct{}{}
+	err = process.Process.Kill()
+	assert.NoError(t, err)
+	process.Wait()
+	fmt.Printf("Stopped process in network namespace %q with pid %d\n", networkNamespaceName, pid)
 
-	cmd = RootCommandContext(context.Background(), "ip", "netns", "delete", networkNamespaceName)
-	err = cmd.Run()
-	sout, _ = cmd.Output()
-	assert.NoErrorf(t, err, "Output: %q", sout)
+	RefreshNamespaces(context.Background(), lsnsNet, specs.NetworkNamespace)
+	assert.True(t, strings.HasPrefix(lsnsNet[0].Path, "/var/run/netns/"))
+
+	RefreshNamespaces(context.Background(), fsNet, specs.NetworkNamespace)
+	assert.True(t, strings.HasPrefix(fsNet[0].Path, "/var/run/netns/"))
 }
