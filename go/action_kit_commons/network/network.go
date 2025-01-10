@@ -197,62 +197,9 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 		return "", nil
 	}
 
-	id := getNextContainerId("ip", sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, "/", id)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to remove bundle")
-		}
-	}()
-
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
-
 	processArgs := append([]string{"ip", "-force", "-batch", "-"}, extraArgs...)
-	if err = bundle.EditSpec(
-		runc.WithHostname(fmt.Sprintf("ip-%s", id)),
-		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithProcessArgs(processArgs...),
-	); err != nil {
-		return "", err
-	}
 
-	log.Debug().Strs("cmds", cmds).Strs("extraArgs", extraArgs).Msg("running ip commands")
-	var outb, errb bytes.Buffer
-	err = r.Run(ctx, bundle, runc.IoOpts{
-		Stdin:  ToReader(cmds),
-		Stdout: &outb,
-		Stderr: &errb,
-	})
-	defer func() {
-		if err := r.Delete(context.Background(), id, true); err != nil {
-			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
-				level = zerolog.DebugLevel
-			}
-			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
-		}
-	}()
-	if err != nil {
-		log.Warn().
-			Str("output", outb.String()).Err(err).
-			Str("error", errb.String()).
-			Msg("failed to run ip commands")
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
-			log.Debug().Err(parsed).Msg("parsed error")
-			return "", parsed
-		}
-		return "", fmt.Errorf("%s ip failed: %w, output: %s, error: %s", id, err, outb.String(), errb.String())
-	}
-	log.Trace().
-		Str("output", outb.String()).
-		Str("error", errb.String()).
-		Msg("ran ip commands")
-	return outb.String(), nil
+	return executeInNetworkNamespace(ctx, r, sidecar, processArgs, cmds)
 }
 
 func logCurrentTcRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, s string) {
@@ -282,7 +229,51 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 		return "", nil
 	}
 
-	id := getNextContainerId("tc", sidecar.IdSuffix)
+	return executeInNetworkNamespace(ctx, r, sidecar, []string{"tc", "-force", "-batch", "-"}, cmds)
+}
+
+func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
+	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
+
+	if runc.HasNamedNetworkNamespace(sidecar.TargetProcess.Namespaces...) {
+		ns := ""
+		for _, n := range sidecar.TargetProcess.Namespaces {
+			if n.Type == specs.NetworkNamespace {
+				ns = n.Path
+				break
+			}
+		}
+
+		return executeInNamedNetworkUsingIpNetNs(ctx, ns, processArgs, cmds)
+	} else {
+		return executeInNetworkNamespaceUsingRunc(ctx, r, sidecar, processArgs, cmds)
+	}
+}
+
+func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, processArgs []string, cmds []string) (string, error) {
+	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
+
+	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
+	var outb, errb bytes.Buffer
+	cmd := runc.RootCommandContext(ctx, "ip", ipArgs...)
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	cmd.Stdin = ToReader(cmds)
+	err := cmd.Run()
+
+	if err != nil {
+		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
+			return "", parsed
+		}
+		return "", fmt.Errorf("netns exec failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+	}
+	return outb.String(), err
+}
+
+func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
+	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
+
+	id := getNextContainerId(processArgs[0], sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return "", err
@@ -293,11 +284,8 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 		}
 	}()
 
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
-
-	processArgs := []string{"tc", "-force", "-batch", "-"}
 	if err = bundle.EditSpec(
-		runc.WithHostname(fmt.Sprintf("tc-%s", id)),
+		runc.WithHostname(id),
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
@@ -306,12 +294,11 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 		return "", err
 	}
 
-	log.Debug().Strs("cmds", cmds).Msg("running tc commands")
-	var outb bytes.Buffer
+	var outb, errb bytes.Buffer
 	err = r.Run(ctx, bundle, runc.IoOpts{
 		Stdin:  ToReader(cmds),
 		Stdout: &outb,
-		Stderr: &outb,
+		Stderr: &errb,
 	})
 	defer func() {
 		if err := r.Delete(context.Background(), id, true); err != nil {
@@ -322,13 +309,14 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
 		}
 	}()
+
 	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(outb.Bytes())); parsed != nil {
+		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
 			return "", parsed
 		}
-		return "", fmt.Errorf("%s tc failed: %w, output: %s", id, err, outb.String())
+		return "", fmt.Errorf("%s failed: %w, output: %s, error: %s", id, err, outb.String(), errb.String())
 	}
-	return outb.String(), nil
+	return outb.String(), err
 }
 
 func getNetworkNsIdentifier(namespaces []runc.LinuxNamespace) string {

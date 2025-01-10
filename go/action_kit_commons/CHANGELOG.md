@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.15
+
+- fix: properly rollback network attacks in case an "orphaned" named network namespace are present
+
 ## 1.2.14
 
 - feat: make cap_sys_resource optional for resource attacks

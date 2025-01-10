@@ -30,9 +30,10 @@ type BackgroundState struct {
 	err    error
 }
 
+var netNsDir = "/var/run/netns"
 var executeListNamespaces = executeListNamespaceLsns
 var executeRefreshNamespace = executeRefreshNamespaceLsns
-var netNsDir = "/var/run/netns"
+var errorNsNotFound = errors.New("namespace not found")
 
 func init() {
 	if os.Getenv("STEADYBIT_EXTENSION_ENABLE_INTERNAL_NAMESPACE_RESOLUTION") != "" {
@@ -145,18 +146,6 @@ func FilterNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []
 	return result
 }
 
-func RemoveNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []LinuxNamespace {
-	result := make([]LinuxNamespace, 0, len(ns))
-	for _, n := range ns {
-		for _, t := range types {
-			if n.Type != t {
-				result = append(result, n)
-			}
-		}
-	}
-	return result
-}
-
 type LinuxNamespace struct {
 	Type  specs.LinuxNamespaceType
 	Path  string
@@ -189,27 +178,6 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 		return nil, err
 	}
 
-	if len(types) == 0 || slices.Contains(types, "net") {
-		log.Trace().
-			Int("pid", pid).
-			Msgf("Listing named network namespace for pid %d", pid)
-
-		namedNamespace, err := executeListNamedNetworkNamespace(ctx, pid)
-		if err != nil && !errors.Is(err, exec.ErrNotFound) {
-			log.Warn().Err(err).Msgf("failed to list named network namespace for pid %d", pid)
-		}
-		if namedNamespace != nil {
-			log.Trace().
-				Int("pid", pid).
-				Str("type", string(namedNamespace.Type)).
-				Str("path", namedNamespace.Path).
-				Uint64("inode", namedNamespace.Inode).
-				Msgf("Found named network namespace for pid %d", pid)
-			namespaces = RemoveNamespaces(namespaces, specs.NetworkNamespace)
-			namespaces = append(namespaces, *namedNamespace)
-		}
-	}
-
 	sort.Slice(namespaces, func(i, j int) bool {
 		return namespaces[i].Inode < namespaces[j].Inode
 	})
@@ -217,49 +185,6 @@ func ListNamespaces(ctx context.Context, pid int, types ...string) ([]LinuxNames
 	log.Debug().Msgf("Listed namespaces for pid %d and types %v: %+v", pid, types, namespaces)
 
 	return namespaces, nil
-}
-
-func executeListNamedNetworkNamespace(ctx context.Context, pid int) (*LinuxNamespace, error) {
-	// Execute the ip with the network and mount namespaces of the root process
-	// to actually be able to list named network namespaces.
-	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-m", "-n", "--", "ip", "netns", "identify", strconv.Itoa(pid))
-	cmd.Stdout = &sout
-	cmd.Stderr = &serr
-	err := cmd.Run()
-
-	log.Trace().
-		Int("pid", pid).
-		Str("out", sout.String()).
-		Str("err", serr.String()).
-		Msgf("Executed ip command: %v", cmd.Args)
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(sout.String(), "\n")
-	for _, line := range lines {
-		if line != "" {
-			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(line))
-			inodes, err := executeReadInodes(ctx, path)
-			if err != nil {
-				return nil, err
-			}
-			if len(inodes) > 0 {
-				namespace := &LinuxNamespace{
-					Type:  specs.NetworkNamespace,
-					Path:  path,
-					Inode: inodes[0],
-				}
-				return namespace, nil
-			}
-		}
-	}
-	// No named network namespace found, that's fine.
-	log.Trace().
-		Int("pid", pid).
-		Msgf("No named network namespace found for pid %d", pid)
-	return nil, nil
 }
 
 func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
@@ -364,6 +289,17 @@ func toRuncNamespaceType(t string) specs.LinuxNamespaceType {
 	}
 }
 
+func fromRuncNamespaceType(namespaceType specs.LinuxNamespaceType) string {
+	switch namespaceType {
+	case specs.NetworkNamespace:
+		return "net"
+	case specs.MountNamespace:
+		return "mnt"
+	default:
+		return string(namespaceType)
+	}
+}
+
 // nsTypes contains known namespace type names.
 // It does not fully match golang constants defined by type LinuxNamespaceType.
 var nsTypes = []string{
@@ -393,7 +329,7 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...stri
 			continue
 		}
 		// Find namespace started by a lower pid to point to a potentially more stable path.
-		path, err := executeRefreshNamespace(ctx, inode, nsType)
+		path, err := executeRefreshNamespaceFilesystem(ctx, inode, nsType)
 		if err != nil {
 			// No better namespace found, build up path manually.
 			// nsPaths can not be used, as it may contain missing types and, hence, no result
@@ -479,12 +415,18 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 	}
 }
 
+func HasNamedNetworkNamespace(namespaces ...LinuxNamespace) bool {
+	return slices.ContainsFunc(namespaces, func(ns LinuxNamespace) bool {
+		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netNsDir)
+	})
+}
+
 func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 	if ns == nil || ns.Inode == 0 {
 		return
 	}
 
-	if strings.HasPrefix(ns.Path, netNsDir) {
+	if HasNamedNetworkNamespace(*ns) {
 		log.Trace().
 			Str("type", string(ns.Type)).
 			Str("path", ns.Path).
@@ -508,7 +450,15 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		Uint64("inode", ns.Inode).
 		Msg("refreshing namespace")
 
-	nsPath, err := executeRefreshNamespace(ctx, ns.Inode, string(ns.Type))
+	nsPath, err := executeRefreshNamespace(ctx, ns.Inode, fromRuncNamespaceType(ns.Type))
+	if errors.Is(err, errorNsNotFound) && ns.Type == specs.NetworkNamespace {
+		log.Trace().
+			Str("type", string(ns.Type)).
+			Str("path", ns.Path).
+			Uint64("inode", ns.Inode).
+			Msg("refreshing namespace using named network namespace lookup")
+		nsPath, err = lookupNamedNetworkNamespace(ctx, ns.Inode)
+	}
 	if err != nil {
 		log.Warn().
 			Err(err).
@@ -519,20 +469,54 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		return
 	}
 
+	ns.Path = nsPath
+
 	log.Trace().
 		Str("type", string(ns.Type)).
 		Str("path", ns.Path).
 		Uint64("inode", ns.Inode).
 		Msg("refreshed namespace")
+}
 
-	ns.Path = nsPath
+func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (string, error) {
+	var sout, serr bytes.Buffer
+	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-m", "-n", "--", "ip", "netns")
+	cmd.Stdout = &sout
+	cmd.Stderr = &serr
+	err := cmd.Run()
+
+	log.Trace().
+		Str("out", sout.String()).
+		Str("err", serr.String()).
+		Msgf("Executed ip command: %v", cmd.Args)
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(sout.String(), "\n")
+	for _, line := range lines {
+		if line != "" {
+			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(line))
+			inodes, err := executeReadInodes(ctx, path)
+			if err != nil {
+				return "", err
+			}
+			for _, inode := range inodes {
+				if inode == targetInode {
+					return path, nil
+				}
+			}
+		}
+	}
+
+	return "", errorNsNotFound
 }
 
 // executeRefreshNamespaceLsns uses "lsns" to look up the namespace file path of the given inode and type.
 func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) (string, error) {
 	out, err := executeLsns(ctx, strconv.FormatUint(inode, 10), "--type", ns, "--output=path", "--noheadings", "--notruncate")
 	if err != nil {
-		return "", err
+		return "", errorNsNotFound
 	}
 	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
 		fields := strings.Fields(line)
@@ -541,7 +525,7 @@ func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) (
 		}
 		return fields[0], nil
 	}
-	return "", fmt.Errorf("no namespace found by lsns, output: %s", out)
+	return "", errorNsNotFound
 }
 
 // executeRefreshNamespaceFilesystem looks up the path to the namespace file, referencing
@@ -555,11 +539,9 @@ func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, ns str
 	sort.Slice(nsPaths, func(i, j int) bool {
 		return nsPaths[i] < nsPaths[j]
 	})
-	processErrors := make([]error, 0, len(nsPaths))
 	for _, nsPath := range nsPaths {
 		links, err := executeReadlink(ctx, nsPath)
 		if err != nil {
-			processErrors = append(processErrors, err)
 			continue
 		}
 		for _, link := range links {
@@ -567,9 +549,8 @@ func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, ns str
 				return nsPath, nil
 			}
 		}
-		processErrors = append(processErrors, fmt.Errorf("inode not found in %s, %v", nsPath, links))
 	}
-	return "", fmt.Errorf("failed to process ns paths: %v", processErrors)
+	return "", errorNsNotFound
 }
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
