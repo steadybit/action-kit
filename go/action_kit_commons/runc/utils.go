@@ -463,7 +463,7 @@ func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType .
 
 		RefreshNamespace(ctx, &ns)
 
-		if _, err := os.Lstat(ns.Path); err != nil && os.IsNotExist(err) {
+		if _, err := executeReadInodes(ctx, ns.Path); err != nil && os.IsNotExist(err) {
 			return fmt.Errorf("namespace %s doesn't exist: %w", ns.Path, err)
 		}
 	}

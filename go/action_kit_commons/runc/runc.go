@@ -283,7 +283,9 @@ func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
 }
 
 func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
-	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
+	// Enter network and mount namespaces as well, as the network could be a named network namespace
+	// which are located in /var/run/netns and otherwise not accessible.
+	nsenterArgs := []string{"-t", "1", "-C", "-n", "-m", "--", "runc"}
 	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
 	nsenterArgs = append(nsenterArgs, args...)
 	return RootCommandContext(ctx, "nsenter", nsenterArgs...)
