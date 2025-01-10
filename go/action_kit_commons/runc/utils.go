@@ -329,7 +329,7 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...stri
 			continue
 		}
 		// Find namespace started by a lower pid to point to a potentially more stable path.
-		path, err := executeRefreshNamespace(ctx, inode, nsType)
+		path, err := executeRefreshNamespaceFilesystem(ctx, inode, nsType)
 		if err != nil {
 			// No better namespace found, build up path manually.
 			// nsPaths can not be used, as it may contain missing types and, hence, no result
