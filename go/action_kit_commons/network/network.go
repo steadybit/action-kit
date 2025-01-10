@@ -232,9 +232,47 @@ func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cm
 	return executeInNetworkNamespace(ctx, r, sidecar, []string{"tc", "-force", "-batch", "-"}, cmds)
 }
 
-func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, stdin []string) (string, error) {
+func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
-	
+
+	if runc.HasNamedNetworkNamespace(sidecar.TargetProcess.Namespaces...) {
+		ns := ""
+		for _, n := range sidecar.TargetProcess.Namespaces {
+			if n.Type == specs.NetworkNamespace {
+				ns = n.Path
+				break
+			}
+		}
+
+		return executeInNamedNetworkUsingIpNetNs(ctx, ns, processArgs, cmds)
+	} else {
+		return executeInNetworkNamespaceUsingRunc(ctx, r, sidecar, processArgs, cmds)
+	}
+}
+
+func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, processArgs []string, cmds []string) (string, error) {
+	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
+
+	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
+	var outb, errb bytes.Buffer
+	cmd := runc.RootCommandContext(ctx, "ip", ipArgs...)
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	cmd.Stdin = ToReader(cmds)
+	err := cmd.Run()
+
+	if err != nil {
+		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
+			return "", parsed
+		}
+		return "", fmt.Errorf("netns exec failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+	}
+	return outb.String(), err
+}
+
+func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
+	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
+
 	id := getNextContainerId(processArgs[0], sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
@@ -256,10 +294,9 @@ func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar Sidecar
 		return "", err
 	}
 
-	log.Debug().Strs("stdin", stdin).Strs("processArgs", processArgs).Msg("running commands in network namespace")
 	var outb, errb bytes.Buffer
 	err = r.Run(ctx, bundle, runc.IoOpts{
-		Stdin:  ToReader(stdin),
+		Stdin:  ToReader(cmds),
 		Stdout: &outb,
 		Stderr: &errb,
 	})

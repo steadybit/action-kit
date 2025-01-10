@@ -415,12 +415,18 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 	}
 }
 
+func HasNamedNetworkNamespace(namespaces ...LinuxNamespace) bool {
+	return slices.ContainsFunc(namespaces, func(ns LinuxNamespace) bool {
+		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netNsDir)
+	})
+}
+
 func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 	if ns == nil || ns.Inode == 0 {
 		return
 	}
 
-	if strings.HasPrefix(ns.Path, netNsDir) {
+	if HasNamedNetworkNamespace(*ns) {
 		log.Trace().
 			Str("type", string(ns.Type)).
 			Str("path", ns.Path).
