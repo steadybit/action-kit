@@ -251,7 +251,7 @@ func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar Sidecar
 }
 
 func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, processArgs []string, cmds []string) (string, error) {
-	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
+	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
 
 	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
 	var outb, errb bytes.Buffer

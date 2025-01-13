@@ -452,12 +452,16 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 
 	nsPath, err := executeRefreshNamespace(ctx, ns.Inode, fromRuncNamespaceType(ns.Type))
 	if errors.Is(err, errorNsNotFound) && ns.Type == specs.NetworkNamespace {
-		log.Trace().
+		log.Info().
 			Str("type", string(ns.Type)).
 			Str("path", ns.Path).
 			Uint64("inode", ns.Inode).
 			Msg("refreshing namespace using named network namespace lookup")
 		nsPath, err = lookupNamedNetworkNamespace(ctx, ns.Inode)
+		log.Info().
+			Err(err).
+			Str("path", nsPath).
+			Msg("refreshed namespace using named network namespace lookup")
 	}
 	if err != nil {
 		log.Warn().

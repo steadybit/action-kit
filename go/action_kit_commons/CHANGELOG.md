@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.16
+
+- chore: improve log handling in case of "orphaned" named network namespaces
+
 ## 1.2.15
 
 - fix: properly rollback network attacks in case an "orphaned" named network namespace are present
