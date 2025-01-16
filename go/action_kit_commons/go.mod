@@ -3,6 +3,7 @@ module github.com/steadybit/action-kit/go/action_kit_commons
 go 1.22
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/moby/sys/capability v0.4.0
 	github.com/opencontainers/runtime-spec v1.2.0

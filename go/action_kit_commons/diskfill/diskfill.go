@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
@@ -236,10 +237,11 @@ type SidecarOpts struct {
 	TargetProcess runc.LinuxProcessInfo
 	IdSuffix      string
 	ImagePath     string
+	ExecutionId   uuid.UUID
 }
 
 func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts, processArgs ...string) (runc.ContainerBundle, error) {
-	containerId := getNextContainerId(sidecar.IdSuffix)
+	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
@@ -288,11 +290,11 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 	if err := bundle.EditSpec(editors...); err != nil {
 		return nil, err
 	}
-	
+
 	success = true
 	return bundle, nil
 }
 
-func getNextContainerId(suffix string) string {
-	return fmt.Sprintf("sb-diskfill-%d-%s", time.Now().UnixMilli(), suffix)
+func getNextContainerId(executionId uuid.UUID, suffix string) string {
+	return fmt.Sprintf("sb-diskfill-%d-%s-%s", time.Now().UnixMilli(), executionId.String(), suffix)
 }
