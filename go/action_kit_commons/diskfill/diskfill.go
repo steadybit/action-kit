@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -296,5 +297,5 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 }
 
 func getNextContainerId(executionId uuid.UUID, suffix string) string {
-	return fmt.Sprintf("sb-diskfill-%d-%s-%s", time.Now().UnixMilli(), executionId.String(), suffix)
+	return fmt.Sprintf("sb-diskfill-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }

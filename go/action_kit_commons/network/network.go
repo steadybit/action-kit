@@ -335,7 +335,7 @@ func getNetworkNsIdentifier(namespaces []runc.LinuxNamespace) string {
 }
 
 func getNextContainerId(executionId uuid.UUID, tool, suffix string) string {
-	return fmt.Sprintf("sb-%s-%d-%s-%s", tool, time.Now().UnixMilli(), executionId, suffix)
+	return fmt.Sprintf("sb-%s-%d-%s-%s", tool, time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }
 
 // CondenseNetWithPortRange condenses a list of NetWithPortRange

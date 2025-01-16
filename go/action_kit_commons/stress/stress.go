@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	utils "github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"strconv"
 	"syscall"
 	"time"
@@ -140,7 +141,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 }
 
 func getNextContainerId(executionId uuid.UUID, suffix string) string {
-	return fmt.Sprintf("sb-stress-%d-%s-%s", time.Now().UnixMilli(), executionId.String(), suffix)
+	return fmt.Sprintf("sb-stress-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }
 
 func (s *Stress) Exited() (bool, error) {
