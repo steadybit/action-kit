@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.17
+
+- fix: improve container id to be unique by adding the execution id
+
 ## 1.2.16
 
 - chore: improve log handling in case of "orphaned" named network namespaces
