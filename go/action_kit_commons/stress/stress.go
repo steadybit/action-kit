@@ -7,11 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	utils "github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"strconv"
 	"syscall"
 	"time"
@@ -44,6 +46,7 @@ type SidecarOpts struct {
 	TargetProcess runc.LinuxProcessInfo
 	IdSuffix      string
 	ImagePath     string
+	ExecutionId   uuid.UUID
 }
 
 func (o *Opts) Args() []string {
@@ -73,7 +76,7 @@ func (o *Opts) Args() []string {
 }
 
 func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Stress, error) {
-	containerId := getNextContainerId(sidecar.IdSuffix)
+	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
 
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
@@ -137,8 +140,8 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 	}, nil
 }
 
-func getNextContainerId(suffix string) string {
-	return fmt.Sprintf("sb-stress-%d-%s", time.Now().UnixMilli(), suffix)
+func getNextContainerId(executionId uuid.UUID, suffix string) string {
+	return fmt.Sprintf("sb-stress-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }
 
 func (s *Stress) Exited() (bool, error) {

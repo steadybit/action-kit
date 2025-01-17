@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,7 @@ var (
 type SidecarOpts struct {
 	TargetProcess runc.LinuxProcessInfo
 	IdSuffix      string
+	ExecutionId   uuid.UUID
 }
 
 type ErrTooManyTcCommands struct {
@@ -273,7 +275,7 @@ func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, proces
 func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
 	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
 
-	id := getNextContainerId(processArgs[0], sidecar.IdSuffix)
+	id := getNextContainerId(sidecar.ExecutionId, processArgs[0], sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return "", err
@@ -332,8 +334,8 @@ func getNetworkNsIdentifier(namespaces []runc.LinuxNamespace) string {
 	return ""
 }
 
-func getNextContainerId(tool, suffix string) string {
-	return fmt.Sprintf("sb-%s-%d-%s", tool, time.Now().UnixMilli(), suffix)
+func getNextContainerId(executionId uuid.UUID, tool, suffix string) string {
+	return fmt.Sprintf("sb-%s-%d-%s-%s", tool, time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }
 
 // CondenseNetWithPortRange condenses a list of NetWithPortRange
