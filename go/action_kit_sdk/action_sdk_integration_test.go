@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
+//go:build !windows
 
 package action_kit_sdk
 
@@ -9,23 +10,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"reflect"
+	"runtime"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/exthttp"
-	"github.com/steadybit/extension-kit/extlogging"
 	"github.com/steadybit/extension-kit/extsignals"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"syscall"
-	"testing"
-	"time"
 )
 
 var (
@@ -46,6 +48,8 @@ type TestCase struct {
 }
 
 func Test_SDK(t *testing.T) {
+	defer resetDefaultServeMux()
+	defer extsignals.ClearSignalHandlers()
 	testCases := []TestCase{
 		{
 			Name: "should run a simple action",
@@ -74,16 +78,18 @@ func Test_SDK(t *testing.T) {
 	}
 	calls := make(chan Call, 1024)
 	defer close(calls)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	serverPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
 	action := NewExampleAction(calls)
 	go func(action *ExampleAction) {
-		extlogging.InitZeroLog()
+		// extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		extsignals.ActivateSignalHandlers()
+		extsignals.ActivateSignalHandlerWithContext(ctx)
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(action)
 	time.Sleep(1 * time.Second)
@@ -163,14 +169,22 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	state = op.start(t, state)
 	op.resetCalls()
 
-	err := syscall.Kill(os.Getpid(), syscall.SIGUSR1)
+	err := extsignals.Kill(os.Getpid())
+	fmt.Println("Process killed (catching events).") // Required for windows (for now).
 	require.NoError(t, err)
 	op.assertCall(t, "Stop", toExampleState(state))
 
 	statusResult := op.statusResult(t, state)
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
-	assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
+
+	if runtime.GOOS == "windows" {
+		fmt.Println("Windows: " + statusResult.Error.Title)
+		assert.Equal(t, "Action was stopped by extension: received signal CTRL_CLOSE_EVENT", statusResult.Error.Title)
+	} else {
+		fmt.Println("Linux: " + statusResult.Error.Title)
+		assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
+	}
 }
 
 func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
@@ -466,10 +480,16 @@ func (op *ActionOperations) assertCall(t *testing.T, name string, args ...interf
 				continue
 			}
 			actual := call.Args[i]
-			fmt.Printf("Expected: %v, Actual: %v", &expected, actual)
+			fmt.Printf("Expected: %v, Actual: %v", expected, actual)
 			assert.EqualValues(t, expected, actual)
 		}
 	case <-time.After(1 * time.Second):
 		assert.Fail(t, "No call to received", "Expected call to %s", name)
 	}
+}
+
+func resetDefaultServeMux() {
+	mux := http.DefaultServeMux
+	v := reflect.ValueOf(mux).Elem()
+	v.Set(reflect.Zero(v.Type()))
 }

@@ -259,7 +259,7 @@ func (nwp NetWithPortRange) Compare(b NetWithPortRange) int {
 	return 0
 }
 
-func (nwp NetWithPortRange) merge(b NetWithPortRange) NetWithPortRange {
+func (nwp NetWithPortRange) Merge(b NetWithPortRange) NetWithPortRange {
 	return NetWithPortRange{
 		Net:       mergeIPNet(nwp.Net, b.Net),
 		PortRange: nwp.PortRange.Merge(b.PortRange),

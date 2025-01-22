@@ -10,9 +10,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.7
-	github.com/steadybit/extension-kit v1.9.0
+	github.com/steadybit/extension-kit v1.9.1-0.20250411133512-f888a2252537
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sys v0.32.0
 )
 
 require (
@@ -36,6 +35,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
