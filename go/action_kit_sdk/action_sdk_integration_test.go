@@ -9,6 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -19,13 +26,6 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"syscall"
-	"testing"
-	"time"
 )
 
 var (
@@ -163,7 +163,7 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	state = op.start(t, state)
 	op.resetCalls()
 
-	err := syscall.Kill(os.Getpid(), syscall.SIGUSR1)
+	err := extsignals.Kill(os.Getpid())
 	require.NoError(t, err)
 	op.assertCall(t, "Stop", toExampleState(state))
 

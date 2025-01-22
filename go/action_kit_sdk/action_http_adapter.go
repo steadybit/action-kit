@@ -7,6 +7,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -16,13 +24,6 @@ import (
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extutil"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (
@@ -36,7 +37,7 @@ type actionHttpAdapter[T any] struct {
 	rootPath    string
 }
 
-func newActionHttpAdapter[T any](action Action[T]) *actionHttpAdapter[T] {
+func NewActionHttpAdapter[T any](action Action[T]) *actionHttpAdapter[T] {
 	description := getDescriptionWithDefaults(action)
 	adapter := &actionHttpAdapter[T]{
 		description: description,
