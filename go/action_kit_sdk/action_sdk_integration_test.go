@@ -475,7 +475,7 @@ func (op *ActionOperations) assertCall(t *testing.T, name string, args ...interf
 				continue
 			}
 			actual := call.Args[i]
-			fmt.Printf("Expected: %v, Actual: %v", &expected, actual)
+			fmt.Printf("Expected: %v, Actual: %v", expected, actual)
 			assert.EqualValues(t, expected, actual)
 		}
 	case <-time.After(1 * time.Second):
