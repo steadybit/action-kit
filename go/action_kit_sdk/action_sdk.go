@@ -78,7 +78,7 @@ func InstallSignalHandler(callbacks ...SignalHandlerCallBackFn) {
 	extsignals.Notify(signalChannel)
 	go func(signals <-chan os.Signal) {
 		for s := range signals {
-			signalName := extsignals.SignalName(s.(syscall.Signal))
+			signalName := extsignals.GetSignalName(s.(syscall.Signal))
 
 			log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
 			StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
