@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -170,7 +171,14 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	statusResult := op.statusResult(t, state)
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
-	assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
+
+	if runtime.GOOS == "windows" {
+		fmt.Println("Windows: " + statusResult.Error.Title)
+		assert.Equal(t, "Action was stopped by extension: received signal CTRL_CLOSE_EVENT", statusResult.Error.Title)
+	} else {
+		fmt.Println("Linux: " + statusResult.Error.Title)
+		assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
+	}
 }
 
 func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
