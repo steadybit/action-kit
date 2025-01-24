@@ -9,9 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"os/exec"
@@ -21,7 +18,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
+
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type BackgroundState struct {
@@ -121,17 +121,6 @@ func (r *BackgroundState) Wait() {
 	for !r.exited {
 		r.cond.Wait()
 	}
-}
-
-func RootCommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, name, arg...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: 0,
-			Gid: 0,
-		},
-	}
-	return cmd
 }
 
 func FilterNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []LinuxNamespace {
