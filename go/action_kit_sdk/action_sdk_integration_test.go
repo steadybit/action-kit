@@ -165,6 +165,7 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	op.resetCalls()
 
 	err := extsignals.Kill(os.Getpid())
+	fmt.Println("Process killed (catching events).") // Required for windows (for now).
 	require.NoError(t, err)
 	op.assertCall(t, "Stop", toExampleState(state))
 
