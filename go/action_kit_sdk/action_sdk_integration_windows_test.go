@@ -4,6 +4,7 @@
 package action_kit_sdk
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -22,12 +23,15 @@ import (
 )
 
 func TestWindowsSignals(t *testing.T) {
-	extsignals.RemoveSignalHandlersByName("Termination", "StopExtensionHTTP")
+	defer resetDefaultServeMux()
+	defer extsignals.ClearSignalHandlers()
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
 	calls := make(chan Call, 1024)
 	defer close(signalChannel)
 	defer close(calls)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	action := NewExampleAction(calls)
 	serverPort, err := freeport.GetFreePort()
@@ -37,10 +41,11 @@ func TestWindowsSignals(t *testing.T) {
 		extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		extsignals.ActivateSignalHandlers()
+		extsignals.ActivateSignalHandlerWithContext(ctx)
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(action)
 	time.Sleep(1 * time.Second)
+	extsignals.RemoveSignalHandlersByName("Termination", "StopExtensionHTTP")
 
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
 	actionPath := listExtension(t, basePath)
@@ -75,6 +80,7 @@ func TestWindowsSignals(t *testing.T) {
 	require.NoError(t, err)
 	wg.Wait()
 	op.assertCall(t, "Stop", toExampleState(state))
-	time.Sleep(30 * time.Second)
+	signal.Stop(signalChannel)
 	fmt.Println("Done")
+	time.Sleep(10 * time.Second)
 }

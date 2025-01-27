@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/exthttp"
-	"github.com/steadybit/extension-kit/extlogging"
 	"github.com/steadybit/extension-kit/extsignals"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
@@ -47,6 +47,8 @@ type TestCase struct {
 }
 
 func Test_SDK(t *testing.T) {
+	defer resetDefaultServeMux()
+	defer extsignals.ClearSignalHandlers()
 	testCases := []TestCase{
 		{
 			Name: "should run a simple action",
@@ -75,16 +77,18 @@ func Test_SDK(t *testing.T) {
 	}
 	calls := make(chan Call, 1024)
 	defer close(calls)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	serverPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
 	action := NewExampleAction(calls)
 	go func(action *ExampleAction) {
-		extlogging.InitZeroLog()
+		// extlogging.InitZeroLog()
 		RegisterAction(action)
 		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		extsignals.ActivateSignalHandlers()
+		extsignals.ActivateSignalHandlerWithContext(ctx)
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(action)
 	time.Sleep(1 * time.Second)
@@ -481,4 +485,10 @@ func (op *ActionOperations) assertCall(t *testing.T, name string, args ...interf
 	case <-time.After(1 * time.Second):
 		assert.Fail(t, "No call to received", "Expected call to %s", name)
 	}
+}
+
+func resetDefaultServeMux() {
+	mux := http.DefaultServeMux
+	v := reflect.ValueOf(mux).Elem()
+	v.Set(reflect.Zero(v.Type()))
 }
