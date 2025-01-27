@@ -4,13 +4,14 @@
 package heartbeat
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestHeartbeat_should_timeout(t *testing.T) {
+func TestSDKHeartbeat_should_timeout(t *testing.T) {
 	ch := make(chan time.Time)
 	hb := Notify(ch, 300*time.Millisecond, 150*time.Millisecond)
 	defer hb.Stop()
