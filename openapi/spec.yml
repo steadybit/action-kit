@@ -824,19 +824,6 @@ components:
       required:
         - type
         - content
-    DurationUnit:
-      type: string
-      enum:
-        - milliseconds
-        - seconds
-        - minutes
-        - hours
-        - days
-        - weeks
-        - months
-      description: >-
-        Specifies the units that are accepted for parameters of type 'duration'.
-        Defaults are 'milliseconds', 'seconds', 'minutes'.
     ActionParameter:
       properties:
         label:
@@ -979,6 +966,27 @@ components:
         internally, e.g., waiting for a deployment to finish, and
         externally, e.g., waiting for a user-specified time to pass,
         controlled durations.
+    DurationUnit:
+      type: string
+      enum:
+        - milliseconds
+        - seconds
+        - minutes
+        - hours
+        - days
+        - weeks
+        - months
+      x-enum-varnames:
+        - DurationUnitMilliseconds
+        - DurationUnitSeconds
+        - DurationUnitMinutes
+        - DurationUnitHours
+        - DurationUnitDays
+        - DurationUnitWeeks
+        - DurationUnitMonths
+      description: >-
+        Specifies the units that are accepted for parameters of type 'duration'.
+        Defaults are 'milliseconds', 'seconds', 'minutes'.
     TimestampSource:
       type: string
       enum:
