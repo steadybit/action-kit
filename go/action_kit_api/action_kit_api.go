@@ -270,10 +270,20 @@ type ActionList struct {
 	Actions []DescribingEndpointReference `json:"actions"`
 }
 
+type DurationUnit string
+const DurationUnitMilliseconds DurationUnit = "ms"
+const DurationUnitSeconds DurationUnit = "s"
+const DurationUnitMinutes DurationUnit = "m"
+const DurationUnitHours DurationUnit = "h"
+const DurationUnitDays DurationUnit = "d"
+
 // ActionParameter defines model for ActionParameter.
 type ActionParameter struct {
 	// AcceptedFileTypes Unique file type specifiers describing what type of files are accepted for parameters of type 'file'.
 	AcceptedFileTypes *[]string `json:"acceptedFileTypes,omitempty"`
+
+	// DurationUnits Specifies the units that are accepted for parameters of type 'duration'. Defaults are 'ms', 's', 'm'. Valid values are 'ms', 's', 'm', 'h', 'd'.
+	DurationUnits *[]DurationUnit `json:"durationUnits,omitempty"`
 
 	// Advanced Whether this parameter should be placed under the expandable advanced section within the user interface.
 	Advanced *bool `json:"advanced,omitempty"`
