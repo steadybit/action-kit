@@ -69,6 +69,8 @@ milliseconds to extensions.
 **Note:** Make sure to name the field `duration` should you desire that the experiment editor uses a duration field to
 visualize the expected length of an action.
 
+The default units are milliseconds, seconds and minutes. You can override the default units by setting the `DurationUnits` property.
+
 <img src="img/parameters/duration.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a duration parameter looks like. Depicting a textual label and an input for a numeric value followed by a time unit selector." />
 
 ### Example
