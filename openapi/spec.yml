@@ -824,6 +824,19 @@ components:
       required:
         - type
         - content
+    DurationUnit:
+      type: string
+      enum:
+        - milliseconds
+        - seconds
+        - minutes
+        - hours
+        - days
+        - weeks
+        - months
+      description: >-
+        Specifies the units that are accepted for parameters of type 'duration'.
+        Defaults are 'milliseconds', 'seconds', 'minutes'.
     ActionParameter:
       properties:
         label:
@@ -909,6 +922,12 @@ components:
           description: "Unique file type specifiers describing what type of files are accepted for parameters of type 'file'."
           items:
             type: string
+          uniqueItems: true
+        durationUnits:
+          type: array
+          description: "DurationUnits Specifies the units that are accepted for parameters of type 'duration'. Defaults are 'milliseconds', 'seconds', 'minutes'."
+          items:
+            $ref: '#/components/schemas/DurationUnit'
           uniqueItems: true
         hint:
           $ref: '#/components/schemas/ActionHint'
