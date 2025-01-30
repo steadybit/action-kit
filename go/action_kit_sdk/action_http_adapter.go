@@ -64,6 +64,12 @@ func newActionHttpAdapter[T any](action Action[T]) *actionHttpAdapter[T] {
 	if description.TimeControl == action_kit_api.TimeControlInternal && !adapter.hasStatus() {
 		log.Fatal().Msgf("Actions using TimeControl 'Internal' need to implement ActionWithStatus.")
 	}
+	if description.TimeControl == action_kit_api.TimeControlInstantaneous && adapter.hasStatus() {
+		log.Fatal().Msgf("Actions using TimeControl 'Instantaneous' should not implement ActionWithStatus.")
+	}
+	if description.TimeControl == action_kit_api.TimeControlInstantaneous && adapter.hasStop() {
+		log.Fatal().Msgf("Actions using TimeControl 'Instantaneous' should not implement ActionWithStop.")
+	}
 	return adapter
 }
 
