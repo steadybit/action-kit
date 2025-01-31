@@ -974,16 +974,12 @@ components:
         - minutes
         - hours
         - days
-        - weeks
-        - months
       x-enum-varnames:
         - DurationUnitMilliseconds
         - DurationUnitSeconds
         - DurationUnitMinutes
         - DurationUnitHours
         - DurationUnitDays
-        - DurationUnitWeeks
-        - DurationUnitMonths
       description: >-
         Specifies the units that are accepted for parameters of type 'duration'.
         Defaults are 'milliseconds', 'seconds', 'minutes'.
