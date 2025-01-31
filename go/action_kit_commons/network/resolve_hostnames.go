@@ -9,12 +9,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"os/exec"
 	"slices"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type DigRunner interface {
@@ -52,7 +53,7 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 	}
 
 	if len(invalid) > 0 {
-		return nil, fmt.Errorf("could not resolve hostnames: '%s'", strings.Join(unresolved, "', '"))
+		return nil, fmt.Errorf("could not resolve hostnames: '%s'", strings.Join(invalid, "', '"))
 	}
 
 	outb, err := h.Dig.Run(ctx, []string{"-f-", "+timeout=4", "+noall", "+nottlid", "+answer"}, strings.NewReader(sb.String()))
