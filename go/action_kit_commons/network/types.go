@@ -6,11 +6,12 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"net"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Mode string
@@ -32,6 +33,12 @@ var (
 type Opts interface {
 	IpCommands(family Family, mode Mode) ([]string, error)
 	TcCommands(mode Mode) ([]string, error)
+	String() string
+}
+
+type WinOpts interface {
+	FwCommands(family Family, mode Mode) ([]string, error)
+	QoSCommands(mode Mode) ([]string, error)
 	String() string
 }
 

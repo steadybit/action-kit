@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
@@ -7,9 +10,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
-	"strings"
 )
 
 type Interface struct {

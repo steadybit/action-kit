@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
+//go:build !windows
+// +build !windows
 
 package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type PackageLossOpts struct {
