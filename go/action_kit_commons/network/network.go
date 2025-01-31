@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
+//go:build !windows
+// +build !windows
 
 package network
 
@@ -8,17 +10,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"slices"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"os/exec"
-	"slices"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const maxTcCommands = 2048

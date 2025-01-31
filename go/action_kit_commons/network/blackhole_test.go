@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 /*
  * Copyright 2023 steadybit GmbH. All rights reserved.
  */
@@ -5,10 +8,11 @@
 package network
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"testing/iotest"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBlackholeOpts_IpCommands(t *testing.T) {

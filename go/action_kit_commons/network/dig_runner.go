@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
+//go:build !windows
+// +build !windows
+
 package network
 
 import (
@@ -8,12 +11,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"runtime/trace"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
-	"io"
-	"runtime/trace"
 )
 
 type RuncDigRunner struct {

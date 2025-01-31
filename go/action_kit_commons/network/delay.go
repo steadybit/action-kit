@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 
@@ -5,9 +8,10 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type DelayOpts struct {

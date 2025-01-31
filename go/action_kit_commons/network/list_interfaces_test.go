@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
@@ -5,9 +8,10 @@ package network
 
 import (
 	"context"
+	"testing"
+
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestHasCiliumIpRoutes(t *testing.T) {
