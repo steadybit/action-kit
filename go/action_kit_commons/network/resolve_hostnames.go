@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 /*
  * Copyright 2024 steadybit GmbH. All rights reserved.
  */
