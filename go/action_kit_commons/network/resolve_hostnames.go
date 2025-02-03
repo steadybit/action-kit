@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 /*
  * Copyright 2024 steadybit GmbH. All rights reserved.
  */
@@ -9,12 +12,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"os/exec"
 	"slices"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type DigRunner interface {
