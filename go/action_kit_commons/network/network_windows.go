@@ -68,17 +68,9 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		}
 	}
 
-	// if len(fwCommandsV4) > 0 {
-	// 	logCurrentFwRules(ctx, FamilyV4, "before")
-	// }
-
-	// if len(fwCommandsV6) > 0 {
-	// 	logCurrentFwRules(ctx, FamilyV6, "before")
-	// }
-
-	// if len(qosCommands) > 0 {
-	// 	logCurrentQoSRules(ctx, "before")
-	// }
+	if len(fwCommandsV4) > 0 || len(fwCommandsV6) > 0 {
+		logCurrentFwRules(ctx, "before")
+	}
 
 	if len(fwCommandsV4) > 0 {
 		if _, ipErr := executeFwCommands(ctx, fwCommandsV4); ipErr != nil {
@@ -98,17 +90,9 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		}
 	}
 
-	// if len(fwCommandsV4) > 0 {
-	// 	logCurrentFwRules(ctx, FamilyV4, "after")
-	// }
-
-	// if len(fwCommandsV6) > 0 {
-	// 	logCurrentFwRules(ctx, FamilyV6, "after")
-	// }
-
-	// if len(qosCommands) > 0 {
-	// 	logCurrentQoSRules(ctx, "after")
-	// }
+	if len(fwCommandsV4) > 0 || len(fwCommandsV6) > 0 {
+		logCurrentFwRules(ctx, "after")
+	}
 
 	if mode == ModeDelete {
 		popActiveFw("windows", opts)
@@ -117,17 +101,21 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	return err
 }
 
-func logCurrentFwRules(ctx context.Context, family Family, when string) {
+func logCurrentFwRules(ctx context.Context, when string) {
 	if !log.Trace().Enabled() {
 		return
 	}
+	var outb, errb bytes.Buffer
+	cmd := exec.CommandContext(ctx, "powershell", "-Command", "Get-NetFirewallRule", "|", "Where-Object", "{ $_.DisplayName -like \"STEADYBIT*\" }")
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	err := cmd.Run()
 
-	stdout, err := executeFwCommands(ctx, []string{"rule show"}, "-family", string(family))
 	if err != nil {
-		log.Trace().Err(err).Msg("failed to get current ip rules")
+		log.Trace().Err(err).Msg("failed to get current firewall rules")
 		return
 	} else {
-		log.Trace().Str("family", string(family)).Str("when", when).Str("rules", stdout).Msg("current ip rules")
+		log.Trace().Str("when", when).Str("rules", outb.String()).Msg("current fw rules")
 	}
 }
 
@@ -199,31 +187,7 @@ func executeIpCommandsImpl(ctx context.Context, cmds []string, extraArgs ...stri
 		return "", nil
 	}
 
-	// processArgs := append([]string{"ip", "-force", "-batch", "-"}, extraArgs...)
-
 	return executeInNetwork(ctx, extraArgs, cmds)
-}
-
-func logCurrentQoSRules(ctx context.Context, s string) {
-	if !log.Trace().Enabled() {
-		return
-	}
-
-	stdout, err := executeQoSCommands(ctx, []string{"qdisc show"})
-	if err != nil {
-		log.Trace().Err(err).Msg("failed to get current tc rules")
-		return
-	} else {
-		log.Trace().Str("when", s).Str("rules", stdout).Msg("current tc qdisc")
-	}
-
-	stdout, err = executeQoSCommands(ctx, []string{"filter show"})
-	if err != nil {
-		log.Trace().Err(err).Msg("failed to get current tc rules")
-		return
-	} else {
-		log.Trace().Str("when", s).Str("rules", stdout).Msg("current tc filter")
-	}
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
@@ -235,7 +199,7 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 }
 
 func executeInNetwork(ctx context.Context, processArgs []string, cmds []string) (string, error) {
-	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
+	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network")
 
 	joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 	var outb, errb bytes.Buffer
