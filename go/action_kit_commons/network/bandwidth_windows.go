@@ -35,7 +35,7 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	if mode == ModeAdd {
 		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Default -PolicyStore ActiveStore -ThrottleRateActionBitsPerSecond %s", o.Bandwidth, o.Bandwidth))
 	} else {
-		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore -ActiveStore", o.Bandwidth))
+		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore", o.Bandwidth))
 	}
 
 	return cmds, nil
