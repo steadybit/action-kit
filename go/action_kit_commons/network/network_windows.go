@@ -72,6 +72,10 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		logCurrentFwRules(ctx, "before")
 	}
 
+	if len(qosCommands) > 0 {
+		logCurrentQoSRules(ctx, "before")
+	}
+
 	if len(fwCommandsV4) > 0 {
 		if _, ipErr := executeFwCommands(ctx, fwCommandsV4); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, fwCommandsV4))
@@ -94,6 +98,10 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		logCurrentFwRules(ctx, "after")
 	}
 
+	if len(qosCommands) > 0 {
+		logCurrentQoSRules(ctx, "after")
+	}
+
 	if mode == ModeDelete {
 		popActiveFw("windows", opts)
 	}
@@ -107,6 +115,24 @@ func logCurrentFwRules(ctx context.Context, when string) {
 	}
 	var outb, errb bytes.Buffer
 	cmd := exec.CommandContext(ctx, "powershell", "-Command", "Get-NetFirewallRule", "|", "Where-Object", "{ $_.DisplayName -like \"STEADYBIT*\" }")
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	err := cmd.Run()
+
+	if err != nil {
+		log.Trace().Err(err).Msg("failed to get current firewall rules")
+		return
+	} else {
+		log.Trace().Str("when", when).Str("rules", outb.String()).Msg("current fw rules")
+	}
+}
+
+func logCurrentQoSRules(ctx context.Context, when string) {
+	if !log.Trace().Enabled() {
+		return
+	}
+	var outb, errb bytes.Buffer
+	cmd := exec.CommandContext(ctx, "powershell", "-Command", "Get-NetQosPolicy", "-PolicyStore", "ActiveStore", "|", "Where-Object", "{ $_.Name -like \"STEADYBIT*\" }")
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	err := cmd.Run()
