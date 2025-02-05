@@ -13,8 +13,7 @@ import (
 
 type LimitBandwidthOpts struct {
 	Filter
-	Bandwidth  string
-	Interfaces []string
+	Bandwidth string
 }
 
 func (o *LimitBandwidthOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -33,9 +32,9 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	}
 
 	if mode == ModeAdd {
-		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Default -PolicyStore ActiveStore -ThrottleRateActionBitsPerSecond %s", o.Bandwidth, o.Bandwidth))
+		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Precedence 255 -Name STEADYBIT_QOS_%s -Default -PolicyStore ActiveStore -ThrottleRateActionBitsPerSecond %s", o.Bandwidth, o.Bandwidth))
 	} else {
-		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore", o.Bandwidth))
+		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:$false", o.Bandwidth))
 	}
 
 	return cmds, nil
@@ -45,9 +44,6 @@ func (o *LimitBandwidthOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("limit bandwidth to ")
 	sb.WriteString(o.Bandwidth)
-	sb.WriteString(" (interfaces: ")
-	sb.WriteString(strings.Join(o.Interfaces, ", "))
-	sb.WriteString(")")
 	writeStringForFilters(&sb, optimizeFilter(o.Filter))
 	return sb.String()
 }
