@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.2.17
+## 1.2.18
 
-- fix: improve container id to be unique by adding the execution id
+- feat: add utils.ReadCpusAllowedCount
 
 ## 1.2.16
 
