@@ -910,6 +910,12 @@ components:
           items:
             type: string
           uniqueItems: true
+        durationUnits:
+          type: array
+          description: "DurationUnits Specifies the units that are accepted for parameters of type 'duration'. Defaults are 'milliseconds', 'seconds', 'minutes'."
+          items:
+            $ref: '#/components/schemas/DurationUnit'
+          uniqueItems: true
         hint:
           $ref: '#/components/schemas/ActionHint'
         deprecated:
@@ -960,6 +966,23 @@ components:
         internally, e.g., waiting for a deployment to finish, and
         externally, e.g., waiting for a user-specified time to pass,
         controlled durations.
+    DurationUnit:
+      type: string
+      enum:
+        - milliseconds
+        - seconds
+        - minutes
+        - hours
+        - days
+      x-enum-varnames:
+        - DurationUnitMilliseconds
+        - DurationUnitSeconds
+        - DurationUnitMinutes
+        - DurationUnitHours
+        - DurationUnitDays
+      description: >-
+        Specifies the units that are accepted for parameters of type 'duration'.
+        Defaults are 'milliseconds', 'seconds', 'minutes'.
     TimestampSource:
       type: string
       enum:

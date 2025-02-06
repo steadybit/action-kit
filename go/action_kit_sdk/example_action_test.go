@@ -11,6 +11,7 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 )
 
+
 type Call struct {
 	Name string
 	Args []interface{}
@@ -66,6 +67,13 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 				Label:        "Duration",
 				Type:         action_kit_api.ActionParameterTypeDuration,
 				DefaultValue: extutil.Ptr("10s"),
+			},
+			{
+				Name:          "duration",
+				Label:         "Duration with custom units",
+				DurationUnits: extutil.Ptr([]action_kit_api.DurationUnit{action_kit_api.DurationUnitSeconds, action_kit_api.DurationUnitMinutes}),
+				Type:          action_kit_api.ActionParameterTypeDuration,
+				DefaultValue:  extutil.Ptr("10s"),
 			},
 			{
 				Name:     "inputFile",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.15
+
+- add optional `DurationUnits` to `ActionParameter` to allow the definition of the allowed / rendered units of the duration parameter
+
 ## 1.1.14
 
 - improve heartbeat handling
