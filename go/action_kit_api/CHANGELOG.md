@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.9.
+## 2.9.6
 
 - deprecated enum constants
 
