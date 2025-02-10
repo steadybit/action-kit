@@ -353,13 +353,18 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, types ...stri
 }
 
 func executeReadlink(ctx context.Context, nsPaths ...string) ([]string, error) {
-	var sout bytes.Buffer
+	var sout, serr bytes.Buffer
 	cmd := RootCommandContext(ctx, "readlink", nsPaths...)
 	cmd.Stdout = &sout
+	cmd.Stderr = &serr
 	err := cmd.Run()
 	if err != nil {
-		log.Trace().Err(err).Msgf("failed to execute readlink")
-		return nil, err
+		// If one of the given paths does not exist, readlink exits with code 1
+		// but still returns the available paths. Only log the error and proceed.
+		log.Trace().Err(err).
+			Str("out", sout.String()).
+			Str("err", serr.String()).
+			Msgf("Executed readlink")
 	}
 	lines := strings.Split(sout.String(), "\n")
 	var links []string
@@ -403,7 +408,6 @@ func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType .
 			return fmt.Errorf("namespace %s doesn't exist: %w", ns.Path, err)
 		}
 	}
-
 	return nil
 }
 
@@ -460,7 +464,9 @@ func RefreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 		nsPath, err = lookupNamedNetworkNamespace(ctx, ns.Inode)
 		log.Info().
 			Err(err).
+			Str("type", string(ns.Type)).
 			Str("path", nsPath).
+			Uint64("inode", ns.Inode).
 			Msg("refreshed namespace using named network namespace lookup")
 	}
 	if err != nil {
@@ -503,7 +509,8 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(line))
 			inodes, err := executeReadInodes(ctx, path)
 			if err != nil {
-				return "", err
+				// Ignore error, as named network namespace could have been removed.
+				continue
 			}
 			for _, inode := range inodes {
 				if inode == targetInode {
