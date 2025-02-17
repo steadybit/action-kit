@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -31,6 +32,8 @@ type BackgroundState struct {
 }
 
 var netNsDir = "/var/run/netns"
+var netNsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
+
 var executeListNamespaces = executeListNamespaceLsns
 var executeRefreshNamespace = executeRefreshNamespaceLsns
 var errorNsNotFound = errors.New("namespace not found")
@@ -506,7 +509,8 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
 		if line != "" {
-			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(line))
+			netNsName := netNsOutputCleanup.ReplaceAllString(line, "")
+			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(netNsName))
 			inodes, err := executeReadInodes(ctx, path)
 			if err != nil {
 				// Ignore error, as named network namespace could have been removed.
