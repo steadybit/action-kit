@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.19
+
+- fix: named network namespace lookup with unexpected name format
+
 ## 1.2.18
 
 - feat: add utils.ReadCpusAllowedCount
