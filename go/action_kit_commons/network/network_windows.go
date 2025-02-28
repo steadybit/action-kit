@@ -17,6 +17,13 @@ import (
 
 const maxFirewallRules = 1000
 
+type Shell = string
+
+const (
+	PowerShell Shell = "PowerShell"
+	CMD        Shell = "CMD"
+)
+
 var (
 	runLock = utils.NewHashedKeyMutex(10)
 
@@ -225,7 +232,7 @@ func executeIpCommandsImpl(ctx context.Context, cmds []string, extraArgs ...stri
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, extraArgs, cmds)
+	return executeInNetwork(ctx, extraArgs, cmds, PowerShell)
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
@@ -233,7 +240,7 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, []string{}, cmds)
+	return executeInNetwork(ctx, []string{}, cmds, PowerShell)
 }
 
 func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error) {
@@ -241,15 +248,20 @@ func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, []string{}, cmds)
+	return executeInNetwork(ctx, []string{}, cmds, CMD)
 }
 
-func executeInNetwork(ctx context.Context, processArgs []string, cmds []string) (string, error) {
+func executeInNetwork(ctx context.Context, processArgs []string, cmds []string, shell Shell) (string, error) {
 	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network")
 
 	joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 	var outb, errb bytes.Buffer
-	cmd := exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
+	var cmd *exec.Cmd
+	if shell == PowerShell {
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
+	} else {
+		cmd = exec.CommandContext(ctx, joinedCommands)
+	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	err := cmd.Run()
