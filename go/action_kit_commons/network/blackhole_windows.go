@@ -57,6 +57,10 @@ func (o *BlackholeOpts) QoSCommands(mode Mode) ([]string, error) {
 	return nil, nil
 }
 
+func (o *BlackholeOpts) WinDivertCommands(_ Mode) ([]string, error) {
+	return nil, nil
+}
+
 func (o *BlackholeOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("blocking traffic ")
