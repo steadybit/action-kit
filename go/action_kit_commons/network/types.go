@@ -39,6 +39,7 @@ type Opts interface {
 type WinOpts interface {
 	FwCommands(family Family, mode Mode) ([]string, error)
 	QoSCommands(mode Mode) ([]string, error)
+	WinDivertCommands(mode Mode) ([]string, error)
 	String() string
 }
 

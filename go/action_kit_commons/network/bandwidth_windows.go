@@ -20,6 +20,10 @@ func (o *LimitBandwidthOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
+func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
+	return nil, nil
+}
+
 func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	var cmds []string
 

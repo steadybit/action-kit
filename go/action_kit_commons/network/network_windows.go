@@ -68,6 +68,12 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		}
 	}
 
+	winDivertCommands, err := opts.WinDivertCommands(mode)
+
+	if err != nil {
+		return err
+	}
+
 	if len(fwCommandsV4) > 0 || len(fwCommandsV6) > 0 {
 		logCurrentFwRules(ctx, "before")
 	}
@@ -77,20 +83,26 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	}
 
 	if len(fwCommandsV4) > 0 {
-		if _, ipErr := executeFwCommands(ctx, fwCommandsV4); ipErr != nil {
-			err = errors.Join(err, FilterBatchErrors(ipErr, mode, fwCommandsV4))
+		if _, fwErr := executeFwCommands(ctx, fwCommandsV4); fwErr != nil {
+			err = errors.Join(err, FilterBatchErrors(fwErr, mode, fwCommandsV4))
 		}
 	}
 
 	if len(fwCommandsV6) > 0 {
-		if _, ipErr := executeFwCommands(ctx, fwCommandsV6); ipErr != nil {
-			err = errors.Join(err, FilterBatchErrors(ipErr, mode, fwCommandsV6))
+		if _, fwErr := executeFwCommands(ctx, fwCommandsV6); fwErr != nil {
+			err = errors.Join(err, FilterBatchErrors(fwErr, mode, fwCommandsV6))
 		}
 	}
 
 	if len(qosCommands) > 0 {
-		if _, tcErr := executeQoSCommands(ctx, qosCommands); tcErr != nil {
-			err = errors.Join(err, FilterBatchErrors(tcErr, mode, qosCommands))
+		if _, qosErr := executeQoSCommands(ctx, qosCommands); qosErr != nil {
+			err = errors.Join(err, FilterBatchErrors(qosErr, mode, qosCommands))
+		}
+	}
+
+	if len(winDivertCommands) > 0 {
+		if _, wdErr := executeWinDivertCommands(ctx, winDivertCommands); wdErr != nil {
+			err = errors.Join(err, FilterBatchErrors(wdErr, mode, winDivertCommands))
 		}
 	}
 
@@ -217,6 +229,14 @@ func executeIpCommandsImpl(ctx context.Context, cmds []string, extraArgs ...stri
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
+	if len(cmds) == 0 {
+		return "", nil
+	}
+
+	return executeInNetwork(ctx, []string{}, cmds)
+}
+
+func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
