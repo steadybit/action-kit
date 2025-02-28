@@ -232,7 +232,7 @@ func executeIpCommandsImpl(ctx context.Context, cmds []string, extraArgs ...stri
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, extraArgs, cmds, PowerShell)
+	return executeInNetwork(ctx, cmds, PowerShell)
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
@@ -240,7 +240,7 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, []string{}, cmds, PowerShell)
+	return executeInNetwork(ctx, cmds, PowerShell)
 }
 
 func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error) {
@@ -248,29 +248,26 @@ func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, []string{}, cmds, CMD)
+	return executeInNetwork(ctx, cmds, CMD)
 }
 
-func executeInNetwork(ctx context.Context, processArgs []string, cmds []string, shell Shell) (string, error) {
-	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network")
+func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, error) {
+	log.Info().Strs("cmds", cmds).Msg("running commands in network")
 
-	joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 	var outb, errb bytes.Buffer
 	var cmd *exec.Cmd
 	if shell == PowerShell {
+		joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
 	} else {
-		cmd = exec.CommandContext(ctx, joinedCommands)
+		cmd = exec.CommandContext(ctx, strings.Join(cmds, "&"))
 	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	err := cmd.Run()
 
 	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
-			return "", parsed
-		}
-		return "", fmt.Errorf("Invoke-Expression failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+		return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
 	}
 	return outb.String(), err
 }
