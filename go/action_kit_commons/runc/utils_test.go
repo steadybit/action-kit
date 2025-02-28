@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 )
@@ -61,7 +62,7 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 			}},
 		},
 		{
-			name: "resolv using lsns on non-existent path fails",
+			name: "resolve using lsns on non-existent path fails",
 			ns: []LinuxNamespace{{
 				Path:  nonExistentPath,
 				Inode: nonExistentInode,
@@ -77,6 +78,45 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			RefreshNamespaces(context.Background(), tt.ns)
 			assert.Equal(t, tt.wantedNs, tt.ns)
+		})
+	}
+}
+
+func Test_NamespaceExists(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("NamespaceExists tests only run on Linux")
+		return
+	}
+	pid := os.Getpid()
+
+	tests := []struct {
+		name          string
+		ns            []LinuxNamespace
+		expectedError error
+	}{
+		{
+			name: "existing namespace",
+			ns: []LinuxNamespace{{
+				Path: fmt.Sprintf("/proc/%d/ns/net", pid),
+			}},
+			expectedError: nil,
+		}, {
+			name: "missing namespace",
+			ns: []LinuxNamespace{{
+				Path: "/proc/65432/ns/net",
+			}},
+			expectedError: os.ErrNotExist,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := NamespacesExists(context.Background(), tt.ns)
+			if tt.expectedError == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.expectedError)
+			}
 		})
 	}
 }

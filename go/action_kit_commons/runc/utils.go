@@ -206,6 +206,13 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 
 	if err != nil {
 		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			exitCode := exitError.ExitCode()
+			if exitCode == 1 { // file does not exist
+				return nil, os.ErrNotExist
+			}
+		}
 		return nil, err
 	}
 
@@ -407,7 +414,7 @@ func NamespacesExists(ctx context.Context, namespaces []LinuxNamespace, nsType .
 
 		RefreshNamespace(ctx, &ns)
 
-		if _, err := executeReadInodes(ctx, ns.Path); err != nil && os.IsNotExist(err) {
+		if _, err := executeReadInodes(ctx, ns.Path); err != nil && errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("namespace %s doesn't exist: %w", ns.Path, err)
 		}
 	}
