@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
@@ -20,8 +21,8 @@ const maxFirewallRules = 1000
 type Shell = string
 
 const (
-	PowerShell Shell = "PowerShell"
-	CMD        Shell = "CMD"
+	PS       Shell = "PowerShell" // regular powershell.
+	PSInvoke Shell = "PSInvoke"   // powershell Invoke-Command
 )
 
 var (
@@ -225,14 +226,12 @@ func defaultIpv6Supported() bool {
 	return ipv6Supported
 }
 
-var executeFwCommands = executeIpCommandsImpl
-
-func executeIpCommandsImpl(ctx context.Context, cmds []string, extraArgs ...string) (string, error) {
+func executeFwCommands(ctx context.Context, cmds []string) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, cmds, PowerShell)
+	return executeInNetwork(ctx, cmds, PSInvoke)
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
@@ -240,7 +239,7 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, cmds, PowerShell)
+	return executeInNetwork(ctx, cmds, PSInvoke)
 }
 
 func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error) {
@@ -248,7 +247,7 @@ func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, cmds, CMD)
+	return executeInNetwork(ctx, cmds, PS)
 }
 
 func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, error) {
@@ -256,20 +255,33 @@ func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, 
 
 	var outb, errb bytes.Buffer
 	var cmd *exec.Cmd
-	if shell == PowerShell {
+	if shell == PSInvoke {
 		joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
-	} else {
-		cmd = exec.CommandContext(ctx, strings.Join(cmds, "&"))
-	}
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	err := cmd.Run()
+		cmd.Stdout = &outb
+		cmd.Stderr = &errb
 
-	if err != nil {
-		return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+		err := cmd.Run()
+
+		if err != nil {
+			return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+		}
+
+		return outb.String(), err
+	} else {
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", strings.Join(cmds, ";"))
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		err := cmd.Start()
+
+		if err != nil {
+			return "", fmt.Errorf("execution failed: %w", err)
+		}
+
+		return "", err
 	}
-	return outb.String(), err
+
 }
 
 // CondenseNetWithPortRange condenses a list of NetWithPortRange

@@ -43,7 +43,7 @@ func (o *DelayOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	}
 
 	if mode == ModeAdd {
-		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=\"%s\" --mode=delay --duration=%d --time=%d %s", specifiedFilter, int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
+		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=%q --mode=delay --duration=%d --time=%d %s", specifiedFilter, int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
 	} else {
 		cmds = append(cmds, "taskkill /f /t /im wdna.exe")
 		cmds = append(cmds, "sc stop windivert")
