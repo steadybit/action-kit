@@ -136,7 +136,7 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 				return "", err
 			}
 
-			config := fmt.Sprintf("((( {{.ipDstAddr}} < %s or {{.ipDstAddr}} > %s ) and %s)) or (( {{.ipSrcAddr}} < %s or {{.ipSrcAddr}} > %s ) and %s))",
+			config := fmt.Sprintf("((( {{.ipDstAddr}} < %s or {{.ipDstAddr}} > %s ) and %s) or (( {{.ipSrcAddr}} < %s or {{.ipSrcAddr}} > %s ) and %s))",
 				startIp.String(), endIp.String(), dstPortFilter, startIp.String(), endIp.String(), srcPortFilter)
 
 			tmpl, err := template.New("filter").Parse(config)
