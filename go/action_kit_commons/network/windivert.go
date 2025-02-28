@@ -147,7 +147,7 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 
 			tmpl.Execute(&sb, replaceMap)
 
-			if i < len(filter.Include)-1 {
+			if i < len(filter.Exclude)-1 {
 				sb.WriteString(" and ")
 			}
 		}

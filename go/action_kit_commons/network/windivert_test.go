@@ -86,3 +86,75 @@ func TestWinDivertBuildFilter3(t *testing.T) {
 
 	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))) and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ))) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
 }
+
+func TestWinDivertBuildFilter4(t *testing.T) {
+	net1, err := ParseCIDR("1.1.1.1/24")
+	require.NoError(t, err)
+	exemptNet, err := ParseCIDR("1.1.1.0")
+	require.NoError(t, err)
+	exemptNet2, err := ParseCIDR("1.1.1.1")
+	require.NoError(t, err)
+	f := Filter{
+		Include: []NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+		},
+		Exclude: []NetWithPortRange{
+			{
+				Net:       *exemptNet,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+			{
+				Net:       *exemptNet2,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+		},
+	}
+	filter, err := buildWinDivertFilter(f)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))"+
+		" and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ))) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))"+
+		" and ((( ip.DstAddr < 1.1.1.1 or ip.DstAddr > 1.1.1.1 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ))) or (( ip.SrcAddr < 1.1.1.1 or ip.SrcAddr > 1.1.1.1 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+}
+
+func TestWinDivertBuildFilter5(t *testing.T) {
+	net1, err := ParseCIDR("1.1.1.1/24")
+	require.NoError(t, err)
+	net2, err := ParseCIDR("1.1.2.1/24")
+	require.NoError(t, err)
+	exemptNet, err := ParseCIDR("1.1.1.0")
+	require.NoError(t, err)
+	f := Filter{
+		Include: []NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+			{
+				Net:       *net2,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+		},
+		Exclude: []NetWithPortRange{
+			{
+				Net:       *exemptNet,
+				Comment:   "",
+				PortRange: PortRange{From: 8000, To: 8002},
+			},
+		},
+	}
+	filter, err := buildWinDivertFilter(f)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))"+
+		" or (( ip.DstAddr >= 1.1.2.0 and ip.DstAddr <= 1.1.2.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.2.0 and ip.SrcAddr <= 1.1.2.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))"+
+		" and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ))) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+}
