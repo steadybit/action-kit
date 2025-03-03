@@ -46,8 +46,7 @@ func (o *DelayOpts) WinDivertCommands(mode Mode) ([]string, error) {
 
 	} else {
 		cmds = append(cmds, "taskkill /f /t /im wdna.exe")
-		cmds = append(cmds, "sc stop windivert")
-		cmds = append(cmds, "sc delete windivert")
+		cmds = append(cmds, "cmd /c sc stop windivert")
 	}
 
 	return cmds, nil
