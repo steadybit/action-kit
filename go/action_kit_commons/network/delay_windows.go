@@ -31,19 +31,19 @@ func (o *DelayOpts) QoSCommands(mode Mode) ([]string, error) {
 func (o *DelayOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
-	jitter := ""
-	if o.Jitter {
-		jitter = "--jitter"
-	}
-
-	specifiedFilter, err := buildWinDivertFilter(o.Filter)
-
-	if err != nil {
-		return []string{}, err
-	}
-
 	if mode == ModeAdd {
+		jitter := ""
+		if o.Jitter {
+			jitter = "--jitter"
+		}
+
+		specifiedFilter, err := buildWinDivertFilter(o.Filter)
+
+		if err != nil {
+			return []string{}, err
+		}
 		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=%q --mode=delay --duration=%d --time=%d %s", specifiedFilter, int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
+
 	} else {
 		cmds = append(cmds, "taskkill /f /t /im wdna.exe")
 		cmds = append(cmds, "sc stop windivert")
