@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.20
+
+- fix: properly check file not exist errors during namespace lookup
+
 ## 1.2.19
 
 - fix: named network namespace lookup with unexpected name format
