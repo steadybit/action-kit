@@ -274,11 +274,7 @@ func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, 
 			cmd.Stdout = &outb
 			cmd.Stderr = &errb
 			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			err := cmd.Run()
-
-			if err != nil {
-				fmt.Println(fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String()))
-			}
+			cmd.Run()
 		}()
 
 		return "", nil
