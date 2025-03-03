@@ -269,19 +269,20 @@ func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, 
 
 		return outb.String(), err
 	} else {
-		cmd = exec.CommandContext(ctx, "powershell", "-Command", strings.Join(cmds, ";"))
-		cmd.Stdout = nil
-		cmd.Stderr = nil
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		err := cmd.Start()
+		go func() {
+			cmd = exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
+			cmd.Stdout = &outb
+			cmd.Stderr = &errb
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			err := cmd.Run()
 
-		if err != nil {
-			return "", fmt.Errorf("execution failed: %w", err)
-		}
+			if err != nil {
+				fmt.Println(fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String()))
+			}
+		}()
 
-		return "", err
+		return "", nil
 	}
-
 }
 
 // CondenseNetWithPortRange condenses a list of NetWithPortRange
