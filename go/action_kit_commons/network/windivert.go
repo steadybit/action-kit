@@ -70,13 +70,11 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 
 	replaceMap := map[string]string{
 		"tcpDstPort": "tcp.DstPort",
-		"tcpSrcPort": "tcp.SrcPort",
 		"udpDstPort": "udp.DstPort",
-		"udpSrcPort": "udp.SrcPort",
 	}
 
-	portTemplateDst := "( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d )"
-	portTemplateSrc := "( {{.tcpSrcPort}} >= %d and {{.udpSrcPort}} <= %d )"
+	portTemplate := "(( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d ) or ( {{.udpDstPort}} >= %d and {{.udpDstPort}} <= %d ))"
+	portTemplateExclude := "(( not {{.tcpDstPort}} >= %d and not {{.tcpDstPort}} <= %d ) and ( not {{.udpDstPort}} >= %d and not {{.udpDstPort}} <= %d ))"
 
 	if len(filter.Include) > 0 {
 		sb.WriteString("(")
@@ -88,16 +86,14 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 			}
 
 			setCorrectReplacements(&replaceMap, family)
-			dstPortFilter := fmt.Sprintf(portTemplateDst, ran.PortRange.From, ran.PortRange.To)
-			srcPortFilter := fmt.Sprintf(portTemplateSrc, ran.PortRange.From, ran.PortRange.To)
+			portFilter := fmt.Sprintf(portTemplate, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
 			startIp, endIp, err := getStartEndIP(ran.Net)
 
 			if err != nil {
 				return "", err
 			}
 
-			config := fmt.Sprintf("(( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s and %s) or ( {{.ipSrcAddr}} >= %s and {{.ipSrcAddr}} <= %s and %s))",
-				startIp.String(), endIp.String(), dstPortFilter, startIp.String(), endIp.String(), srcPortFilter)
+			config := fmt.Sprintf("( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s and %s)", startIp.String(), endIp.String(), portFilter)
 
 			tmpl, err := template.New("filter").Parse(config)
 
@@ -128,16 +124,15 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 			}
 
 			setCorrectReplacements(&replaceMap, family)
-			dstPortFilter := fmt.Sprintf(portTemplateDst, ran.PortRange.From, ran.PortRange.To)
-			srcPortFilter := fmt.Sprintf(portTemplateSrc, ran.PortRange.From, ran.PortRange.To)
+			portFilter := fmt.Sprintf(portTemplateExclude, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
 			startIp, endIp, err := getStartEndIP(ran.Net)
 
 			if err != nil {
 				return "", err
 			}
 
-			config := fmt.Sprintf("((( {{.ipDstAddr}} < %s or {{.ipDstAddr}} > %s ) and %s) or (( {{.ipSrcAddr}} < %s or {{.ipSrcAddr}} > %s ) and %s))",
-				startIp.String(), endIp.String(), dstPortFilter, startIp.String(), endIp.String(), srcPortFilter)
+			config := fmt.Sprintf("(( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s )? %s: true)",
+				startIp.String(), endIp.String(), portFilter)
 
 			tmpl, err := template.New("filter").Parse(config)
 
