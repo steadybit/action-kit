@@ -39,8 +39,7 @@ func TestWinDivertBuildFilter1(t *testing.T) {
 	}
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
-
-	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "(( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 ))))", filter)
 }
 
 func TestWinDivertBuildFilter2(t *testing.T) {
@@ -57,7 +56,7 @@ func TestWinDivertBuildFilter2(t *testing.T) {
 	}
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
-	assert.Equal(t, "((( ipv6.DstAddr >= :: and ipv6.DstAddr <= ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ipv6.SrcAddr >= :: and ipv6.SrcAddr <= ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "(( ipv6.DstAddr >= :: and ipv6.DstAddr <= ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 ))))", filter)
 }
 
 func TestWinDivertBuildFilter3(t *testing.T) {
@@ -84,7 +83,7 @@ func TestWinDivertBuildFilter3(t *testing.T) {
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))) and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "(( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 )))) and ((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.0 )? (( not tcp.DstPort >= 8000 and not tcp.DstPort <= 8002 ) and ( not udp.DstPort >= 8000 and not udp.DstPort <= 8002 )): true))", filter)
 }
 
 func TestWinDivertBuildFilter4(t *testing.T) {
@@ -118,9 +117,9 @@ func TestWinDivertBuildFilter4(t *testing.T) {
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))"+
-		" and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))"+
-		" and ((( ip.DstAddr < 1.1.1.1 or ip.DstAddr > 1.1.1.1 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or (( ip.SrcAddr < 1.1.1.1 or ip.SrcAddr > 1.1.1.1 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "(( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 ))))"+
+		" and ((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.0 )? (( not tcp.DstPort >= 8000 and not tcp.DstPort <= 8002 ) and ( not udp.DstPort >= 8000 and not udp.DstPort <= 8002 )): true)"+
+		" and (( ip.DstAddr >= 1.1.1.1 and ip.DstAddr <= 1.1.1.1 )? (( not tcp.DstPort >= 8000 and not tcp.DstPort <= 8002 ) and ( not udp.DstPort >= 8000 and not udp.DstPort <= 8002 )): true))", filter)
 }
 
 func TestWinDivertBuildFilter5(t *testing.T) {
@@ -154,9 +153,9 @@ func TestWinDivertBuildFilter5(t *testing.T) {
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.1.0 and ip.SrcAddr <= 1.1.1.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 )))"+
-		" or (( ip.DstAddr >= 1.1.2.0 and ip.DstAddr <= 1.1.2.255 and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or ( ip.SrcAddr >= 1.1.2.0 and ip.SrcAddr <= 1.1.2.255 and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))"+
-		" and (((( ip.DstAddr < 1.1.1.0 or ip.DstAddr > 1.1.1.0 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or (( ip.SrcAddr < 1.1.1.0 or ip.SrcAddr > 1.1.1.0 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "(( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.255 and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 )))"+
+		" or ( ip.DstAddr >= 1.1.2.0 and ip.DstAddr <= 1.1.2.255 and (( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 ) or ( udp.DstPort >= 8000 and udp.DstPort <= 8002 ))))"+
+		" and ((( ip.DstAddr >= 1.1.1.0 and ip.DstAddr <= 1.1.1.0 )? (( not tcp.DstPort >= 8000 and not tcp.DstPort <= 8002 ) and ( not udp.DstPort >= 8000 and not udp.DstPort <= 8002 )): true))", filter)
 }
 
 func TestWinDivertBuildFilter6(t *testing.T) {
@@ -174,5 +173,5 @@ func TestWinDivertBuildFilter6(t *testing.T) {
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "(((( ip.DstAddr < 1.1.1.14 or ip.DstAddr > 1.1.1.14 ) and ( tcp.DstPort >= 8000 and tcp.DstPort <= 8002 )) or (( ip.SrcAddr < 1.1.1.14 or ip.SrcAddr > 1.1.1.14 ) and ( tcp.SrcPort >= 8000 and udp.SrcPort <= 8002 ))))", filter)
+	assert.Equal(t, "((( ip.DstAddr >= 1.1.1.14 and ip.DstAddr <= 1.1.1.14 )? (( not tcp.DstPort >= 8000 and not tcp.DstPort <= 8002 ) and ( not udp.DstPort >= 8000 and not udp.DstPort <= 8002 )): true))", filter)
 }
