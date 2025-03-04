@@ -74,7 +74,7 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 	}
 
 	portTemplate := "(( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d ) or ( {{.udpDstPort}} >= %d and {{.udpDstPort}} <= %d ))"
-	portTemplateExclude := "(( not {{.tcpDstPort}} >= %d and not {{.tcpDstPort}} <= %d ) and ( not {{.udpDstPort}} >= %d and not {{.udpDstPort}} <= %d ))"
+	portTemplateExclude := "(( {{.tcpDstPort}} < %d or {{.tcpDstPort}} > %d ) or ( {{.udpDstPort}} < %d or {{.udpDstPort}} > %d ))"
 
 	if len(filter.Include) > 0 {
 		sb.WriteString("(")
