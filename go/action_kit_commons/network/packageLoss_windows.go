@@ -13,9 +13,8 @@ import (
 
 type PackageLossOpts struct {
 	Filter
-	Loss       uint
-	Duration   time.Duration
-	Interfaces []string
+	Loss     uint
+	Duration time.Duration
 }
 
 func (o *PackageLossOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -36,10 +35,11 @@ func (o *PackageLossOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	}
 
 	if mode == ModeAdd {
-		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=\"%s\" --mode=drop --duration=%d --percentage=%d", specifiedFilter, o.Duration, 10))
+		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=%q --mode=drop --duration=%d --percentage=%d", specifiedFilter, int(o.Duration.Seconds()), o.Loss))
 
 	} else {
 		cmds = append(cmds, "taskkill /f /t /im wdna.exe")
+		cmds = append(cmds, "cmd /c sc stop windivert")
 	}
 
 	return cmds, nil
@@ -49,9 +49,6 @@ func (o *PackageLossOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("loosing packages of ")
 	sb.WriteString(fmt.Sprintf("%d%%", o.Loss))
-	sb.WriteString("(interfaces: ")
-	sb.WriteString(strings.Join(o.Interfaces, ", "))
-	sb.WriteString(")")
 	writeStringForFilters(&sb, optimizeFilter(o.Filter))
 	return sb.String()
 }

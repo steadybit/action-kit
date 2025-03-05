@@ -14,10 +14,9 @@ import (
 
 type DelayOpts struct {
 	Filter
-	Delay      time.Duration
-	Duration   time.Duration
-	Jitter     bool
-	Interfaces []string
+	Delay    time.Duration
+	Duration time.Duration
+	Jitter   bool
 }
 
 func (o *DelayOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
