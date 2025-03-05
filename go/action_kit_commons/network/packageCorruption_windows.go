@@ -17,11 +17,11 @@ type CorruptPackagesOpts struct {
 	Duration   time.Duration
 }
 
-func (o *CorruptPackagesOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *CorruptPackagesOpts) TcCommands(_ Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) QoSCommands(_ Mode) ([]string, error) {
 	return nil, nil
 }
 
