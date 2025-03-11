@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -15,8 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
-
-const maxFirewallRules = 1000
 
 type Shell = string
 
@@ -253,31 +252,28 @@ func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error
 func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, error) {
 	log.Info().Strs("cmds", cmds).Msg("running commands in network")
 
-	var outb, errb bytes.Buffer
 	var cmd *exec.Cmd
 	if shell == PSInvoke {
+		var outb, errb bytes.Buffer
 		joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
 		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
-
 		err := cmd.Run()
-
 		if err != nil {
 			return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
 		}
-
 		return outb.String(), err
 	} else {
-		go func() {
-			cmd = exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
-			cmd.Stdout = &outb
-			cmd.Stderr = &errb
-			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			cmd.Run()
-		}()
-
-		return "", nil
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", strings.Join(cmds, ";"))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		err := cmd.Start()
+		if err != nil {
+			return "", fmt.Errorf("execution failed: %w", err)
+		}
+		return "", err
 	}
 }
 
