@@ -266,6 +266,13 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
+	caps := []string{"CAP_DAC_OVERRIDE"}
+	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
+		caps = append(caps, "CAP_SYS_RESOURCE")
+	} else {
+		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
+	}
+
 	editors := []runc.SpecEditor{
 		runc.WithHostname(containerId),
 		runc.WithAnnotations(map[string]string{
@@ -274,18 +281,13 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
+		runc.WithCapabilities(caps...),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
 		runc.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
-	}
-
-	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
-		editors = append(editors, runc.WithCapabilities("CAP_SYS_RESOURCE"))
-	} else {
-		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
 	}
 
 	if err := bundle.EditSpec(editors...); err != nil {
