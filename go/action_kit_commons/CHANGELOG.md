@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.22
+
+- fix: use CAP_DAC_OVERRIDE in stress io attacks to ignore file permissions
+
 ## 1.2.21
 
 - fix: use CAP_DAC_OVERRIDE in fill disk attacks to ignore file permissions
