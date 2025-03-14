@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.23
+
+- refa: improve error handling in disk fill
+
 ## 1.2.22
 
 - fix: use CAP_DAC_OVERRIDE in stress io attacks to ignore file permissions

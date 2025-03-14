@@ -15,6 +15,7 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -111,12 +112,12 @@ func (df *DiskFill) Stop() error {
 
 	//stop writer
 	if err := df.runc.Kill(ctx, df.bundle.ContainerId(), syscall.SIGINT); err != nil {
-		log.Warn().Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGINT to container")
+		log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGINT to container")
 	}
 
 	timerStart := time.AfterFunc(10*time.Second, func() {
 		if err := df.runc.Kill(ctx, df.bundle.ContainerId(), syscall.SIGTERM); err != nil {
-			log.Warn().Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGTERM to container")
+			log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGTERM to container")
 		}
 	})
 
@@ -127,26 +128,29 @@ func (df *DiskFill) Stop() error {
 	var deleteFileErr error
 	if !df.Noop {
 		fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
-		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil {
+		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
 			log.Error().Err(err).Msgf("failed to remove file %s", out)
 			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
 		} else {
-			log.Info().Msgf("removed file %s: %s", fileToRemove, out)
+			log.Debug().Msgf("removed file %s: %s", fileToRemove, out)
 		}
 	}
 
 	if err := df.runc.Delete(ctx, df.bundle.ContainerId(), false); err != nil {
-		level := zerolog.WarnLevel
-		if errors.Is(err, runc.ErrContainerNotFound) {
-			level = zerolog.DebugLevel
-		}
-		log.WithLevel(level).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to delete container")
+		log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to delete container")
 	}
 
 	if err := df.bundle.Remove(); err != nil {
 		log.Warn().Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to remove bundle")
 	}
 	return deleteFileErr
+}
+
+func levelForErr(err error) zerolog.Level {
+	if errors.Is(err, runc.ErrContainerNotFound) {
+		return zerolog.DebugLevel
+	}
+	return zerolog.WarnLevel
 }
 
 func (df *DiskFill) Args() []string {
