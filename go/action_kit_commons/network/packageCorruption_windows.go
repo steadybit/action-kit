@@ -38,7 +38,7 @@ func (o *CorruptPackagesOpts) WinDivertCommands(mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=\"%s\" --mode=corrupt --duration=%d --percentage=%d", specifiedFilter, int(o.Duration.Seconds()), o.Corruption))
 
 	} else {
-		cmds = append(cmds, "taskkill /f /t /im wdna.exe")
+		cmds = append(cmds, "wdna_shutdown")
 		cmds = append(cmds, "cmd /c sc stop windivert")
 	}
 
