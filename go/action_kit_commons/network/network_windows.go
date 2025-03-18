@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -265,15 +264,20 @@ func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, 
 		}
 		return outb.String(), err
 	} else {
-		cmd = exec.CommandContext(ctx, "powershell", "-Command", strings.Join(cmds, ";"))
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		err := cmd.Start()
-		if err != nil {
-			return "", fmt.Errorf("execution failed: %w", err)
-		}
-		return "", err
+		go func() {
+			var outb, errb bytes.Buffer
+			cmd = exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
+			cmd.Stdout = &outb
+			cmd.Stderr = &errb
+			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			err := cmd.Run()
+
+			if err != nil {
+				fmt.Println(fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String()))
+			}
+		}()
+
+		return "", nil
 	}
 }
 
