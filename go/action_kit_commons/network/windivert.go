@@ -2,9 +2,13 @@ package network
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/mgr"
 	"net"
 	"strings"
 	"text/template"
+	"time"
 )
 
 func getStartEndIP(ipNet net.IPNet) (net.IP, net.IP, error) {
@@ -152,4 +156,40 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func awaitWinDivertServiceStatus(state svc.State, timeout time.Duration) error {
+	// wait until the windivert service reports successful startup or an error occurred
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer func(m *mgr.Mgr) {
+		_ = m.Disconnect()
+	}(m)
+
+	end := time.Now().Add(timeout)
+	for time.Now().Before(end) {
+		s, err := m.OpenService("windivert")
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		// deferred function is only created once
+		//goland:noinspection GoDeferInLoop
+		defer func(s *mgr.Service) {
+			_ = s.Close()
+		}(s)
+
+		for time.Now().Before(end) {
+			status, err := s.Query()
+			if err == nil && status.State == state {
+				log.Debug().Int("state", int(status.State)).Msgf("windivert service reached state %d", state)
+				return nil
+			}
+			log.Debug().Int("state", int(status.State)).Msgf("windivert service not yet in state %d", state)
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("windivert service did not reach state %d in time", state)
 }

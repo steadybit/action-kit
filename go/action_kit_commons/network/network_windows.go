@@ -5,15 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"golang.org/x/sys/windows/svc"
 	"net"
+	"os"
 	"os/exec"
 	"slices"
 	"strings"
 	"sync"
 	"syscall"
-
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"time"
 )
 
 type Shell = string
@@ -107,7 +109,7 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	}
 
 	if len(winDivertCommands) > 0 {
-		if _, wdErr := executeWinDivertCommands(ctx, winDivertCommands); wdErr != nil {
+		if _, wdErr := executeWinDivertCommands(ctx, winDivertCommands, mode); wdErr != nil {
 			err = errors.Join(err, FilterBatchErrors(wdErr, mode, winDivertCommands))
 		}
 	}
@@ -240,22 +242,31 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 	return executeInNetwork(ctx, cmds, PSInvoke)
 }
 
-func executeWinDivertCommands(ctx context.Context, cmds []string) (string, error) {
+func executeWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
 
-	return executeInNetwork(ctx, cmds, PS)
+	out, err := executeInNetwork(ctx, cmds, PS)
+	if err == nil {
+		timeout := 10 * time.Second
+		if mode == ModeAdd {
+			err = awaitWinDivertServiceStatus(svc.Running, timeout)
+		} else {
+			err = awaitWinDivertServiceStatus(svc.Stopped, timeout)
+		}
+	}
+
+	return out, err
 }
 
 func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, error) {
 	log.Info().Strs("cmds", cmds).Msg("running commands in network")
 
-	var cmd *exec.Cmd
 	if shell == PSInvoke {
 		var outb, errb bytes.Buffer
 		joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
-		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
 		err := cmd.Run()
@@ -264,20 +275,11 @@ func executeInNetwork(ctx context.Context, cmds []string, shell Shell) (string, 
 		}
 		return outb.String(), err
 	} else {
-		go func() {
-			var outb, errb bytes.Buffer
-			cmd = exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
-			cmd.Stdout = &outb
-			cmd.Stderr = &errb
-			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			err := cmd.Run()
-
-			if err != nil {
-				fmt.Println(fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String()))
-			}
-		}()
-
-		return "", nil
+		cmd := exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		return "", cmd.Start()
 	}
 }
 
