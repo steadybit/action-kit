@@ -15,9 +15,10 @@ import (
 
 type DelayOpts struct {
 	Filter
-	Delay    time.Duration
-	Duration time.Duration
-	Jitter   bool
+	Delay      time.Duration
+	Duration   time.Duration
+	Jitter     bool
+	filterFile string
 }
 
 func (o *DelayOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -37,35 +38,20 @@ func (o *DelayOpts) WinDivertCommands(mode Mode) ([]string, error) {
 			jitter = "--jitter"
 		}
 
-		filterFile, err := o.createFilterFile()
+		filterFile, err := buildWinDivertFilterFile(o.Filter)
 		if err != nil {
 			return nil, err
 		}
-		_ = filterFile.Close()
-		cmds = append(cmds, fmt.Sprintf("wdna.exe --file=%q --mode=delay --duration=%d --time=%d %s", filterFile.Name(), int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
+		o.filterFile = filterFile
+		cmds = append(cmds, fmt.Sprintf("wdna.exe --file=%q --mode=delay --duration=%d --time=%d %s", filterFile, int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
 
 	} else {
 		cmds = append(cmds, "wdna_shutdown")
 		cmds = append(cmds, "cmd /c \"sc stop windivert || exit /b 0\"") // don't fail on error
+		_ = os.Remove(o.filterFile)
 	}
 
 	return cmds, nil
-}
-
-func (o *DelayOpts) createFilterFile() (*os.File, error) {
-	specifiedFilter, err := buildWinDivertFilter(o.Filter)
-	if err != nil {
-		return nil, err
-	}
-	tempFile, err := os.CreateTemp("", "wdna-filter-*.txt")
-	if err != nil {
-		return nil, err
-	}
-	_, err = tempFile.Write([]byte(specifiedFilter))
-	if err != nil {
-		return nil, err
-	}
-	return tempFile, nil
 }
 
 func (o *DelayOpts) String() string {

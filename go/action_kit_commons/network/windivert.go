@@ -6,6 +6,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 	"net"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -156,6 +157,25 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func buildWinDivertFilterFile(filter Filter) (string, error) {
+	specifiedFilter, err := buildWinDivertFilter(filter)
+	if err != nil {
+		return "", err
+	}
+	tempFile, err := os.CreateTemp("", "wdna-filter-*.txt")
+	if err != nil {
+		return "", err
+	}
+	defer func(tempFile *os.File) {
+		_ = tempFile.Close()
+	}(tempFile)
+	_, err = tempFile.Write([]byte(specifiedFilter))
+	if err != nil {
+		return "", err
+	}
+	return tempFile.Name(), nil
 }
 
 func awaitWinDivertServiceStatus(state svc.State, timeout time.Duration) error {

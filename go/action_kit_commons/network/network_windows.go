@@ -171,7 +171,7 @@ func pushActiveFw(opts WinOpts) error {
 
 	for _, active := range activeFirewall["windows"] {
 		if !equals(opts, active) {
-			return errors.New("running multiple network attacks at the same time on the same network namespace is not supported")
+			return errors.New("running multiple network attacks at the same time is not supported")
 		}
 	}
 
@@ -252,8 +252,10 @@ func executeWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (st
 		timeout := 10 * time.Second
 		if mode == ModeAdd {
 			err = awaitWinDivertServiceStatus(svc.Running, timeout)
+			log.Debug().Msgf("WinDiver service is running")
 		} else {
 			err = awaitWinDivertServiceStatus(svc.Stopped, timeout)
+			log.Debug().Msgf("WinDiver service is stopped")
 		}
 	}
 

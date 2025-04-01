@@ -7,6 +7,7 @@ package network
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -15,6 +16,7 @@ type CorruptPackagesOpts struct {
 	Filter
 	Corruption uint
 	Duration   time.Duration
+	filterFile string
 }
 
 func (o *CorruptPackagesOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -28,18 +30,18 @@ func (o *CorruptPackagesOpts) QoSCommands(_ Mode) ([]string, error) {
 func (o *CorruptPackagesOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
-	specifiedFilter, err := buildWinDivertFilter(o.Filter)
-
-	if err != nil {
-		return []string{}, err
-	}
-
 	if mode == ModeAdd {
-		cmds = append(cmds, fmt.Sprintf("wdna.exe --filter=\"%s\" --mode=corrupt --duration=%d --percentage=%d", specifiedFilter, int(o.Duration.Seconds()), o.Corruption))
+		filterFile, err := buildWinDivertFilterFile(o.Filter)
+		if err != nil {
+			return nil, err
+		}
+		o.filterFile = filterFile
+		cmds = append(cmds, fmt.Sprintf("wdna.exe --file=%q --mode=corrupt --duration=%d --percentage=%d", filterFile, int(o.Duration.Seconds()), o.Corruption))
 
 	} else {
 		cmds = append(cmds, "wdna_shutdown")
-		cmds = append(cmds, "cmd /c sc stop windivert")
+		cmds = append(cmds, "cmd /c \"sc stop windivert || exit /b 0\"") // don't fail on error
+		_ = os.Remove(o.filterFile)
 	}
 
 	return cmds, nil
