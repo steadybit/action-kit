@@ -6,13 +6,15 @@ package network
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 )
 
 type LimitBandwidthOpts struct {
-	Filter
-	Bandwidth string
+	Bandwidth   string
+	IncludeCidr *net.IPNet
+	Port        string
 }
 
 func (o *LimitBandwidthOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -35,7 +37,14 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	}
 
 	if mode == ModeAdd {
-		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Precedence 255 -Name STEADYBIT_QOS_%s -Default -PolicyStore ActiveStore -ThrottleRateActionBitsPerSecond %s -Confirm:`$false", o.Bandwidth, o.Bandwidth))
+		var additionalParameters string
+		if o.IncludeCidr != nil {
+			additionalParameters = fmt.Sprintf("-IPDstPrefixMatchCondition '%s' ", o.IncludeCidr.String())
+		}
+		if o.Port != "" {
+			additionalParameters = fmt.Sprintf("%s-IPDstPortMatchCondition %s", additionalParameters, o.Port)
+		}
+		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s %s", o.Bandwidth, o.Bandwidth, additionalParameters))
 	} else {
 		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:`$false", o.Bandwidth))
 	}
@@ -47,6 +56,15 @@ func (o *LimitBandwidthOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("limit bandwidth to ")
 	sb.WriteString(o.Bandwidth)
-	writeStringForFilters(&sb, optimizeFilter(o.Filter))
+	if o.IncludeCidr != nil || o.Port != "" {
+		sb.WriteString(" for ")
+		if o.IncludeCidr != nil {
+			sb.WriteString(o.IncludeCidr.String())
+		}
+		if o.Port != "" {
+			sb.WriteString(":")
+			sb.WriteString(o.Port)
+		}
+	}
 	return sb.String()
 }
