@@ -15,10 +15,11 @@ import (
 
 type DelayOpts struct {
 	Filter
-	Delay      time.Duration
-	Duration   time.Duration
-	Jitter     bool
-	filterFile string
+	Delay            time.Duration
+	Duration         time.Duration
+	Jitter           bool
+	FilterFile       string
+	InterfaceIndexes []int
 }
 
 func (o *DelayOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -38,17 +39,18 @@ func (o *DelayOpts) WinDivertCommands(mode Mode) ([]string, error) {
 			jitter = "--jitter"
 		}
 
-		filterFile, err := buildWinDivertFilterFile(o.Filter)
+		filterFile, err := buildWinDivertFilterFileWithInterfaces(o.Filter, o.InterfaceIndexes)
 		if err != nil {
 			return nil, err
 		}
-		o.filterFile = filterFile
+		o.FilterFile = filterFile
+
 		cmds = append(cmds, fmt.Sprintf("wdna.exe --file=%q --mode=delay --duration=%d --time=%d %s", filterFile, int(o.Duration.Seconds()), o.Delay.Milliseconds(), jitter))
 
 	} else {
 		cmds = append(cmds, "wdna_shutdown")
 		cmds = append(cmds, "cmd /c \"sc stop windivert || exit /b 0\"") // don't fail on error
-		_ = os.Remove(o.filterFile)
+		_ = os.Remove(o.FilterFile)
 	}
 
 	return cmds, nil

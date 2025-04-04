@@ -17,3 +17,60 @@ func GetOwnNetworkInterfaces() []string {
 	}
 	return resultNICs
 }
+
+func GetLoopbackNetworkInterfaces() []string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get network interfaces")
+		return []string{}
+	}
+
+	var ifcNames []string
+	for _, ifc := range ifaces {
+		if ifc.Flags&net.FlagLoopback != 0 {
+			ifcNames = append(ifcNames, ifc.Name)
+		}
+	}
+	return ifcNames
+}
+
+func GetNonLoopbackNetworkInterfaces() []string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get network interfaces")
+		return []string{}
+	}
+
+	var ifcNames []string
+	for _, ifc := range ifaces {
+		if ifc.Flags&net.FlagLoopback == 0 {
+			ifcNames = append(ifcNames, ifc.Name)
+		}
+	}
+	return ifcNames
+}
+
+func GetNetworkInterfacesByName(names []string) []net.Interface {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	var matchingInterfaces []net.Interface
+	for _, iface := range ifaces {
+		for _, name := range names {
+			if iface.Name == name {
+				matchingInterfaces = append(matchingInterfaces, iface)
+				break
+			}
+		}
+	}
+	return matchingInterfaces
+}
+
+func GetNetworkInterfaceIndexesByName(names []string) []int {
+	var indexes []int
+	for _, iface := range GetNetworkInterfacesByName(names) {
+		indexes = append(indexes, iface.Index)
+	}
+	return indexes
+}
