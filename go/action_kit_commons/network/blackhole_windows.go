@@ -30,9 +30,8 @@ func (o *BlackholeOpts) FwCommands(family Family, mode Mode) ([]string, error) {
 		}
 
 		remoteAddress := ""
-
 		if !net.IP.Equal(NetAnyIpv4.IP) && !net.IP.Equal(NetAnyIpv6.IP) {
-			remoteAddress = fmt.Sprintf("-RemoteAddress %s", remoteAddress)
+			remoteAddress = fmt.Sprintf("-RemoteAddress '%s'", net.String())
 		}
 
 		if mode == ModeAdd {
