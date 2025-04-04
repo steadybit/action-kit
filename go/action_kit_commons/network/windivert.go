@@ -70,7 +70,7 @@ func setCorrectReplacements(replacements *map[string]string, family Family) {
 	}
 }
 
-func buildWinDivertFilter(filter Filter) (string, error) {
+func buildWinDivertFilter(filter Filter, ifIdxs []int) (string, error) {
 	var sb strings.Builder
 
 	replaceMap := map[string]string{
@@ -81,13 +81,22 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 	portTemplate := "(( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d ) or ( {{.udpDstPort}} >= %d and {{.udpDstPort}} <= %d ))"
 	portTemplateExclude := "(( {{.tcpDstPort}} < %d or {{.tcpDstPort}} > %d ) or ( {{.udpDstPort}} < %d or {{.udpDstPort}} > %d ))"
 
-	sb.WriteString("(tcp or udp) and outbound and ")
+	sb.WriteString("(tcp or udp) and outbound")
+
+	if len(ifIdxs) > 0 {
+		sb.WriteString(" and (")
+		ifIdxStatements := make([]string, len(ifIdxs))
+		for i, ifIdx := range ifIdxs {
+			ifIdxStatements[i] = fmt.Sprintf("ifIdx == %d", ifIdx)
+		}
+		sb.WriteString(strings.Join(ifIdxStatements, " or "))
+		sb.WriteString(")")
+	}
 
 	if len(filter.Include) > 0 {
-		sb.WriteString("(")
+		sb.WriteString(" and (")
 		for i, ran := range filter.Include {
 			family, err := getFamily(ran.Net)
-
 			if err != nil {
 				return "", err
 			}
@@ -95,7 +104,6 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 			setCorrectReplacements(&replaceMap, family)
 			portFilter := fmt.Sprintf(portTemplate, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
 			startIp, endIp, err := getStartEndIP(ran.Net)
-
 			if err != nil {
 				return "", err
 			}
@@ -103,12 +111,14 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 			config := fmt.Sprintf("( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s and %s)", startIp.String(), endIp.String(), portFilter)
 
 			tmpl, err := template.New("filter").Parse(config)
-
 			if err != nil {
 				return "", err
 			}
 
-			tmpl.Execute(&sb, replaceMap)
+			err = tmpl.Execute(&sb, replaceMap)
+			if err != nil {
+				return "", err
+			}
 
 			if i < len(filter.Include)-1 {
 				sb.WriteString(" or ")
@@ -117,15 +127,10 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 		sb.WriteString(")")
 	}
 
-	if len(filter.Include) > 0 && len(filter.Exclude) > 0 {
-		sb.WriteString(" and ")
-	}
-
 	if len(filter.Exclude) > 0 {
-		sb.WriteString("(")
+		sb.WriteString(" and (")
 		for i, ran := range filter.Exclude {
 			family, err := getFamily(ran.Net)
-
 			if err != nil {
 				return "", err
 			}
@@ -133,7 +138,6 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 			setCorrectReplacements(&replaceMap, family)
 			portFilter := fmt.Sprintf(portTemplateExclude, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
 			startIp, endIp, err := getStartEndIP(ran.Net)
-
 			if err != nil {
 				return "", err
 			}
@@ -142,12 +146,14 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 				startIp.String(), endIp.String(), portFilter)
 
 			tmpl, err := template.New("filter").Parse(config)
-
 			if err != nil {
 				return "", err
 			}
 
-			tmpl.Execute(&sb, replaceMap)
+			err = tmpl.Execute(&sb, replaceMap)
+			if err != nil {
+				return "", err
+			}
 
 			if i < len(filter.Exclude)-1 {
 				sb.WriteString(" and ")
@@ -160,10 +166,15 @@ func buildWinDivertFilter(filter Filter) (string, error) {
 }
 
 func buildWinDivertFilterFile(filter Filter) (string, error) {
-	specifiedFilter, err := buildWinDivertFilter(filter)
+	return buildWinDivertFilterFileWithInterfaces(filter, nil)
+}
+
+func buildWinDivertFilterFileWithInterfaces(filter Filter, interfaces []int) (string, error) {
+	filterContent, err := buildWinDivertFilter(filter, interfaces)
 	if err != nil {
 		return "", err
 	}
+
 	tempFile, err := os.CreateTemp("", "wdna-filter-*.txt")
 	if err != nil {
 		return "", err
@@ -171,7 +182,8 @@ func buildWinDivertFilterFile(filter Filter) (string, error) {
 	defer func(tempFile *os.File) {
 		_ = tempFile.Close()
 	}(tempFile)
-	_, err = tempFile.Write([]byte(specifiedFilter))
+
+	_, err = tempFile.Write([]byte(filterContent))
 	if err != nil {
 		return "", err
 	}
@@ -207,6 +219,7 @@ func awaitWinDivertServiceStatus(state svc.State, timeout time.Duration) error {
 				log.Debug().Int("state", int(status.State)).Msgf("windivert service reached state %d", state)
 				return nil
 			}
+			//goland:noinspection GoDfaErrorMayBeNotNil
 			log.Debug().Int("state", int(status.State)).Msgf("windivert service not yet in state %d", state)
 			time.Sleep(100 * time.Millisecond)
 		}
