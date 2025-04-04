@@ -14,9 +14,10 @@ import (
 
 type CorruptPackagesOpts struct {
 	Filter
-	Corruption uint
-	Duration   time.Duration
-	filterFile string
+	Corruption       uint
+	Duration         time.Duration
+	filterFile       string
+	InterfaceIndexes []int
 }
 
 func (o *CorruptPackagesOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -31,7 +32,7 @@ func (o *CorruptPackagesOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	if mode == ModeAdd {
-		filterFile, err := buildWinDivertFilterFile(o.Filter)
+		filterFile, err := buildWinDivertFilterFileWithInterfaces(o.Filter, o.InterfaceIndexes)
 		if err != nil {
 			return nil, err
 		}
