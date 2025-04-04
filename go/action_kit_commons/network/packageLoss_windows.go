@@ -14,9 +14,10 @@ import (
 
 type PackageLossOpts struct {
 	Filter
-	Loss       uint
-	Duration   time.Duration
-	filterFile string
+	Loss             uint
+	Duration         time.Duration
+	filterFile       string
+	InterfaceIndexes []int
 }
 
 func (o *PackageLossOpts) FwCommands(_ Family, _ Mode) ([]string, error) {
@@ -31,7 +32,7 @@ func (o *PackageLossOpts) WinDivertCommands(mode Mode) ([]string, error) {
 	var cmds []string
 
 	if mode == ModeAdd {
-		filterFile, err := buildWinDivertFilterFile(o.Filter)
+		filterFile, err := buildWinDivertFilterFileWithInterfaces(o.Filter, o.InterfaceIndexes)
 		if err != nil {
 			return nil, err
 		}

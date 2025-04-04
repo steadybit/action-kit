@@ -57,12 +57,16 @@ func GetNetworkInterfacesByName(names []string) []net.Interface {
 	}
 	var matchingInterfaces []net.Interface
 	for _, iface := range ifaces {
-		for _, name := range names {
+		for i, name := range names {
 			if iface.Name == name {
 				matchingInterfaces = append(matchingInterfaces, iface)
+				names = append(names[:i], names[i+1:]...)
 				break
 			}
 		}
+	}
+	if len(names) != 0 {
+		log.Info().Interface("interface", names).Msg("Requested network interfaces missing")
 	}
 	return matchingInterfaces
 }
