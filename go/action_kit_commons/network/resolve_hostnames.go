@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
-// +build !windows
-
-/*
- * Copyright 2024 steadybit GmbH. All rights reserved.
- */
 
 package network
 
