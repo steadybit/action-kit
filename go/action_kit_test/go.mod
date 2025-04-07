@@ -8,7 +8,7 @@ require (
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/uuid v1.6.0
-	github.com/jarcoal/httpmock v1.3.1
+	github.com/jarcoal/httpmock v1.4.0
 	github.com/rs/zerolog v1.34.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.7
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
