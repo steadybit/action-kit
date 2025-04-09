@@ -20,7 +20,7 @@ const (
 
 func Test_RefreshNamespacesUsingInode(t *testing.T) {
 	executeRefreshNamespace = fakeExecuteRefresh
-	defer func() { executeRefreshNamespace = executeRefreshNamespaceLsns }()
+	defer func() { executeRefreshNamespace = executeRefreshNamespaceFilesystem }()
 
 	tests := []struct {
 		name     string
@@ -51,7 +51,7 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 			}},
 		},
 		{
-			name: "resolve using lsns on non-existent path",
+			name: "resolve using filesystem on non-existent path",
 			ns: []LinuxNamespace{{
 				Path:  nonExistentPath,
 				Inode: presentInode,
@@ -62,7 +62,7 @@ func Test_RefreshNamespacesUsingInode(t *testing.T) {
 			}},
 		},
 		{
-			name: "resolve using lsns on non-existent path fails",
+			name: "resolve using filesystem on non-existent path fails",
 			ns: []LinuxNamespace{{
 				Path:  nonExistentPath,
 				Inode: nonExistentInode,

@@ -16,34 +16,18 @@ func Test_ListNamespaces_stress(t *testing.T) {
 		t.Skip("ListNamespaces tests only run on Linux")
 		return
 	}
-	e := exec.Command("lsns").Run()
-	if e != nil {
-		t.Skip("lsns not available or permitted, skipped")
-		return
-	}
 
 	t.Run("compare implementations", func(t *testing.T) {
 		pid := os.Getpid()
-
-		executeListNamespaces = executeListNamespaceLsns
-		lsns, e := ListNamespaces(context.Background(), pid)
-		assert.NoError(t, e, "Could not list namespaces via lsns")
 
 		executeListNamespaces = executeListNamespacesFilesystem
 		fs, e := ListNamespaces(context.Background(), pid)
 		assert.NoError(t, e, "Could not list namespaces via the filesystem")
 
-		assert.Equal(t, lsns, fs)
+		assert.NotEmpty(t, fs)
 	})
 
 	t.Run("stress", func(t *testing.T) {
-		t.Run("lsns", func(t *testing.T) {
-			t.Skip("Manual test to reproduces lsns bug")
-			executeListNamespaces = executeListNamespaceLsns
-			executeRefreshNamespace = executeRefreshNamespaceLsns
-			runStressTest(t)
-		})
-
 		t.Run("filesystem", func(t *testing.T) {
 			executeListNamespaces = executeListNamespacesFilesystem
 			executeRefreshNamespace = executeRefreshNamespaceFilesystem
@@ -56,14 +40,14 @@ func runStressTest(t *testing.T) {
 	pid := os.Getpid()
 
 	timeout := 5 * time.Second
-	concurrentLsns := 5
+	concurrentFileSystem := 5
 	concurrentProcesses := 10
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < concurrentLsns; i++ {
+	for i := 0; i < concurrentFileSystem; i++ {
 		wg.Add(1)
 		go func(ctx context.Context) {
 			defer wg.Done()

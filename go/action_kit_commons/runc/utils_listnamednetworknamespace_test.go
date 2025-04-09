@@ -41,25 +41,17 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	pid := process.Process.Pid
 	fmt.Printf("Started process in network namespace %q with pid %d\n", networkNamespaceName, pid)
 
-	executeListNamespaces = executeListNamespaceLsns
-	lsns, e := ListNamespaces(context.Background(), pid)
-	assert.NoError(t, e, "Could not list namespaces via lsns")
-	lsnsNet := FilterNamespaces(lsns, specs.NetworkNamespace)
-
 	executeListNamespaces = executeListNamespacesFilesystem
 	fs, e := ListNamespaces(context.Background(), pid)
 	assert.NoError(t, e, "Could not list namespaces via the filesystem")
 	fsNet := FilterNamespaces(fs, specs.NetworkNamespace)
 
-	assert.Equal(t, lsns, fs)
+	assert.NotEmpty(t, fsNet)
 
 	err = process.Process.Kill()
 	assert.NoError(t, err)
 	process.Wait()
 	fmt.Printf("Stopped process in network namespace %q with pid %d\n", networkNamespaceName, pid)
-
-	RefreshNamespaces(context.Background(), lsnsNet, specs.NetworkNamespace)
-	assert.True(t, strings.HasPrefix(lsnsNet[0].Path, "/var/run/netns/"))
 
 	RefreshNamespaces(context.Background(), fsNet, specs.NetworkNamespace)
 	assert.True(t, strings.HasPrefix(fsNet[0].Path, "/var/run/netns/"))

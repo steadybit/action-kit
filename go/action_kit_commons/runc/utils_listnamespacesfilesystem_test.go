@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -16,12 +15,6 @@ func Test_ListNamespacesFilesystem(t *testing.T) {
 		t.Skip("ListNamespaces tests only run on Linux")
 		return
 	}
-	e := exec.Command("lsns").Run()
-	if e != nil {
-		t.Skip("lsns not available or permitted, skipped")
-		return
-	}
-
 	t.Run("own pid", func(t *testing.T) {
 		ns, err := executeListNamespacesFilesystem(context.Background(), os.Getpid())
 		require.NoError(t, err)
