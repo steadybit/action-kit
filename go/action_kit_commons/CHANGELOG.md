@@ -104,6 +104,10 @@
 
 - Added hint if kernel modules are missing for tc
 
+## 1.1.8
+
+- Remove dependency on lsns
+
 ## 1.1.7
 
 - Prevent different network attacks on the same network ns
