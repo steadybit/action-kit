@@ -61,9 +61,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache-dependency-path: ./go/action_kit_commons
-          go-version: '1.22'
+          go-version: '1.23'
       - name: Audit
-        # Execute go tests with sudo to be able to start lsns.
+        # Execute go tests with sudo to be able to start ip.
         run: |
           go mod download
           sudo make audit

@@ -34,16 +34,11 @@ type BackgroundState struct {
 var netNsDir = "/var/run/netns"
 var netNsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
 
-var executeListNamespaces = executeListNamespaceLsns
-var executeRefreshNamespace = executeRefreshNamespaceLsns
+var executeListNamespaces = executeListNamespacesFilesystem
+var executeRefreshNamespace = executeRefreshNamespaceFilesystem
 var errorNsNotFound = errors.New("namespace not found")
 
 func init() {
-	if os.Getenv("STEADYBIT_EXTENSION_ENABLE_INTERNAL_NAMESPACE_RESOLUTION") != "" {
-		log.Info().Msgf("Enabling file based namespace handling")
-		executeListNamespaces = executeListNamespacesFilesystem
-		executeRefreshNamespace = executeRefreshNamespaceFilesystem
-	}
 	if os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR") != "" {
 		netNsDir = os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR")
 	}
@@ -229,63 +224,6 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 		}
 	}
 	return inodes, nil
-}
-
-func executeListNamespaceLsns(ctx context.Context, pid int, types ...string) ([]LinuxNamespace, error) {
-	args := []string{"--task", strconv.Itoa(pid), "--output=ns,type,path", "--noheadings", "--notruncate"}
-	for _, t := range types {
-		args = append(args, "--type", t)
-	}
-
-	sout, err := executeLsns(ctx, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	var namespaces []LinuxNamespace
-	for _, line := range strings.Split(strings.TrimSpace(sout.String()), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 3 {
-			continue
-		}
-		inode, err := strconv.ParseUint(fields[0], 10, 64)
-		if err != nil {
-			log.Warn().Err(err).Msgf("failed to parse inode %s. omitting inode namespace information", fields[0])
-		}
-		ns := LinuxNamespace{
-			Inode: inode,
-			Type:  toRuncNamespaceType(fields[1]),
-			Path:  fields[2],
-		}
-		namespaces = append(namespaces, ns)
-	}
-	return namespaces, nil
-}
-
-func executeLsns(ctx context.Context, args ...string) (*bytes.Buffer, error) {
-	var lastErr error
-	var sout, serr bytes.Buffer
-	//due to https://github.com/util-linux/util-linux/issues/2799 we just retry
-	for attempts := 0; attempts < 5; attempts++ {
-		cmd := RootCommandContext(ctx, "lsns", args...)
-		cmd.Stdout = &sout
-		cmd.Stderr = &serr
-		if err := cmd.Run(); err == nil {
-			log.Trace().
-				Str("out", sout.String()).
-				Str("err", serr.String()).
-				Msgf("Executed lsns command: %v", cmd.Args)
-			break
-		} else {
-			lastErr = fmt.Errorf("error executing lsns: out: %s; err:%s; cause: %w", sout.String(), serr.String(), err)
-			sout.Reset()
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && exiterr.ExitCode() != 1 {
-				break
-			}
-		}
-	}
-	return &sout, lastErr
 }
 
 func toRuncNamespaceType(t string) specs.LinuxNamespaceType {
@@ -531,22 +469,6 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 		}
 	}
 
-	return "", errorNsNotFound
-}
-
-// executeRefreshNamespaceLsns uses "lsns" to look up the namespace file path of the given inode and type.
-func executeRefreshNamespaceLsns(ctx context.Context, inode uint64, ns string) (string, error) {
-	out, err := executeLsns(ctx, strconv.FormatUint(inode, 10), "--type", ns, "--output=path", "--noheadings", "--notruncate")
-	if err != nil {
-		return "", errorNsNotFound
-	}
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 1 {
-			continue
-		}
-		return fields[0], nil
-	}
 	return "", errorNsNotFound
 }
 
