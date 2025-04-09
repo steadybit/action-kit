@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.24
+
+- Remove dependency on lsns
+
 ## 1.2.23
 
 - refa: improve error handling in disk fill
@@ -103,10 +107,6 @@
 ## 1.1.8
 
 - Added hint if kernel modules are missing for tc
-
-## 1.1.8
-
-- Remove dependency on lsns
 
 ## 1.1.7
 
