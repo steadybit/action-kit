@@ -17,12 +17,7 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 		t.Skip("ListNamespaces tests only run on Linux")
 		return
 	}
-	e := exec.Command("lsns").Run()
-	if errors.Is(e, exec.ErrNotFound) {
-		t.Skip("lsns not available or permitted, skipped")
-		return
-	}
-	e = exec.Command("ip").Run()
+	e := exec.Command("ip").Run()
 	if errors.Is(e, exec.ErrNotFound) {
 		return
 	}
