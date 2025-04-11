@@ -27,7 +27,7 @@ func TestWindowsSignals(t *testing.T) {
 	defer resetDefaultServeMux()
 	defer extsignals.ClearSignalHandlers()
 	signalChannel := make(chan os.Signal, 1)
-	signal.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
+	extsignals.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
 	calls := make(chan Call, 1024)
 	defer close(signalChannel)
 	defer close(calls)
@@ -45,7 +45,9 @@ func TestWindowsSignals(t *testing.T) {
 		extsignals.ActivateSignalHandlerWithContext(ctx)
 		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
 	}(action)
-	time.Sleep(1 * time.Second)
+
+	time.Sleep(5 * time.Second)
+
 	extsignals.RemoveSignalHandlersByName("Termination", "StopExtensionHTTP")
 
 	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
