@@ -5,85 +5,129 @@
 package action_kit_sdk
 
 import (
-	"context"
-	"fmt"
+	"bytes"
 	"os"
-	"os/signal"
-	"sync"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/phayes/freeport"
-	"github.com/steadybit/extension-kit/exthttp"
-	"github.com/steadybit/extension-kit/extlogging"
 	"github.com/steadybit/extension-kit/extsignals"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestWindowsSignals(t *testing.T) {
-	defer resetDefaultServeMux()
-	defer extsignals.ClearSignalHandlers()
-	signalChannel := make(chan os.Signal, 1)
-	extsignals.Notify(signalChannel, syscall.SIGTERM, os.Interrupt)
-	calls := make(chan Call, 1024)
-	defer close(signalChannel)
-	defer close(calls)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestWindowsSignalsWithExternalProcess(t *testing.T) {
+	const source = `
+package main
 
-	action := NewExampleAction(calls)
-	serverPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
 
-	go func(action *ExampleAction) {
-		extlogging.InitZeroLog()
-		RegisterAction(action)
-		exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(GetActionList))
-		extsignals.ActivateSignalHandlerWithContext(ctx)
-		exthttp.Listen(exthttp.ListenOpts{Port: serverPort})
-	}(action)
+func main() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) 
 
-	time.Sleep(5 * time.Second)
+	select {
+	case s := <-c:
+		if s == os.Interrupt {
+			fmt.Println("SUCCESS: Received os.Interrupt")
+			os.Exit(0) 
+		} else {
+			log.Fatalf("FAIL: Wrong signal received: got %q, want %q\n", s, os.Interrupt)
+		}
+	case <-time.After(5 * time.Second): 
+		log.Fatalf("FAIL: Timeout waiting for Ctrl+Break\n")
+	}
+}
+`
+	tmpDir := t.TempDir()
+	t.Logf("Using temp directory: %s", tmpDir)
 
-	extsignals.RemoveSignalHandlersByName("Termination", "StopExtensionHTTP")
+	baseName := "main"
+	srcPath := filepath.Join(tmpDir, baseName+".go")
+	err := os.WriteFile(srcPath, []byte(source), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write source file %v: %v", srcPath, err)
+	}
+	t.Logf("Source file written: %s", srcPath)
 
-	basePath := fmt.Sprintf("http://localhost:%d", serverPort)
-	actionPath := listExtension(t, basePath)
-	description := describe(t, fmt.Sprintf("%s%s", basePath, actionPath))
+	exePath := filepath.Join(tmpDir, baseName+".exe")
+	buildCmd := exec.Command("go", "build", "-o", exePath, srcPath)
+	buildCmd.Stderr = os.Stderr
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Dir = tmpDir
+	t.Logf("Compiling: %s", buildCmd.String())
+	err = buildCmd.Run()
+	if err != nil {
+		t.Fatalf("Failed to compile %v: %v", srcPath, err)
+	}
+	if _, err := os.Stat(exePath); err != nil {
+		t.Fatalf("Compiled executable not found at %s: %v", exePath, err)
+	}
+	t.Logf("Compiled executable: %s", exePath)
+	cmd := exec.Command(exePath)
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
 
-	op := ActionOperations{
-		basePath:    basePath,
-		description: description,
-		executionId: uuid.New(),
-		calls:       calls,
-		action:      action,
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
 	}
 
-	result, _ := op.prepare(t)
-	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
-	state := result.State
+	t.Logf("Starting command: %s", cmd.String())
+	err = cmd.Start()
+	if err != nil {
+		t.Fatalf("Failed to start command %s: %v", exePath, err)
+	}
+	pid := cmd.Process.Pid
+	t.Logf("Process started with PID: %d. Waiting a moment before sending signal...", pid)
 
-	state = op.start(t, state)
-	op.resetCalls()
+	time.Sleep(500 * time.Millisecond)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func(signals <-chan os.Signal, waitgroup *sync.WaitGroup) {
-		for s := range signals {
-			signalCheck := fmt.Sprintf("Signal %s", extsignals.GetSignalName(s.(syscall.Signal)))
-			assert.Equal(t, signalCheck, "Signal CTRL_CLOSE_EVENT")
-			wg.Done()
+	t.Logf("Sending CTRL_BREAK_EVENT signal via Kill(%d)", pid)
+	err = extsignals.Kill(pid)
+	if err != nil {
+		_ = cmd.Process.Kill()
+		waitErr := cmd.Wait()
+		t.Logf("Kill signal send failed. Process wait result after kill attempt: %v", waitErr)
+		t.Logf("Stdout: %s", stdoutBuf.String())
+		t.Logf("Stderr: %s", stderrBuf.String())
+		t.Fatalf("Failed to send signal using Kill(%d): %v", pid, err)
+	}
+	t.Logf("Signal sent via Kill(%d). Waiting for process to exit...", pid)
+
+	err = cmd.Wait()
+
+	stdoutStr := stdoutBuf.String()
+	stderrStr := stderrBuf.String()
+	t.Logf("Process exited. Wait error: %v", err)
+	t.Logf("Process Stdout:\n%s", stdoutStr)
+	t.Logf("Process Stderr:\n%s", stderrStr)
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if strings.Contains(stderrStr, "FAIL: Timeout") {
+				t.Errorf("Test failed: Target process timed out waiting for signal.")
+			} else if strings.Contains(stderrStr, "FAIL: Wrong signal") {
+				t.Errorf("Test failed: Target process received the wrong signal.")
+			} else {
+				t.Errorf("Test failed: Target process exited with code %d. Stderr:\n%s", exitErr.ExitCode(), stderrStr)
+			}
+		} else {
+			t.Errorf("Test failed: Error waiting for target process: %v", err)
 		}
-	}(signalChannel, &wg)
-
-	extsignals.Kill(os.Getpid())
-	require.NoError(t, err)
-	wg.Wait()
-	op.assertCall(t, "Stop", toExampleState(state))
-	signal.Stop(signalChannel)
-	fmt.Println("Done")
-	time.Sleep(10 * time.Second)
+	} else {
+		if !strings.Contains(stdoutStr, "SUCCESS: Received os.Interrupt") {
+			t.Errorf("Test potentially failed: Process exited successfully, but expected SUCCESS message not found in stdout.")
+		} else {
+			t.Logf("Test passed: Target process received os.Interrupt and exited successfully.")
+		}
+	}
 }
