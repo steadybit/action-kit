@@ -6,6 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -15,10 +19,6 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"runtime"
-	"testing"
-	"time"
 )
 
 type TestCase struct {
@@ -157,13 +157,8 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 
-	if runtime.GOOS == "windows" {
-		fmt.Println("Windows: " + statusResult.Error.Title)
-		assert.Equal(t, "Action was stopped by extension: received signal CTRL_CLOSE_EVENT", statusResult.Error.Title)
-	} else {
-		fmt.Println("Linux: " + statusResult.Error.Title)
-		assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
-	}
+	fmt.Println("Linux: " + statusResult.Error.Title)
+	assert.Equal(t, "Action was stopped by extension: received signal SIGUSR1", statusResult.Error.Title)
 }
 
 func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
