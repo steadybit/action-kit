@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2024 Steadybit GmbH
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+//go:build !windows
 
 package network
 
@@ -8,17 +9,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"slices"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"os/exec"
-	"slices"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const maxTcCommands = 2048
@@ -396,7 +398,7 @@ func getNextMatchingCandidate(result []NetWithPortRange, i int) *NetWithPortRang
 	for j := i + 1; j < len(result); j++ {
 		b := result[j]
 		if a.PortRange == b.PortRange {
-			if merged := a.merge(b); !merged.Net.IP.IsUnspecified() {
+			if merged := a.Merge(b); !merged.Net.IP.IsUnspecified() {
 				return &merged
 			}
 			return nil

@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package action_kit_sdk
 
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"reflect"
+	"runtime/coverage"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -14,15 +22,6 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extsignals"
-	"golang.org/x/sys/unix"
-	"net/http"
-	"os"
-	"os/signal"
-	"reflect"
-	"runtime/coverage"
-	"sync"
-	"syscall"
-	"time"
 )
 
 var (
@@ -76,10 +75,10 @@ type SignalHandlerCallBackFn func(os.Signal)
 // Deprecated: InstallSignalHandler is deprecated. Use extsignals.AddAddSignalHandler / extsignals.ActivateSignalHandlers from extension-kit instead.
 func InstallSignalHandler(callbacks ...SignalHandlerCallBackFn) {
 	signalChannel := make(chan os.Signal, 1)
-	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+	extsignals.Notify(signalChannel)
 	go func(signals <-chan os.Signal) {
 		for s := range signals {
-			signalName := unix.SignalName(s.(syscall.Signal))
+			signalName := extsignals.GetSignalName(s.(syscall.Signal))
 
 			log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
 			StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
@@ -209,7 +208,7 @@ func RegisterAction[T any](a Action[T]) {
 	if len(registeredActions) == 0 {
 		extsignals.AddSignalHandler(extsignals.SignalHandler{
 			Handler: func(signal os.Signal) {
-				signalName := unix.SignalName(signal.(syscall.Signal))
+				signalName := extsignals.GetSignalName(signal.(syscall.Signal))
 
 				log.Debug().Str("signal", signalName).Msg("received signal - stopping all active actions")
 				StopAllActiveActions(fmt.Sprintf("received signal %s", signalName))
