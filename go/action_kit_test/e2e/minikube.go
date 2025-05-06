@@ -17,6 +17,7 @@ import (
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -565,6 +566,21 @@ func (m *Minikube) DeleteService(service metav1.Object) error {
 		return nil
 	}
 	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+}
+
+func (m *Minikube) CreateIngress(ingress *networkingv1.Ingress) (metav1.Object, error) {
+	applied, err := m.GetClient().NetworkingV1().Ingresses("default").Create(context.Background(), ingress, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return applied.GetObjectMeta(), nil
+}
+
+func (m *Minikube) DeleteIngress(ingress metav1.Object) error {
+	if ingress == nil {
+		return nil
+	}
+	return m.GetClient().NetworkingV1().Ingresses(ingress.GetNamespace()).Delete(context.Background(), ingress.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
 }
 
 // Exec executes a command in a container of a pod
