@@ -150,7 +150,7 @@ func (m *Minikube) SshExec(arg ...string) *exec.Cmd {
 }
 
 func (m *Minikube) KubectlExec(arg ...string) *exec.Cmd {
-	return m.command(append([]string{"kubectl"}, arg...)...)
+	return m.command(append([]string{"kubectl", "--"}, arg...)...)
 }
 
 func (m *Minikube) LoadImage(image string) error {
