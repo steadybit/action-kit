@@ -379,6 +379,9 @@ func (c *ServiceClient) Close() {
 func (c *ServiceClient) R() *resty.Request {
 	return c.client.R()
 }
+func (c *ServiceClient) SetHeader(header, value string)  {
+	c.client.SetHeader(header, value)
+}
 
 func (m *Minikube) NewRestClientForService(service metav1.Object) (*ServiceClient, error) {
 	url, cancel, err := m.TunnelService(service)
