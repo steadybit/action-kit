@@ -28,7 +28,7 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         cache-dependency-path: ./go/action_kit_api
-        go-version: '1.22'
+        go-version: '1.24'
     - run: ./build.sh
     - run: git diff --exit-code
       name: "Ensure that Go API changes (as a consequence of OpenAPI spec changes) are checked in"
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache-dependency-path: ./go/action_kit_sdk
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Audit
         run: |
           go mod download
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache-dependency-path: ./go/action_kit_commons
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Audit
         # Execute go tests with sudo to be able to start ip.
         run: |
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache-dependency-path: ./go/action_kit_test
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Audit
         run: |
           go mod download
