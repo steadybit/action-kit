@@ -66,12 +66,7 @@ jobs:
         # Execute go tests with sudo to be able to start ip.
         run: |
           go mod download
-          go version
-          go vet ./...
-          go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 -checks=all,-ST1000,-U1000,-ST1003 ./...
-          go test -race -vet=off -coverprofile=coverage.out ./...
-          go mod verify
-          sudo make audit
+          make audit
 
   go-action-kit-test:
     runs-on: ubuntu-latest
