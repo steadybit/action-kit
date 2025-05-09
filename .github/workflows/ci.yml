@@ -66,6 +66,7 @@ jobs:
         # Execute go tests with sudo to be able to start ip.
         run: |
           go mod download
+          go version
           sudo make audit
 
   go-action-kit-test:
