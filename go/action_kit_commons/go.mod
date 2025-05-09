@@ -2,6 +2,8 @@ module github.com/steadybit/action-kit/go/action_kit_commons
 
 go 1.24
 
+toolchain go1.24.1
+
 require (
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
