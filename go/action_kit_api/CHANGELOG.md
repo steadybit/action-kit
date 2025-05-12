@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.0
+
+- Update dependencies (golang 1.24)
+
 ## 2.9.7
 
 - add optional `DurationUnits` to `ActionParameter` to allow the definition of the allowed / rendered units of the duration parameter
