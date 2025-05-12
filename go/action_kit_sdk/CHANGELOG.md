@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Update dependencies (golang 1.24)
+
 ## 1.1.14
 
 - improve heartbeat handling
