@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+
+- Update dependencies (golang 1.24)
+
 ## 1.3.2
 
 - Update dependencies
