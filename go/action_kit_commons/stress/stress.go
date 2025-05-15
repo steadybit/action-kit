@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
-//go:build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package stress
 
@@ -31,16 +30,18 @@ type Stress struct {
 }
 
 type Opts struct {
-	CpuWorkers *int
-	CpuLoad    int
-	HddWorkers *int
-	HddBytes   string
-	IoWorkers  *int
-	TempPath   string
-	Timeout    time.Duration
-	VmWorkers  *int
-	VmHang     time.Duration
-	VmBytes    string
+	CpuWorkers   *int
+	CpuLoad      int
+	HddWorkers   *int
+	HddBytes     string
+	IoWorkers    *int
+	IomixWorkers *int
+	IomixBytes   string
+	TempPath     string
+	Timeout      time.Duration
+	VmWorkers    *int
+	VmHang       time.Duration
+	VmBytes      string
 }
 
 type SidecarOpts struct {
@@ -63,6 +64,12 @@ func (o *Opts) Args() []string {
 	}
 	if o.IoWorkers != nil {
 		args = append(args, "--io", strconv.Itoa(*o.IoWorkers))
+	}
+	if o.IomixWorkers != nil {
+		args = append(args, "--iomix", strconv.Itoa(*o.IomixWorkers))
+	}
+	if o.IomixBytes != "" {
+		args = append(args, "--iomix-bytes", strconv.Itoa(*o.IomixWorkers))
 	}
 	if o.TempPath != "" {
 		args = append(args, "--temp-path", o.TempPath)
