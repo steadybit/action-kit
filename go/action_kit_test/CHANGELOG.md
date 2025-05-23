@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- support for creating ingress resources in e2e tests
+
 ## 1.4.0
 
 - Update dependencies (golang 1.24)
