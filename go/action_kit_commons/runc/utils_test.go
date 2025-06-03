@@ -7,6 +7,7 @@ package runc
 import (
 	"context"
 	"fmt"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -125,7 +126,7 @@ func Test_NamespaceExists(t *testing.T) {
 	}
 }
 
-func fakeExecuteRefresh(_ context.Context, inode uint64, _ string) (string, error) {
+func fakeExecuteRefresh(_ context.Context, inode uint64, _ specs.LinuxNamespaceType) (string, error) {
 	if inode == presentInode {
 		return resolvedPath, nil
 	}

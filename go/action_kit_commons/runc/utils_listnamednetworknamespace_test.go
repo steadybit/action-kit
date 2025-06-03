@@ -18,7 +18,7 @@ import (
 
 func Test_ListNamedNetworkNamespace(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("ListNamespaces tests only run on Linux")
+		t.Skip("listNamespaces tests only run on Linux")
 		return
 	}
 	e := exec.Command("ip").Run()
@@ -41,7 +41,7 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	fmt.Printf("Started process in network namespace %q with pid %d\n", networkNamespaceName, pid)
 
 	executeListNamespaces = executeListNamespacesFilesystem
-	fs, e := ListNamespaces(context.Background(), pid)
+	fs, e := listNamespaces(context.Background(), pid)
 	assert.NoError(t, e, "Could not list namespaces via the filesystem")
 	fsNet := FilterNamespaces(fs, specs.NetworkNamespace)
 

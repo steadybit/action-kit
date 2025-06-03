@@ -16,7 +16,7 @@ import (
 
 func Test_ListNamespacesFilesystem(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("ListNamespaces tests only run on Linux")
+		t.Skip("listNamespaces tests only run on Linux")
 		return
 	}
 	t.Run("own pid", func(t *testing.T) {
