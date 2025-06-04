@@ -375,7 +375,7 @@ func (c *ServiceClient) Close() {
 func (c *ServiceClient) R() *resty.Request {
 	return c.client.R()
 }
-func (c *ServiceClient) SetHeader(header, value string)  {
+func (c *ServiceClient) SetHeader(header, value string) {
 	c.client.SetHeader(header, value)
 }
 
@@ -443,6 +443,42 @@ func (m *Minikube) TunnelService(service metav1.Object) (string, func(), error) 
 		}
 		return "", nil, fmt.Errorf("failed to tunnel service: %w", err)
 	}
+}
+
+func (m *Minikube) DeleteConfigMap(namespace string, name string) error {
+	// Delete the ConfigMap in Kubernetes
+	return m.GetClient().CoreV1().ConfigMaps(namespace).Delete(
+		context.Background(),
+		name,
+		metav1.DeleteOptions{},
+	)
+}
+func (m *Minikube) CreateConfigMap(namespace string, name string, filePath string) error {
+	// Read file content
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	// Create ConfigMap
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			filepath.Base(filePath): string(content),
+		},
+	}
+
+	// Create the ConfigMap in Kubernetes
+	_, err = m.GetClient().CoreV1().ConfigMaps(namespace).Create(
+		context.Background(),
+		configMap,
+		metav1.CreateOptions{},
+	)
+
+	return err
 }
 
 func (m *Minikube) CreateDeployment(deployment *appsv1.Deployment) (metav1.Object, []corev1.Pod, error) {
