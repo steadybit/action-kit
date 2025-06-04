@@ -18,6 +18,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -452,6 +453,24 @@ func (m *Minikube) DeleteConfigMap(namespace string, name string) error {
 		name,
 		metav1.DeleteOptions{},
 	)
+}
+func (m *Minikube) CreateNamespace(namespace string) error {
+	// Create the namespace if it does not exist
+	_, err := m.GetClient().CoreV1().Namespaces().Create(
+		context.Background(),
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		// Check if the error is because the namespace already exists
+		if k8serrors.IsAlreadyExists(err) {
+			// Namespace already exists, which is fine
+			return nil
+		}
+		return fmt.Errorf("failed to create namespace %s: %w", namespace, err)
+	}
+	return nil
+
 }
 func (m *Minikube) CreateConfigMap(namespace string, name string, filePath string) error {
 	// Read file content
