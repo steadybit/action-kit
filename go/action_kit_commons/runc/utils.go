@@ -505,15 +505,15 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 // executeRefreshNamespaceFilesystem looks up the path to the namespace file, referencing
 // the given inode and type, in /proc/*/ns with the lowest pid.
 func executeRefreshNamespaceFilesystem(ctx context.Context, inode uint64, nsType specs.LinuxNamespaceType) (string, error) {
-	nsPaths, err := filepath.Glob(fmt.Sprintf("/proc/[0-9]*/ns/%s", fromRuncNamespaceType(nsType)))
+	files, err := os.ReadDir("/proc")
 	if err != nil {
-		return "", fmt.Errorf("failed to read ns glob: %w", err)
+		return "", fmt.Errorf("failed to list /proc: %w", err)
 	}
-	// Sort paths as procfs does not guarantee any order.
-	sort.Slice(nsPaths, func(i, j int) bool {
-		return nsPaths[i] < nsPaths[j]
-	})
-	for _, nsPath := range nsPaths {
+	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
+		nsPath := filepath.Join("/proc", file.Name(), "ns", fromRuncNamespaceType(nsType))
 		links, err := executeReadlinkInProc(ctx, nsPath)
 		if err != nil {
 			continue
