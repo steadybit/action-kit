@@ -34,7 +34,6 @@ func Test_ListNamespaces_stress(t *testing.T) {
 	t.Run("stress", func(t *testing.T) {
 		t.Run("filesystem", func(t *testing.T) {
 			executeListNamespaces = executeListNamespacesFilesystem
-			executeRefreshNamespace = executeRefreshNamespaceFilesystem
 			runStressTest(t)
 		})
 	})

@@ -23,9 +23,9 @@ const (
 	resolvedPath     = "/resolved"
 )
 
-func Test_RefreshNamespacesUsingInode(t *testing.T) {
-	executeRefreshNamespace = fakeExecuteRefresh
-	defer func() { executeRefreshNamespace = executeRefreshNamespaceFilesystem }()
+func Test_RefreshNamespaces(t *testing.T) {
+	findNamespaceInProcesses = fakeFindNamespaceInProcesses
+	defer func() { findNamespaceInProcesses = findNamespaceInProcessesImpl }()
 
 	tests := []struct {
 		name     string
@@ -126,7 +126,7 @@ func Test_NamespaceExists(t *testing.T) {
 	}
 }
 
-func fakeExecuteRefresh(_ context.Context, inode uint64, _ specs.LinuxNamespaceType) (string, error) {
+func fakeFindNamespaceInProcesses(_ context.Context, inode uint64, _ specs.LinuxNamespaceType) (string, error) {
 	if inode == presentInode {
 		return resolvedPath, nil
 	}
