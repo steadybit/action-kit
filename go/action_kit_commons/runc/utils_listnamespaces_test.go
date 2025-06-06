@@ -17,7 +17,7 @@ import (
 
 func Test_ListNamespaces_stress(t *testing.T) {
 	if runtime.GOOS != "linux" {
-		t.Skip("ListNamespaces tests only run on Linux")
+		t.Skip("listNamespaces tests only run on Linux")
 		return
 	}
 
@@ -25,7 +25,7 @@ func Test_ListNamespaces_stress(t *testing.T) {
 		pid := os.Getpid()
 
 		executeListNamespaces = executeListNamespacesFilesystem
-		fs, e := ListNamespaces(context.Background(), pid)
+		fs, e := listNamespaces(context.Background(), pid)
 		assert.NoError(t, e, "Could not list namespaces via the filesystem")
 
 		assert.NotEmpty(t, fs)
@@ -34,7 +34,6 @@ func Test_ListNamespaces_stress(t *testing.T) {
 	t.Run("stress", func(t *testing.T) {
 		t.Run("filesystem", func(t *testing.T) {
 			executeListNamespaces = executeListNamespacesFilesystem
-			executeRefreshNamespace = executeRefreshNamespaceFilesystem
 			runStressTest(t)
 		})
 	})
@@ -60,7 +59,7 @@ func runStressTest(t *testing.T) {
 				case <-ctx.Done():
 					return
 				default:
-					_, e := ListNamespaces(context.Background(), pid)
+					_, e := listNamespaces(context.Background(), pid)
 					assert.NoError(t, e)
 					if e != nil {
 						cancel()
