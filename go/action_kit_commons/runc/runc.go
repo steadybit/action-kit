@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+const bundlesPath = "/tmp/steadybit/containers"
+
 type Runc interface {
 	State(ctx context.Context, id string) (*ContainerState, error)
 	Create(ctx context.Context, image, id string) (ContainerBundle, error)
@@ -50,7 +52,11 @@ type Config struct {
 }
 
 type defaultRunc struct {
-	cfg Config
+	cfg        Config
+	cachedSpec struct {
+		value []byte
+		err   error
+	}
 }
 
 type ContainerState struct {
@@ -77,7 +83,12 @@ var (
 )
 
 func NewRunc(cfg Config) Runc {
-	return &defaultRunc{cfg: cfg}
+	r := &defaultRunc{
+		cfg: cfg,
+	}
+
+	r.generateCachedSpec()
+	return r
 }
 
 func (r *defaultRunc) State(ctx context.Context, id string) (*ContainerState, error) {
@@ -107,7 +118,7 @@ func (r *defaultRunc) Create(ctx context.Context, image string, id string) (Cont
 
 	bundle := containerBundle{
 		id:   id,
-		path: filepath.Join("/tmp/steadybit/containers", id),
+		path: filepath.Join(bundlesPath, id),
 		runc: r,
 	}
 
@@ -273,14 +284,33 @@ func (b *containerBundle) writeSpec(spec *specs.Spec) error {
 	return os.WriteFile(filepath.Join(b.path, "config.json"), content, 0644)
 }
 
+func (r *defaultRunc) generateCachedSpec() {
+	bundle := filepath.Join(bundlesPath, "temp")
+	if err := os.MkdirAll(bundle, 0775); err != nil {
+		r.cachedSpec.err = fmt.Errorf("failed to create temporary bundle directory '%s': %w", bundle, err)
+		return
+	}
+	defer func() { _ = os.RemoveAll(bundle) }()
+
+	if output, err := r.command(context.Background(), "spec", "--bundle", bundle).CombinedOutput(); err != nil {
+		r.cachedSpec.err = fmt.Errorf("failed to generate runc spec: %w: %s", err, output)
+		return
+	}
+
+	var err error
+	r.cachedSpec.value, err = os.ReadFile(filepath.Join(bundle, "config.json"))
+	if err != nil {
+		r.cachedSpec.err = fmt.Errorf("failed to read runc spec: %w", err)
+	}
+}
+
 func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
 	defer trace.StartRegion(ctx, "runc.Spec").End()
 	log.Trace().Str("bundle", bundle).Msg("creating container createSpec")
-	output, err := r.command(ctx, "spec", "--bundle", bundle).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%w: %s", err, output)
+	if r.cachedSpec.err != nil {
+		return fmt.Errorf("%w: %s", r.cachedSpec.err, r.cachedSpec.value)
 	}
-	return nil
+	return os.WriteFile(filepath.Join(bundle, "config.json"), r.cachedSpec.value, 0644)
 }
 
 func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
