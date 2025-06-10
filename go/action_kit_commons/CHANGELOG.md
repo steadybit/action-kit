@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- perf: allow which namespaces to inspect for a process
+
 ## 1.3.0
 
 - Update dependencies (golang 1.24)
