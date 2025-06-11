@@ -18,7 +18,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime/trace"
+	"slices"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -44,6 +46,7 @@ type ContainerBundle interface {
 }
 
 type Config struct {
+	Executable    string `json:"runtime" split_words:"true" default:"runc"`
 	Root          string `json:"root" split_words:"true" required:"false"`
 	Debug         bool   `json:"debug" split_words:"true" required:"false"`
 	SystemdCgroup bool   `json:"systemdCgroup" split_words:"true" required:"false"`
@@ -71,10 +74,21 @@ type ContainerState struct {
 
 func ConfigFromEnvironment() Config {
 	cfg := Config{}
-	err := envconfig.Process("steadybit_extension_runc", &cfg)
-	if err != nil {
-		log.Fatal().Err(err).Msgf("Failed to parse health HTTP server configuration from environment.")
+
+	//we changed the prefix, we need to check if the old prefix is configured
+	prefix := "steadybit_extension_ociruntime"
+	if slices.ContainsFunc(os.Environ(), func(env string) bool {
+		return strings.HasPrefix(strings.ToLower(env), "steadybit_extension_runc")
+	}) {
+		log.Warn().Msg("The STEADYBIT_EXTENSION_RUNC_* environment variables are deprecated, please use STEADYBIT_EXTENSION_OCIRUNTIME_* instead.")
+		prefix = "steadybit_extension_runc"
 	}
+
+	if err := envconfig.Process(prefix, &cfg); err != nil {
+		log.Fatal().Err(err).Msgf("Failed to parse OCI runtime configuration from environment.")
+	}
+	log.Debug().Any("config", cfg).Msg("OCI runtime configuration loaded.")
+
 	return cfg
 }
 
@@ -179,7 +193,14 @@ func (r *defaultRunc) Create(ctx context.Context, image string, id string) (Cont
 func (r *defaultRunc) Delete(ctx context.Context, id string, force bool) error {
 	defer trace.StartRegion(ctx, "runc.Delete").End()
 	log.Trace().Str("id", id).Msg("deleting container")
-	if output, err := r.command(ctx, "delete", fmt.Sprintf("--force=%t", force), id).CombinedOutput(); err != nil {
+
+	var args = []string{"delete"}
+	if force {
+		args = append(args, "--force")
+	}
+	args = append(args, id)
+
+	if output, err := r.command(ctx, args...).CombinedOutput(); err != nil {
 		return r.toError(err, output)
 	}
 	return nil
@@ -314,7 +335,7 @@ func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
 }
 
 func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
-	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
+	nsenterArgs := []string{"-t", "1", "-C", "--", r.cfg.Executable}
 	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
 	nsenterArgs = append(nsenterArgs, args...)
 	return RootCommandContext(ctx, "nsenter", nsenterArgs...)
