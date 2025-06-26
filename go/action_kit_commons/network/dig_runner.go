@@ -49,7 +49,7 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 
 	runc.RefreshNamespaces(ctx, r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
-	digPath := utils.LocateExecutable("dig", "STEADYBIT_EXTENSION_DIG_PATH", "dig")
+	digPath := utils.LocateExecutable("dig", "STEADYBIT_EXTENSION_DIG_PATH")
 	if err = bundle.EditSpec(
 		runc.WithHostname(fmt.Sprintf("dig-%s", id)),
 		runc.WithAnnotations(map[string]string{

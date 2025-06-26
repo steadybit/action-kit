@@ -27,7 +27,7 @@ import (
 const maxTcCommands = 2048
 
 var (
-	ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH", "ip")
+	ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 
 	runLock = utils.NewHashedKeyMutex(10)
 
@@ -280,7 +280,7 @@ func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, proces
 func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
 	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
 
-	id := getNextContainerId(sidecar.ExecutionId, path.Base(processArgs[0]) , sidecar.IdSuffix)
+	id := getNextContainerId(sidecar.ExecutionId, path.Base(processArgs[0]), sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return "", err

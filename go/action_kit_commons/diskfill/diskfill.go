@@ -218,7 +218,7 @@ func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 }
 
 func ddArgs(writeKBytes int64, blockSize int) []string {
-	ddPath := utils.LocateExecutable("dd", "STEADYBIT_EXTENSION_DD_PATH", "dd")
+	ddPath := utils.LocateExecutable("dd", "STEADYBIT_EXTENSION_DD_PATH")
 	args := []string{
 		ddPath,
 		"if=/dev/zero",
@@ -233,7 +233,7 @@ func ddArgs(writeKBytes int64, blockSize int) []string {
 }
 
 func fallocateArgs(writeKBytes int64) []string {
-	fallocatePath := utils.LocateExecutable("fallocate", "STEADYBIT_EXTENSION_FALLOCATE_PATH", "fallocate")
+	fallocatePath := utils.LocateExecutable("fallocate", "STEADYBIT_EXTENSION_FALLOCATE_PATH")
 	return []string{
 		fallocatePath,
 		"-l",
