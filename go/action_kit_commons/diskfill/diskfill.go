@@ -283,6 +283,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Op
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
+		runc.WithCopyEnviron(),
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),

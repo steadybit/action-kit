@@ -55,6 +55,7 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 		}),
 		runc.WithNamespaces(runc.FilterNamespaces(r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
+		runc.WithCopyEnviron(),
 		runc.WithProcessArgs(append([]string{"dig"}, arg...)...),
 	); err != nil {
 		return nil, err

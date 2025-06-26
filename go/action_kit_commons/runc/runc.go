@@ -423,9 +423,17 @@ func WithProcessArgs(args ...string) SpecEditor {
 		spec.Process.Args = args
 	}
 }
+
 func WithProcessCwd(cwd string) SpecEditor {
 	return func(spec *specs.Spec) {
 		spec.Process.Cwd = cwd
+	}
+}
+
+func WithCopyEnviron() SpecEditor {
+	env := os.Environ()
+	return func(spec *specs.Spec) {
+		spec.Process.Env = append(spec.Process.Env, env...)
 	}
 }
 
