@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+- fix: propagate extension environment to started runc processes
+
 ## 1.3.1
 
 - perf: allow which namespaces to inspect for a process
