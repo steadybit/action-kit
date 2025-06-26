@@ -13,6 +13,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -75,6 +76,8 @@ func ConfigFromEnvironment() Config {
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Failed to parse health HTTP server configuration from environment.")
 	}
+
+	cfg.NsmountPath = utils.LocateExecutable(cfg.NsmountPath, "", cfg.NsmountPath)
 	return cfg
 }
 
@@ -317,7 +320,7 @@ func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
 	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
 	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
 	nsenterArgs = append(nsenterArgs, args...)
-	return RootCommandContext(ctx, "nsenter", nsenterArgs...)
+	return RootCommandContext(ctx, nsenterPath, nsenterArgs...)
 }
 
 func (r *defaultRunc) defaultArgs() []string {

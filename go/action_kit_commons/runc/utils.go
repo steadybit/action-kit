@@ -13,6 +13,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"iter"
@@ -34,18 +35,13 @@ type BackgroundState struct {
 	err    error
 }
 
-var netNsDir = "/var/run/netns"
-var netNsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
+var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH", "nsenter")
+var netnsPath = utils.LocateExecutable("netns", "STEADYBIT_EXTENSION_NETNS_PATH", "/var/run/netns")
+var netnsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
 
 var executeListNamespaces = executeListNamespacesFilesystem
 var findNamespaceInProcesses = findNamespaceInProcessesImpl
 var errorNsNotFound = errors.New("namespace not found")
-
-func init() {
-	if os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR") != "" {
-		netNsDir = os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR")
-	}
-}
 
 func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*BackgroundState, error) {
 	cmd, err := runc.RunCommand(ctx, bundle)
@@ -205,7 +201,7 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 	var sout, serr bytes.Buffer
 	args := []string{"-t", "1", "-m", "-n", "--", "stat", "-L", "-c", "%i"}
 	args = append(args, paths...)
-	cmd := RootCommandContext(ctx, "nsenter", args...)
+	cmd := RootCommandContext(ctx, nsenterPath, args...)
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
@@ -409,7 +405,7 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 
 func HasNamedNetworkNamespace(namespaces ...LinuxNamespace) bool {
 	return slices.ContainsFunc(namespaces, func(ns LinuxNamespace) bool {
-		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netNsDir)
+		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netnsPath)
 	})
 }
 
@@ -467,7 +463,7 @@ func refreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 
 func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (string, error) {
 	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-m", "-n", "--", "ip", "netns")
+	cmd := RootCommandContext(ctx, nsenterPath, "-t", "1", "-m", "-n", "--", "ip", "netns")
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
@@ -483,8 +479,8 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 	lines := strings.Split(sout.String(), "\n")
 	for _, line := range lines {
 		if line != "" {
-			netNsName := netNsOutputCleanup.ReplaceAllString(line, "")
-			path := fmt.Sprintf("%s/%s", netNsDir, strings.TrimSpace(netNsName))
+			netNsName := netnsOutputCleanup.ReplaceAllString(line, "")
+			path := fmt.Sprintf("%s/%s", netnsPath, strings.TrimSpace(netNsName))
 			inodes, err := executeReadInodes(ctx, path)
 			if err != nil {
 				// Ignore error, as named network namespace could have been removed.
@@ -596,7 +592,7 @@ func searchNamespacePathInProcess(ctx context.Context, inode uint64, nsType spec
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
 	var out bytes.Buffer
-	cmd := RootCommandContext(ctx, "nsenter", "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
+	cmd := RootCommandContext(ctx, nsenterPath, "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
