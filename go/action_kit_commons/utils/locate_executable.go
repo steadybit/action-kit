@@ -6,18 +6,16 @@ import (
 	"os/exec"
 )
 
-func LocateExecutable(name, envVar, fallback string) string {
+func LocateExecutable(name, envVar string) string {
 	if envVar != "" {
 		if fromEnv := os.Getenv(envVar); fromEnv != "" {
 			return fromEnv
 		}
 	}
 
-	if name != "" {
-		if fromLookPath, err := exec.LookPath(name); err == nil {
-			return fromLookPath
-		}
+	if fromLookPath, err := exec.LookPath(name); err == nil {
+		return fromLookPath
 	}
 
-	return fallback
+	return name
 }

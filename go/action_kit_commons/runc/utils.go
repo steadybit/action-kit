@@ -35,7 +35,7 @@ type BackgroundState struct {
 	err    error
 }
 
-var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH", "nsenter")
+var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH")
 var netnsDir = "/var/run/netns"
 var netnsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
 

@@ -13,7 +13,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -77,7 +76,9 @@ func ConfigFromEnvironment() Config {
 		log.Fatal().Err(err).Msgf("Failed to parse health HTTP server configuration from environment.")
 	}
 
-	cfg.NsmountPath = utils.LocateExecutable(cfg.NsmountPath, "", cfg.NsmountPath)
+	if lookupPath, err := exec.LookPath(cfg.NsmountPath); err != nil {
+		cfg.NsmountPath = lookupPath
+	}
 	return cfg
 }
 
