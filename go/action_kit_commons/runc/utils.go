@@ -36,12 +36,18 @@ type BackgroundState struct {
 }
 
 var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH", "nsenter")
-var netnsPath = utils.LocateExecutable("netns", "STEADYBIT_EXTENSION_NETNS_PATH", "/var/run/netns")
+var netnsDir = "/var/run/netns"
 var netnsOutputCleanup = regexp.MustCompile(`\s*\(id: \d+\)$`)
 
 var executeListNamespaces = executeListNamespacesFilesystem
 var findNamespaceInProcesses = findNamespaceInProcessesImpl
 var errorNsNotFound = errors.New("namespace not found")
+
+func init() {
+	if os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR") != "" {
+		netnsDir = os.Getenv("STEADYBIT_EXTENSION_NETNS_DIR")
+	}
+}
 
 func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*BackgroundState, error) {
 	cmd, err := runc.RunCommand(ctx, bundle)
@@ -405,7 +411,7 @@ func RefreshNamespaces(ctx context.Context, namespaces []LinuxNamespace, nsType 
 
 func HasNamedNetworkNamespace(namespaces ...LinuxNamespace) bool {
 	return slices.ContainsFunc(namespaces, func(ns LinuxNamespace) bool {
-		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netnsPath)
+		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netnsDir)
 	})
 }
 
@@ -480,7 +486,7 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 	for _, line := range lines {
 		if line != "" {
 			netNsName := netnsOutputCleanup.ReplaceAllString(line, "")
-			path := fmt.Sprintf("%s/%s", netnsPath, strings.TrimSpace(netNsName))
+			path := fmt.Sprintf("%s/%s", netnsDir, strings.TrimSpace(netNsName))
 			inodes, err := executeReadInodes(ctx, path)
 			if err != nil {
 				// Ignore error, as named network namespace could have been removed.

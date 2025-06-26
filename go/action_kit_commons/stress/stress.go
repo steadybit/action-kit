@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
-	utils "github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"strconv"
 	"syscall"
 	"time"
