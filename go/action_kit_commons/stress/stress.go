@@ -125,6 +125,7 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 		runc.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
+		runc.WithCopyEnviron(),
 		runc.WithProcessArgs(processArgs...),
 		runc.WithProcessCwd("/tmp"),
 		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),

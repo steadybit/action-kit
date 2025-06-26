@@ -293,6 +293,7 @@ func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sideca
 		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
+		runc.WithCopyEnviron(),
 		runc.WithProcessArgs(processArgs...),
 	); err != nil {
 		return "", err
