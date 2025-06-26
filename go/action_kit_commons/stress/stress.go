@@ -111,7 +111,8 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Str
 
 	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)
 
-	processArgs := append([]string{"stress-ng"}, opts.Args()...)
+	stressngPath := utils.LocateExecutable("stress-ng", "STEADYBIT_EXTENSION_STRESSNG_PATH", "stress-ng")
+	processArgs := append([]string{stressngPath}, opts.Args()...)
 
 	caps := []string{"CAP_DAC_OVERRIDE"}
 	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {

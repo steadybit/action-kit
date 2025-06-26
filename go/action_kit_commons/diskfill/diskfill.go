@@ -129,6 +129,7 @@ func (df *DiskFill) Stop() error {
 	var deleteFileErr error
 	if !df.Noop {
 		fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
+
 		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
 			log.Error().Err(err).Msgf("failed to remove file %s", out)
 			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
@@ -217,8 +218,9 @@ func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 }
 
 func ddArgs(writeKBytes int64, blockSize int) []string {
+	ddPath := utils.LocateExecutable("dd", "STEADYBIT_EXTENSION_DD_PATH", "dd")
 	args := []string{
-		"dd",
+		ddPath,
 		"if=/dev/zero",
 		fmt.Sprintf("of=%s", fileInContainer),
 		fmt.Sprintf("bs=%dK", blockSize),
@@ -231,8 +233,9 @@ func ddArgs(writeKBytes int64, blockSize int) []string {
 }
 
 func fallocateArgs(writeKBytes int64) []string {
+	fallocatePath := utils.LocateExecutable("fallocate", "STEADYBIT_EXTENSION_FALLOCATE_PATH", "fallocate")
 	return []string{
-		"fallocate",
+		fallocatePath,
 		"-l",
 		fmt.Sprintf("%dKiB", writeKBytes),
 		fileInContainer,

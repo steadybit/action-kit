@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"runtime/trace"
 )
@@ -48,6 +49,7 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 
 	runc.RefreshNamespaces(ctx, r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
+	digPath := utils.LocateExecutable("dig", "STEADYBIT_EXTENSION_DIG_PATH", "dig")
 	if err = bundle.EditSpec(
 		runc.WithHostname(fmt.Sprintf("dig-%s", id)),
 		runc.WithAnnotations(map[string]string{
@@ -56,7 +58,7 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 		runc.WithNamespaces(runc.FilterNamespaces(r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		runc.WithCapabilities("CAP_NET_ADMIN"),
 		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(append([]string{"dig"}, arg...)...),
+		runc.WithProcessArgs(append([]string{digPath}, arg...)...),
 	); err != nil {
 		return nil, err
 	}

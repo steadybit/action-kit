@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path"
 	"slices"
 	"strconv"
 	"sync"
@@ -26,6 +27,8 @@ import (
 const maxTcCommands = 2048
 
 var (
+	ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH", "ip")
+
 	runLock = utils.NewHashedKeyMutex(10)
 
 	activeTCLock = sync.Mutex{}
@@ -201,7 +204,7 @@ func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts
 		return "", nil
 	}
 
-	processArgs := append([]string{"ip", "-force", "-batch", "-"}, extraArgs...)
+	processArgs := append([]string{ipPath, "-force", "-batch", "-"}, extraArgs...)
 
 	return executeInNetworkNamespace(ctx, r, sidecar, processArgs, cmds)
 }
@@ -259,7 +262,7 @@ func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, proces
 
 	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
 	var outb, errb bytes.Buffer
-	cmd := runc.RootCommandContext(ctx, "ip", ipArgs...)
+	cmd := runc.RootCommandContext(ctx, ipPath, ipArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	cmd.Stdin = ToReader(cmds)
@@ -277,7 +280,7 @@ func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, proces
 func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
 	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
 
-	id := getNextContainerId(sidecar.ExecutionId, processArgs[0], sidecar.IdSuffix)
+	id := getNextContainerId(sidecar.ExecutionId, path.Base(processArgs[0]) , sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", id)
 	if err != nil {
 		return "", err
