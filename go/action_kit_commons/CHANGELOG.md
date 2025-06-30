@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+
+- feat: support attacks without using runc
+
 ## 1.3.2
 
 - fix: propagate extension environment to started runc processes
