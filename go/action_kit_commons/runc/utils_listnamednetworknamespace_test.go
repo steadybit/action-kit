@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"github.com/stretchr/testify/assert"
 	"os/exec"
 	"runtime"
@@ -27,14 +28,14 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	}
 
 	networkNamespaceName := "namespace-test"
-	sout, err := RootCommandContext(context.Background(), "ip", "netns", "add", networkNamespaceName).CombinedOutput()
+	sout, err := utils.RootCommandContext(context.Background(), "ip", "netns", "add", networkNamespaceName).CombinedOutput()
 	assert.NoErrorf(t, err, "Output: %q", sout)
 	defer func() {
-		_ = RootCommandContext(context.Background(), "ip", "netns", "delete", networkNamespaceName).Run()
+		_ = utils.RootCommandContext(context.Background(), "ip", "netns", "delete", networkNamespaceName).Run()
 	}()
 
 	// Verify named network namespace is discovered in lookup by starting a new process in that namespace.
-	process := RootCommandContext(context.Background(), "ip", "netns", "exec", networkNamespaceName, "sleep", "60")
+	process := utils.RootCommandContext(context.Background(), "ip", "netns", "exec", networkNamespaceName, "sleep", "60")
 	err = process.Start()
 	assert.NoError(t, err)
 	pid := process.Process.Pid

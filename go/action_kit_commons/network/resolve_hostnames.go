@@ -9,18 +9,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
-	"os/exec"
 	"slices"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 )
-
-type DigRunner interface {
-	Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error)
-}
 
 type HostnameResolver struct {
 	Dig DigRunner
@@ -80,23 +74,4 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 
 	log.Trace().Interface("resolved", resolved).Strs("hostnames", hostnames).Msg("resolved resolved")
 	return resolved, nil
-}
-
-type CommandDigRunner struct {
-}
-
-func (c *CommandDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
-	var outb, errb bytes.Buffer
-
-	cmd := exec.CommandContext(ctx, "dig", arg...)
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	cmd.Stdin = stdin
-
-	err := cmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("could not resolve hostnames: %w: %s", err, errb.String())
-	}
-
-	return outb.Bytes(), nil
 }

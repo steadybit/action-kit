@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"strings"
 )
 
@@ -54,8 +53,8 @@ type ExtraMount struct {
 	Path   string `json:"path"`
 }
 
-func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]string, error) {
-	ifcs, err := ListInterfaces(ctx, r, sidecar)
+func ListNonLoopbackInterfaceNames(ctx context.Context, r CommandRunner) ([]string, error) {
+	ifcs, err := ListInterfaces(ctx, r)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list interfaces")
 		return nil, err
@@ -70,8 +69,8 @@ func ListNonLoopbackInterfaceNames(ctx context.Context, r runc.Runc, sidecar Sid
 	return ifcNames, nil
 }
 
-func HasCiliumIpRoutes(ctx context.Context, r runc.Runc, sidecar SidecarOpts) (bool, error) {
-	out, err := executeIpCommands(ctx, r, sidecar, []string{"route list"}, "--json")
+func HasCiliumIpRoutes(ctx context.Context, r CommandRunner) (bool, error) {
+	out, err := executeIpCommands(ctx, r, []string{"route list"}, "--json")
 	if err != nil {
 		return false, err
 	}
@@ -91,8 +90,8 @@ func HasCiliumIpRoutes(ctx context.Context, r runc.Runc, sidecar SidecarOpts) (b
 	return false, nil
 }
 
-func ListInterfaces(ctx context.Context, r runc.Runc, sidecar SidecarOpts) ([]Interface, error) {
-	out, err := executeIpCommands(ctx, r, sidecar, []string{"address show up"}, "--json")
+func ListInterfaces(ctx context.Context, r CommandRunner) ([]Interface, error) {
+	out, err := executeIpCommands(ctx, r, []string{"address show up"}, "--json")
 	if err != nil {
 		return nil, err
 	}

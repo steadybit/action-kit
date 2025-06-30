@@ -5,35 +5,25 @@
 package diskfill
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/moby/sys/capability"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path/filepath"
-	"strings"
-	"syscall"
-	"time"
 )
 
-type DiskFill struct {
-	bundle runc.ContainerBundle
-	runc   runc.Runc
-
-	state *runc.BackgroundState
-	args  []string
-	Noop  bool
+type Diskfill interface {
+	Exited() (bool, error)
+	Start() error
+	Stop() error
+	Args() []string
+	Noop() bool
 }
 
 const maxBlockSize = 1024  //Megabytes (1GB)
 const defaultBlockSize = 5 //Megabytes (5MB)
-const mountpointInContainer = "/disk-fill-temp"
-const fileInContainer = "/disk-fill-temp/disk-fill"
 
 type Mode string
 type Method string
@@ -54,8 +44,8 @@ type Opts struct {
 	Method    Method // AT_ONCE or OVER_TIME
 }
 
-func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*DiskFill, error) {
-	kbytesToWrite, noop, err := calculateKBytesToWrite(ctx, r, sidecar, opts)
+func (o Opts) Args(tempPathOverride string, readDiskUsageFn func(path string) (*DiskUsage, error)) ([]string, error) {
+	kbytesToWrite, noop, err := calculateKBytesToWrite(o, readDiskUsageFn)
 	if err != nil {
 		return nil, err
 	}
@@ -63,89 +53,21 @@ func New(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*Dis
 		return nil, errors.New("invalid size to write")
 	}
 
+	file := filepath.Join(o.TempPath, "disk-fill")
+	if tempPathOverride != "" {
+		file = filepath.Join(tempPathOverride, "disk-fill")
+	}
+
 	var processArgs []string
 	if noop {
 		processArgs = []string{"echo", "noop"}
-	} else if opts.Method == AtOnce {
-		processArgs = fallocateArgs(kbytesToWrite)
-	} else if opts.Method == OverTime {
-		blockSizeInKB := calculateBlockSizeKBytes(opts, kbytesToWrite)
-		processArgs = ddArgs(kbytesToWrite, blockSizeInKB)
+	} else if o.Method == AtOnce {
+		processArgs = fallocateArgs(kbytesToWrite, file)
+	} else if o.Method == OverTime {
+		blockSizeInKB := calculateBlockSizeKBytes(o, kbytesToWrite)
+		processArgs = ddArgs(kbytesToWrite, blockSizeInKB, file)
 	}
-
-	bundle, err := createBundle(ctx, r, sidecar, opts, processArgs...)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create start bundle")
-		return nil, err
-	}
-
-	return &DiskFill{
-		bundle: bundle,
-		runc:   r,
-		args:   processArgs,
-		Noop:   noop,
-	}, nil
-}
-
-func (df *DiskFill) Exited() (bool, error) {
-	return df.state.Exited()
-}
-
-func (df *DiskFill) Start() error {
-	log.Info().
-		Str("containerId", df.bundle.ContainerId()).
-		Strs("args", df.args).
-		Msg("Starting diskfill")
-
-	if state, err := runc.RunBundleInBackground(context.Background(), df.runc, df.bundle); err != nil {
-		return fmt.Errorf("failed to start diskfill: %w", err)
-	} else {
-		df.state = state
-	}
-	return nil
-}
-
-func (df *DiskFill) Stop() error {
-	log.Info().
-		Str("containerId", df.bundle.ContainerId()).
-		Msg("stopping diskfill")
-	ctx := context.Background()
-
-	//stop writer
-	if err := df.runc.Kill(ctx, df.bundle.ContainerId(), syscall.SIGINT); err != nil {
-		log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGINT to container")
-	}
-
-	timerStart := time.AfterFunc(10*time.Second, func() {
-		if err := df.runc.Kill(ctx, df.bundle.ContainerId(), syscall.SIGTERM); err != nil {
-			log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to send SIGTERM to container")
-		}
-	})
-
-	df.state.Wait()
-	timerStart.Stop()
-
-	// remove file
-	var deleteFileErr error
-	if !df.Noop {
-		fileToRemove := filepath.Join(df.bundle.Path(), "rootfs", fileInContainer)
-
-		if out, err := runc.RootCommandContext(ctx, "rm", fileToRemove).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
-			log.Error().Err(err).Msgf("failed to remove file %s", out)
-			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", fileToRemove, out)
-		} else {
-			log.Debug().Msgf("removed file %s: %s", fileToRemove, out)
-		}
-	}
-
-	if err := df.runc.Delete(ctx, df.bundle.ContainerId(), false); err != nil {
-		log.WithLevel(levelForErr(err)).Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to delete container")
-	}
-
-	if err := df.bundle.Remove(); err != nil {
-		log.Warn().Str("id", df.bundle.ContainerId()).Err(err).Msg("failed to remove bundle")
-	}
-	return deleteFileErr
+	return processArgs, nil
 }
 
 func levelForErr(err error) zerolog.Level {
@@ -153,10 +75,6 @@ func levelForErr(err error) zerolog.Level {
 		return zerolog.DebugLevel
 	}
 	return zerolog.WarnLevel
-}
-
-func (df *DiskFill) Args() []string {
-	return df.args
 }
 
 func calculateBlockSizeKBytes(opts Opts, kbytesToWrites int64) int {
@@ -185,13 +103,13 @@ func calculateBlockSizeKBytes(opts Opts, kbytesToWrites int64) int {
 	return blockSizeInKB
 }
 
-func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (int64, bool, error) {
+func calculateKBytesToWrite(opts Opts, readDiskUsageFn func(path string) (*DiskUsage, error)) (int64, bool, error) {
 	if opts.Mode == MBToFill {
 		return int64(opts.Size) * 1024, false, nil
 	}
 
 	if opts.Mode == Percentage || opts.Mode == MBLeft {
-		diskSpace, err := readDiskUsage(ctx, r, sidecar, opts)
+		diskSpace, err := readDiskUsageFn(opts.TempPath)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to resolve disk space")
 			return 0, false, err
@@ -217,12 +135,12 @@ func calculateKBytesToWrite(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	return 0, false, fmt.Errorf("invalid size unit %s", opts.Mode)
 }
 
-func ddArgs(writeKBytes int64, blockSize int) []string {
+func ddArgs(writeKBytes int64, blockSize int, file string) []string {
 	ddPath := utils.LocateExecutable("dd", "STEADYBIT_EXTENSION_DD_PATH")
 	args := []string{
 		ddPath,
 		"if=/dev/zero",
-		fmt.Sprintf("of=%s", fileInContainer),
+		fmt.Sprintf("of=%s", file),
 		fmt.Sprintf("bs=%dK", blockSize),
 		fmt.Sprintf("count=%d", writeKBytes/int64(blockSize)),
 	}
@@ -232,81 +150,12 @@ func ddArgs(writeKBytes int64, blockSize int) []string {
 	return args
 }
 
-func fallocateArgs(writeKBytes int64) []string {
+func fallocateArgs(writeKBytes int64, file string) []string {
 	fallocatePath := utils.LocateExecutable("fallocate", "STEADYBIT_EXTENSION_FALLOCATE_PATH")
 	return []string{
 		fallocatePath,
 		"-l",
 		fmt.Sprintf("%dKiB", writeKBytes),
-		fileInContainer,
+		file,
 	}
-}
-
-type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
-	IdSuffix      string
-	ImagePath     string
-	ExecutionId   uuid.UUID
-}
-
-func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts, processArgs ...string) (runc.ContainerBundle, error) {
-	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, "/", containerId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
-	}
-
-	success := false
-	defer func() {
-		if success {
-			return
-		}
-		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", containerId).Err(err).Msg("failed to remove bundle")
-		}
-	}()
-
-	if opts.TempPath != "" {
-		if err := bundle.MountFromProcess(ctx, sidecar.TargetProcess.Pid, opts.TempPath, mountpointInContainer); err != nil {
-			log.Warn().Err(err).Msgf("failed to mount %s", opts.TempPath)
-		}
-	}
-
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
-
-	caps := []string{"CAP_DAC_OVERRIDE"}
-	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
-		caps = append(caps, "CAP_SYS_RESOURCE")
-	} else {
-		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
-	}
-
-	editors := []runc.SpecEditor{
-		runc.WithHostname(containerId),
-		runc.WithAnnotations(map[string]string{
-			"com.steadybit.sidecar": "true",
-		}),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(processArgs...),
-		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
-		runc.WithCapabilities(caps...),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
-		runc.WithMountIfNotPresent(specs.Mount{
-			Destination: "/tmp",
-			Type:        "tmpfs",
-			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
-		}),
-	}
-
-	if err := bundle.EditSpec(editors...); err != nil {
-		return nil, err
-	}
-
-	success = true
-	return bundle, nil
-}
-
-func getNextContainerId(executionId uuid.UUID, suffix string) string {
-	return fmt.Sprintf("sb-diskfill-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
 }

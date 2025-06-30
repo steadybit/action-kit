@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os"
 	"path/filepath"
 	"runtime/trace"
@@ -67,7 +68,7 @@ func (b *containerBundle) mountRootfsOverlay(ctx context.Context, image string) 
 		Str("work", work).
 		Str("rootfs", rootfs).
 		Msg("mounting overlay")
-	out, err := RootCommandContext(ctx,
+	out, err := utils.RootCommandContext(ctx,
 		"mount",
 		"-t",
 		"overlay",
@@ -87,7 +88,7 @@ func (b *containerBundle) mountRootfsOverlay(ctx context.Context, image string) 
 func (b *containerBundle) CopyFileFromProcess(ctx context.Context, pid int, fromPath, toPath string) error {
 	defer trace.StartRegion(ctx, "utils.CopyFileFromProcessToBundle").End()
 	var out bytes.Buffer
-	cmd := RootCommandContext(ctx, "cat", filepath.Join("/proc", strconv.Itoa(pid), "root", fromPath))
+	cmd := utils.RootCommandContext(ctx, "cat", filepath.Join("/proc", strconv.Itoa(pid), "root", fromPath))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
@@ -112,7 +113,7 @@ func (b *containerBundle) MountFromProcess(ctx context.Context, fromPid int, fro
 	}
 
 	var out bytes.Buffer
-	cmd := RootCommandContext(ctx, b.runc.cfg.NsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint)
+	cmd := utils.RootCommandContext(ctx, b.runc.cfg.NsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
@@ -126,7 +127,7 @@ func (b *containerBundle) MountFromProcess(ctx context.Context, fromPid int, fro
 
 func unmount(ctx context.Context, path string) error {
 	log.Trace().Str("path", path).Msg("unmounting")
-	out, err := RootCommandContext(ctx, "umount", "-v", path).CombinedOutput()
+	out, err := utils.RootCommandContext(ctx, "umount", "-v", path).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, out)
 	}
