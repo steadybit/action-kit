@@ -6,16 +6,11 @@ package network
 
 import (
 	"context"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestHasCiliumIpRoutes(t *testing.T) {
-	defer func() {
-		executeIpCommands = executeIpCommandsImpl
-	}()
-
 	tests := []struct {
 		name    string
 		stdout  string
@@ -43,15 +38,24 @@ func TestHasCiliumIpRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			executeIpCommands = func(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string, extraArgs ...string) (string, error) {
-				return tt.stdout, nil
-			}
-
-			got, err := HasCiliumIpRoutes(context.Background(), nil, SidecarOpts{})
+			got, err := HasCiliumIpRoutes(context.Background(), &mockRunner{stdout: tt.stdout})
 			if !tt.wantErr(t, err, "HasCiliumIpRoutes()") {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "HasCiliumIpRoutes()")
 		})
 	}
+}
+
+type mockRunner struct {
+	stdout string
+	err    error
+}
+
+func (m mockRunner) run(_ context.Context, _ []string, _ []string) (string, error) {
+	return m.stdout, m.err
+}
+
+func (m mockRunner) id() string {
+	return "mock"
 }

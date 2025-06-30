@@ -15,8 +15,32 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
+	"os/exec"
 	"runtime/trace"
 )
+
+type DigRunner interface {
+	Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error)
+}
+
+type CommandDigRunner struct {
+}
+
+func (c *CommandDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
+	var outb, errb bytes.Buffer
+
+	cmd := exec.CommandContext(ctx, "dig", arg...)
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	cmd.Stdin = stdin
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve hostnames: %w: %s", err, errb.String())
+	}
+
+	return outb.Bytes(), nil
+}
 
 type RuncDigRunner struct {
 	Runc    runc.Runc

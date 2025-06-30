@@ -5,13 +5,11 @@
 package runc
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"golang.org/x/sync/errgroup"
@@ -25,15 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"syscall"
 )
-
-type BackgroundState struct {
-	cond   *sync.Cond
-	exited bool
-	err    error
-}
 
 var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH")
 var netnsDir = "/var/run/netns"
@@ -49,7 +39,7 @@ func init() {
 	}
 }
 
-func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*BackgroundState, error) {
+func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*utils.BackgroundState, error) {
 	cmd, err := runc.RunCommand(ctx, bundle)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run %s: %w", bundle.ContainerId(), err)
@@ -57,84 +47,7 @@ func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundl
 
 	logger := log.With().Str("id", bundle.ContainerId()).Logger()
 
-	return RunCommandInBackground(cmd, logger)
-}
-
-func RunCommandInBackground(cmd *exec.Cmd, logger zerolog.Logger) (*BackgroundState, error) {
-	var errb bytes.Buffer
-	pr, pw := io.Pipe()
-	cmd.Stdout = pw
-	cmd.Stderr = io.MultiWriter(&errb, pw)
-
-	go func() {
-		defer func() { _ = pr.Close() }()
-		bufReader := bufio.NewReader(pr)
-
-		for {
-			if line, err := bufReader.ReadString('\n'); err == nil {
-				logger.Debug().Msg(line)
-			} else {
-				break
-			}
-		}
-	}()
-
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start: %w", err)
-	}
-
-	result := &BackgroundState{
-		cond:   &sync.Cond{L: &sync.Mutex{}},
-		exited: false,
-		err:    nil,
-	}
-
-	go func(r *BackgroundState) {
-		defer func() { _ = pw.Close() }()
-		err := cmd.Wait()
-		logger.Trace().Int("exitCode", cmd.ProcessState.ExitCode()).Msg("exited.")
-
-		r.cond.L.Lock()
-		defer r.cond.L.Unlock()
-
-		r.exited = true
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			exitErr.Stderr = errb.Bytes()
-			r.err = exitErr
-		} else {
-			r.err = err
-		}
-
-		r.cond.Broadcast()
-	}(result)
-
-	return result, nil
-}
-
-func (r *BackgroundState) Exited() (bool, error) {
-	r.cond.L.Lock()
-	defer r.cond.L.Unlock()
-	return r.exited, r.err
-}
-
-func (r *BackgroundState) Wait() {
-	r.cond.L.Lock()
-	defer r.cond.L.Unlock()
-	for !r.exited {
-		r.cond.Wait()
-	}
-}
-
-func RootCommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, name, arg...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: 0,
-			Gid: 0,
-		},
-	}
-	return cmd
+	return utils.RunCommandInBackground(cmd, logger)
 }
 
 func FilterNamespaces(ns []LinuxNamespace, types ...specs.LinuxNamespaceType) []LinuxNamespace {
@@ -207,7 +120,7 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 	var sout, serr bytes.Buffer
 	args := []string{"-t", "1", "-m", "-n", "--", "stat", "-L", "-c", "%i"}
 	args = append(args, paths...)
-	cmd := RootCommandContext(ctx, nsenterPath, args...)
+	cmd := utils.RootCommandContext(ctx, nsenterPath, args...)
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
@@ -330,7 +243,7 @@ func executeListNamespacesFilesystem(ctx context.Context, pid int, nsTypes ...sp
 
 func executeReadlinkUsingExec(ctx context.Context, nsPaths ...string) ([]string, error) {
 	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, "readlink", nsPaths...)
+	cmd := utils.RootCommandContext(ctx, "readlink", nsPaths...)
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
@@ -469,7 +382,7 @@ func refreshNamespace(ctx context.Context, ns *LinuxNamespace) {
 
 func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (string, error) {
 	var sout, serr bytes.Buffer
-	cmd := RootCommandContext(ctx, nsenterPath, "-t", "1", "-m", "-n", "--", "ip", "netns")
+	cmd := utils.RootCommandContext(ctx, nsenterPath, "-t", "1", "-m", "-n", "--", "ip", "netns")
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err := cmd.Run()
@@ -598,7 +511,7 @@ func searchNamespacePathInProcess(ctx context.Context, inode uint64, nsType spec
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
 	var out bytes.Buffer
-	cmd := RootCommandContext(ctx, nsenterPath, "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
+	cmd := utils.RootCommandContext(ctx, nsenterPath, "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {

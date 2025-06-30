@@ -5,23 +5,14 @@
 package network
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os/exec"
-	"path"
-	"slices"
-	"strconv"
-	"sync"
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"os/exec"
+	"slices"
+	"sync"
 )
 
 const maxTcCommands = 2048
@@ -35,12 +26,6 @@ var (
 	activeTc     = map[string][]Opts{}
 )
 
-type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
-	IdSuffix      string
-	ExecutionId   uuid.UUID
-}
-
 type ErrTooManyTcCommands struct {
 	Count int
 }
@@ -49,15 +34,20 @@ func (e *ErrTooManyTcCommands) Error() string {
 	return fmt.Sprintf("too many tc commands: %d", e.Count)
 }
 
-func Apply(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) error {
-	return generateAndRunCommands(ctx, r, sidecar, opts, ModeAdd)
+type CommandRunner interface {
+	run(ctx context.Context, processArgs []string, cmds []string) (string, error)
+	id() string
 }
 
-func Revert(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) error {
-	return generateAndRunCommands(ctx, r, sidecar, opts, ModeDelete)
+func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
+	return generateAndRunCommands(ctx, runner, opts, ModeAdd)
 }
 
-func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts, mode Mode) error {
+func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
+	return generateAndRunCommands(ctx, runner, opts, ModeDelete)
+}
+
+func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode Mode) error {
 	ipCommandsV4, err := opts.IpCommands(FamilyV4, mode)
 	if err != nil {
 		return err
@@ -76,7 +66,7 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 		return err
 	}
 
-	netNsID := getNetworkNsIdentifier(sidecar.TargetProcess.Namespaces)
+	netNsID := runner.id()
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
@@ -87,45 +77,45 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	}
 
 	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, r, sidecar, FamilyV4, "before")
+		logCurrentIpRules(ctx, runner, FamilyV4, "before")
 	}
 
 	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, r, sidecar, FamilyV6, "before")
+		logCurrentIpRules(ctx, runner, FamilyV6, "before")
 	}
 
 	if len(tcCommands) > 0 {
-		logCurrentTcRules(ctx, r, sidecar, "before")
+		logCurrentTcRules(ctx, runner, "before")
 	}
 
 	if len(ipCommandsV4) > 0 {
-		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
 	if len(ipCommandsV6) > 0 {
-		if _, ipErr := executeIpCommands(ctx, r, sidecar, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
 			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
 
 	if len(tcCommands) > 0 {
-		if _, tcErr := executeTcCommands(ctx, r, sidecar, tcCommands); tcErr != nil {
+		if _, tcErr := executeTcCommands(ctx, runner, tcCommands); tcErr != nil {
 			err = errors.Join(err, FilterBatchErrors(tcErr, mode, tcCommands))
 		}
 	}
 
 	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, r, sidecar, FamilyV4, "after")
+		logCurrentIpRules(ctx, runner, FamilyV4, "after")
 	}
 
 	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, r, sidecar, FamilyV6, "after")
+		logCurrentIpRules(ctx, runner, FamilyV6, "after")
 	}
 
 	if len(tcCommands) > 0 {
-		logCurrentTcRules(ctx, r, sidecar, "after")
+		logCurrentTcRules(ctx, runner, "after")
 	}
 
 	if mode == ModeDelete {
@@ -135,12 +125,12 @@ func generateAndRunCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpt
 	return err
 }
 
-func logCurrentIpRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, family Family, when string) {
+func logCurrentIpRules(ctx context.Context, runner CommandRunner, family Family, when string) {
 	if !log.Trace().Enabled() {
 		return
 	}
 
-	stdout, err := executeIpCommands(ctx, r, sidecar, []string{"rule show"}, "-family", string(family))
+	stdout, err := executeIpCommands(ctx, runner, []string{"rule show"}, "-family", string(family))
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current ip rules")
 		return
@@ -197,24 +187,22 @@ func defaultIpv6Supported() bool {
 	return true
 }
 
-var executeIpCommands = executeIpCommandsImpl
-
-func executeIpCommandsImpl(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string, extraArgs ...string) (string, error) {
+func executeIpCommands(ctx context.Context, runner CommandRunner, cmds []string, extraArgs ...string) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
 
 	processArgs := append([]string{ipPath, "-force", "-batch", "-"}, extraArgs...)
 
-	return executeInNetworkNamespace(ctx, r, sidecar, processArgs, cmds)
+	return runner.run(ctx, processArgs, cmds)
 }
 
-func logCurrentTcRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, s string) {
+func logCurrentTcRules(ctx context.Context, runner CommandRunner, s string) {
 	if !log.Trace().Enabled() {
 		return
 	}
 
-	stdout, err := executeTcCommands(ctx, r, sidecar, []string{"qdisc show"})
+	stdout, err := executeTcCommands(ctx, runner, []string{"qdisc show"})
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current tc rules")
 		return
@@ -222,7 +210,7 @@ func logCurrentTcRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, s 
 		log.Trace().Str("when", s).Str("rules", stdout).Msg("current tc qdisc")
 	}
 
-	stdout, err = executeTcCommands(ctx, r, sidecar, []string{"filter show"})
+	stdout, err = executeTcCommands(ctx, runner, []string{"filter show"})
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current tc rules")
 		return
@@ -231,117 +219,12 @@ func logCurrentTcRules(ctx context.Context, r runc.Runc, sidecar SidecarOpts, s 
 	}
 }
 
-func executeTcCommands(ctx context.Context, r runc.Runc, sidecar SidecarOpts, cmds []string) (string, error) {
+func executeTcCommands(ctx context.Context, runner CommandRunner, cmds []string) (string, error) {
 	if len(cmds) == 0 {
 		return "", nil
 	}
 
-	return executeInNetworkNamespace(ctx, r, sidecar, []string{"tc", "-force", "-batch", "-"}, cmds)
-}
-
-func executeInNetworkNamespace(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
-
-	if runc.HasNamedNetworkNamespace(sidecar.TargetProcess.Namespaces...) {
-		ns := ""
-		for _, n := range sidecar.TargetProcess.Namespaces {
-			if n.Type == specs.NetworkNamespace {
-				ns = n.Path
-				break
-			}
-		}
-
-		return executeInNamedNetworkUsingIpNetNs(ctx, ns, processArgs, cmds)
-	} else {
-		return executeInNetworkNamespaceUsingRunc(ctx, r, sidecar, processArgs, cmds)
-	}
-}
-
-func executeInNamedNetworkUsingIpNetNs(ctx context.Context, netns string, processArgs []string, cmds []string) (string, error) {
-	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
-
-	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
-	var outb, errb bytes.Buffer
-	cmd := runc.RootCommandContext(ctx, ipPath, ipArgs...)
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	cmd.Stdin = ToReader(cmds)
-	err := cmd.Run()
-
-	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
-			return "", parsed
-		}
-		return "", fmt.Errorf("netns exec failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
-	}
-	return outb.String(), err
-}
-
-func executeInNetworkNamespaceUsingRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, processArgs []string, cmds []string) (string, error) {
-	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
-
-	id := getNextContainerId(sidecar.ExecutionId, path.Base(processArgs[0]), sidecar.IdSuffix)
-	bundle, err := r.Create(ctx, "/", id)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := bundle.Remove(); err != nil {
-			log.Warn().Str("id", id).Err(err).Msg("failed to remove bundle")
-		}
-	}()
-
-	if err = bundle.EditSpec(
-		runc.WithHostname(id),
-		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(processArgs...),
-	); err != nil {
-		return "", err
-	}
-
-	var outb, errb bytes.Buffer
-	err = r.Run(ctx, bundle, runc.IoOpts{
-		Stdin:  ToReader(cmds),
-		Stdout: &outb,
-		Stderr: &errb,
-	})
-	defer func() {
-		if err := r.Delete(context.Background(), id, true); err != nil {
-			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
-				level = zerolog.DebugLevel
-			}
-			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
-		}
-	}()
-
-	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
-			return "", parsed
-		}
-		return "", fmt.Errorf("%s failed: %w, output: %s, error: %s", id, err, outb.String(), errb.String())
-	}
-	return outb.String(), err
-}
-
-func getNetworkNsIdentifier(namespaces []runc.LinuxNamespace) string {
-	for _, ns := range namespaces {
-		if ns.Type == specs.NetworkNamespace {
-			if ns.Inode != 0 {
-				return strconv.FormatUint(ns.Inode, 10)
-			} else {
-				return ns.Path
-			}
-		}
-	}
-	return ""
-}
-
-func getNextContainerId(executionId uuid.UUID, tool, suffix string) string {
-	return fmt.Sprintf("sb-%s-%d-%s-%s", tool, time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
+	return runner.run(ctx, []string{"tc", "-force", "-batch", "-"}, cmds)
 }
 
 // CondenseNetWithPortRange condenses a list of NetWithPortRange

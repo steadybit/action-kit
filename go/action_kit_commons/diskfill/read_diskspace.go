@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"strconv"
 	"strings"
@@ -24,8 +25,8 @@ type DiskUsage struct {
 	Available int64
 }
 
-func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (*DiskUsage, error) {
-	bundle, err := createBundle(ctx, r, sidecar, opts, "df", "-Pk", mountpointInContainer)
+func readDiskUsageRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, path string) (*DiskUsage, error) {
+	bundle, err := createBundle(ctx, r, sidecar, path, "df", "-Pk", mountpointInContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +60,26 @@ func readDiskUsage(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts O
 	return &usage, nil
 }
 
+func readDiskUsageProcess(ctx context.Context, path string) (*DiskUsage, error) {
+	cmd := utils.RootCommandContext(ctx, "df", "-Pk", path)
+	var outb, errb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read disk usage: %w: %s", err, errb.String())
+	}
+
+	usage, err := CalculateDiskUsage(bytes.NewReader(outb.Bytes()))
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to calculate disk usage")
+		return nil, err
+	}
+	log.Trace().Msgf("Disk usage: %v", usage)
+	return &usage, nil
+}
+
 func CalculateDiskUsage(r io.Reader) (DiskUsage, error) {
 	var lines []string
 	scanner := bufio.NewScanner(r)
@@ -73,7 +94,7 @@ func CalculateDiskUsage(r io.Reader) (DiskUsage, error) {
 		return DiskUsage{}, fmt.Errorf("failed to parse df output: %v", lines)
 	}
 	lines[0] = strings.ReplaceAll(lines[0], "Mounted on", "Mounted-on")
-	log.Trace().Msgf("calculateDiskUsage: %v", lines)
+	log.Trace().Msgf("CalculateDiskUsage: %v", lines)
 	var keyValueMap = make(map[string]string)
 	colNames := deleteEmpty(strings.Split(lines[0], " "))
 	log.Trace().Msgf("colNames: %v", colNames)

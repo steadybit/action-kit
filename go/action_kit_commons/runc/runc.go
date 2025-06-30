@@ -13,6 +13,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -321,7 +322,7 @@ func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
 	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
 	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
 	nsenterArgs = append(nsenterArgs, args...)
-	return RootCommandContext(ctx, nsenterPath, nsenterArgs...)
+	return utils.RootCommandContext(ctx, nsenterPath, nsenterArgs...)
 }
 
 func (r *defaultRunc) defaultArgs() []string {

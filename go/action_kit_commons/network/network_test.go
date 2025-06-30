@@ -52,8 +52,10 @@ func Test_generateAndRunCommands_should_serialize(t *testing.T) {
 				IdSuffix:      "test",
 			}
 
-			_ = Apply(context.Background(), runcMock, sidecar, &blackholeOpts)
-			defer Revert(context.Background(), runcMock, sidecar, &blackholeOpts)
+			runner := NewRuncRunner(runcMock, sidecar)
+
+			_ = Apply(context.Background(), runner, &blackholeOpts)
+			defer Revert(context.Background(), runner, &blackholeOpts)
 		}()
 	}
 	wg.Wait()

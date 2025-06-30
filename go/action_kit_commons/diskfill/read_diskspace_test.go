@@ -93,11 +93,11 @@ overlay               61202244  37121180  20939740  64% /`,
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := CalculateDiskUsage(strings.NewReader(tt.args.lines))
 			if (err != nil) != tt.wantErr {
-				t.Errorf("calculateDiskUsage() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CalculateDiskUsage() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("calculateDiskUsage() got = %v, want %v", got, tt.want)
+				t.Errorf("CalculateDiskUsage() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
