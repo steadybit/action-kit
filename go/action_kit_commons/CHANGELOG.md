@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- feat: add option to ignore cgroup to fill memory
+
 ## 1.4.0
 
 - feat: support attacks without using runc
