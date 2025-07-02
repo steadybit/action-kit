@@ -3,7 +3,7 @@
 
 //go:build darwin
 
-package runc
+package ociruntime
 
 import "context"
 

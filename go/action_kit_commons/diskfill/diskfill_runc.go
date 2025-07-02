@@ -11,7 +11,7 @@ import (
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path/filepath"
 	"strings"
@@ -20,8 +20,8 @@ import (
 )
 
 type diskfillRunc struct {
-	bundle       runc.ContainerBundle
-	runc         runc.Runc
+	bundle       ociruntime.ContainerBundle
+	runc         ociruntime.OciRuntime
 	state        *utils.BackgroundState
 	args         []string
 	pathToRemove string
@@ -29,7 +29,7 @@ type diskfillRunc struct {
 
 const mountpointInContainer = "/disk-fill-temp"
 
-func NewDiskfillRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (Diskfill, error) {
+func NewDiskfillRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, opts Opts) (Diskfill, error) {
 	processArgs, err := opts.Args(mountpointInContainer, func(path string) (*DiskUsage, error) {
 		return readDiskUsageRunc(context.Background(), r, sidecar, path)
 	})
@@ -61,7 +61,7 @@ func (df *diskfillRunc) Start() error {
 		Strs("args", df.args).
 		Msg("Starting diskfill")
 
-	if state, err := runc.RunBundleInBackground(context.Background(), df.runc, df.bundle); err != nil {
+	if state, err := ociruntime.RunBundleInBackground(context.Background(), df.runc, df.bundle); err != nil {
 		return fmt.Errorf("failed to start diskfill: %w", err)
 	} else {
 		df.state = state
@@ -116,13 +116,13 @@ func (df *diskfillRunc) Args() []string {
 }
 
 type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
+	TargetProcess ociruntime.LinuxProcessInfo
 	IdSuffix      string
 	ImagePath     string
 	ExecutionId   uuid.UUID
 }
 
-func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, targetPath string, processArgs ...string) (runc.ContainerBundle, error) {
+func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, targetPath string, processArgs ...string) (ociruntime.ContainerBundle, error) {
 	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
@@ -145,7 +145,7 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, targetP
 		}
 	}
 
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
+	ociruntime.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
 	caps := []string{"CAP_DAC_OVERRIDE"}
 	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
@@ -154,18 +154,18 @@ func createBundle(ctx context.Context, r runc.Runc, sidecar SidecarOpts, targetP
 		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
 	}
 
-	editors := []runc.SpecEditor{
-		runc.WithHostname(containerId),
-		runc.WithAnnotations(map[string]string{
+	editors := []ociruntime.SpecEditor{
+		ociruntime.WithHostname(containerId),
+		ociruntime.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(processArgs...),
-		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
-		runc.WithCapabilities(caps...),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
-		runc.WithMountIfNotPresent(specs.Mount{
+		ociruntime.WithCopyEnviron(),
+		ociruntime.WithProcessArgs(processArgs...),
+		ociruntime.WithProcessCwd("/tmp"),
+		ociruntime.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
+		ociruntime.WithCapabilities(caps...),
+		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
+		ociruntime.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},

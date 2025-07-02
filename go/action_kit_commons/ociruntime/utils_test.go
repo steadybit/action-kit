@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 //go:build !windows
 
-package runc
+package ociruntime
 
 import (
 	"context"

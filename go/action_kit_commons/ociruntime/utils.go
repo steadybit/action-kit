@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 //go:build !windows
 
-package runc
+package ociruntime
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ func init() {
 	}
 }
 
-func RunBundleInBackground(ctx context.Context, runc Runc, bundle ContainerBundle) (*utils.BackgroundState, error) {
+func RunBundleInBackground(ctx context.Context, runc OciRuntime, bundle ContainerBundle) (*utils.BackgroundState, error) {
 	cmd, err := runc.RunCommand(ctx, bundle)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run %s: %w", bundle.ContainerId(), err)

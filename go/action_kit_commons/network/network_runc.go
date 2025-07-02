@@ -13,7 +13,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path"
 	"strconv"
@@ -21,17 +21,17 @@ import (
 )
 
 type runcRunner struct {
-	runc    runc.Runc
+	runc    ociruntime.OciRuntime
 	sidecar SidecarOpts
 }
 
 type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
+	TargetProcess ociruntime.LinuxProcessInfo
 	IdSuffix      string
 	ExecutionId   uuid.UUID
 }
 
-func NewRuncRunner(r runc.Runc, sidecar SidecarOpts) CommandRunner {
+func NewRuncRunner(r ociruntime.OciRuntime, sidecar SidecarOpts) CommandRunner {
 	return &runcRunner{
 		runc:    r,
 		sidecar: sidecar,
@@ -39,9 +39,9 @@ func NewRuncRunner(r runc.Runc, sidecar SidecarOpts) CommandRunner {
 }
 
 func (r *runcRunner) run(ctx context.Context, processArgs []string, cmds []string) (string, error) {
-	runc.RefreshNamespaces(ctx, r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
+	ociruntime.RefreshNamespaces(ctx, r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
-	if runc.HasNamedNetworkNamespace(r.sidecar.TargetProcess.Namespaces...) {
+	if ociruntime.HasNamedNetworkNamespace(r.sidecar.TargetProcess.Namespaces...) {
 		return r.executeInNamedNetworkUsingIpNetNs(ctx, processArgs, cmds)
 	} else {
 		return r.executeInNetworkNamespaceUsingRunc(ctx, processArgs, cmds)
@@ -104,18 +104,18 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 	}()
 
 	if err = bundle.EditSpec(
-		runc.WithHostname(id),
-		runc.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
-		runc.WithNamespaces(runc.FilterNamespaces(r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(processArgs...),
+		ociruntime.WithHostname(id),
+		ociruntime.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
+		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
+		ociruntime.WithCapabilities("CAP_NET_ADMIN"),
+		ociruntime.WithCopyEnviron(),
+		ociruntime.WithProcessArgs(processArgs...),
 	); err != nil {
 		return "", err
 	}
 
 	var outb, errb bytes.Buffer
-	err = r.runc.Run(ctx, bundle, runc.IoOpts{
+	err = r.runc.Run(ctx, bundle, ociruntime.IoOpts{
 		Stdin:  ToReader(cmds),
 		Stdout: &outb,
 		Stderr: &errb,
@@ -123,7 +123,7 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 	defer func() {
 		if err := r.runc.Delete(context.Background(), id, true); err != nil {
 			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
+			if errors.Is(err, ociruntime.ErrContainerNotFound) {
 				level = zerolog.DebugLevel
 			}
 			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")
