@@ -28,14 +28,18 @@ const (
 )
 
 type Opts struct {
-	Size     int
-	Mode     Mode
-	Unit     Unit
-	Duration time.Duration
+	Size         int
+	Mode         Mode
+	Unit         Unit
+	Duration     time.Duration
+	IgnoreCgroup bool
 }
 
 func (o Opts) processArgs() []string {
 	path := utils.LocateExecutable("memfill", "STEADYBIT_EXTENSION_MEMFILL_PATH")
 	args := []string{path, fmt.Sprintf("%d%s", o.Size, o.Unit), string(o.Mode), fmt.Sprintf("%.0f", o.Duration.Seconds())}
+	if o.IgnoreCgroup {
+		args = append(args, "--ignore-cgroup")
+	}
 	return args
 }
