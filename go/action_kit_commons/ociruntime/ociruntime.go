@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 //go:build !windows
 
-package runc
+package ociruntime
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
@@ -18,21 +19,45 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/trace"
+	"slices"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
 
-const bundlesPath = "/tmp/steadybit/containers"
+const steadybitBundlesPath = "/tmp/steadybit/containers"
+const steadybitRoot = "/tmp/steadybit/oci-root"
 
-type Runc interface {
+var (
+	ErrContainerNotFound = errors.New("container not found")
+	nsmountPath          = initNsMountPath()
+)
+
+func initNsMountPath() string {
+	path := "nsmount"
+
+	if fromEnv := os.Getenv("STEADYBIT_EXTENSION_NSMOUNT_PATH"); fromEnv != "" {
+		path = fromEnv
+	} else if fromEnv = os.Getenv("STEADYBIT_EXTENSION_RUNC_NSMOUNT_PATH"); fromEnv != "" {
+		log.Warn().Msg("The STEADYBIT_EXTENSION_RUNC_NSMOUNT_PATH environment variable is deprecated, please use STEADYBIT_EXTENSION_NSMOUNT_PATH instead.")
+		path = fromEnv
+	}
+
+	if lookupPath, err := exec.LookPath(path); err == nil {
+		return lookupPath
+	} else {
+		return path
+	}
+}
+
+type OciRuntime interface {
 	State(ctx context.Context, id string) (*ContainerState, error)
 	Create(ctx context.Context, image, id string) (ContainerBundle, error)
 	Run(ctx context.Context, container ContainerBundle, ioOpts IoOpts) error
 	RunCommand(ctx context.Context, container ContainerBundle) (*exec.Cmd, error)
 	Delete(ctx context.Context, id string, force bool) error
-	Kill(background context.Context, id string, signal syscall.Signal) error
+	Kill(ctx context.Context, id string, signal syscall.Signal) error
 }
 
 type ContainerBundle interface {
@@ -45,14 +70,14 @@ type ContainerBundle interface {
 }
 
 type Config struct {
+	RuntimePath   string `json:"runtimePath" split_words:"true" default:"runc"`
 	Root          string `json:"root" split_words:"true" required:"false"`
 	Debug         bool   `json:"debug" split_words:"true" required:"false"`
 	SystemdCgroup bool   `json:"systemdCgroup" split_words:"true" required:"false"`
 	Rootless      string `json:"rootless" split_words:"true" required:"false"`
-	NsmountPath   string `json:"nsmountPath" split_words:"true" default:"nsmount"`
 }
 
-type defaultRunc struct {
+type defaultRuntime struct {
 	cfg        Config
 	cachedSpec struct {
 		value []byte
@@ -72,32 +97,62 @@ type ContainerState struct {
 
 func ConfigFromEnvironment() Config {
 	cfg := Config{}
-	err := envconfig.Process("steadybit_extension_runc", &cfg)
-	if err != nil {
-		log.Fatal().Err(err).Msgf("Failed to parse health HTTP server configuration from environment.")
+
+	//we changed the prefix, we need to check if the old prefix is configured
+	prefix := "steadybit_extension_ociruntime"
+	if slices.ContainsFunc(os.Environ(), func(env string) bool {
+		return strings.HasPrefix(strings.ToLower(env), "steadybit_extension_runc")
+	}) {
+		log.Warn().Msg("The STEADYBIT_EXTENSION_RUNC_* environment variables are deprecated, please use STEADYBIT_EXTENSION_OCIRUNTIME_* instead.")
+		prefix = "steadybit_extension_runc"
 	}
 
-	if lookupPath, err := exec.LookPath(cfg.NsmountPath); err != nil {
-		cfg.NsmountPath = lookupPath
+	if err := envconfig.Process(prefix, &cfg); err != nil {
+		log.Fatal().Err(err).Msgf("Failed to parse OCI runtime configuration from environment.")
 	}
+	log.Info().Any("config", cfg).Msg("OCI runtime configuration loaded")
 	return cfg
 }
 
-var (
-	ErrContainerNotFound = errors.New("container not found")
-)
+func NewOciRuntimeWithCrunForSidecars(cfg Config) OciRuntime {
+	runtime := NewOciRuntime(cfg)
 
-func NewRunc(cfg Config) Runc {
-	r := &defaultRunc{
-		cfg: cfg,
+	if crunPath, err := exec.LookPath("crun"); err == nil {
+		if ok, _ := capability.GetBound(capability.CAP_MKNOD); !ok {
+			return runtime
+		}
+		if ok, _ := capability.GetBound(capability.CAP_SETPCAP); !ok {
+			return runtime
+		}
+
+		if err = os.MkdirAll(steadybitRoot, 0755); err != nil {
+			return runtime
+		}
+
+		//the sb runtime (using crun) is used for all `sb-` containers, when available.
+		sbCfg := cfg
+		sbCfg.RuntimePath = crunPath
+		sbCfg.Root = steadybitRoot
+		sbRuntime := NewOciRuntime(sbCfg)
+		log.Info().Any("config", sbCfg).Msg("Using crun as OCI runtime for steadybit containers.")
+		return NewDelegatingOciRuntime(runtime, map[string]OciRuntime{"sb-": sbRuntime})
 	}
+
+	return runtime
+}
+
+func NewOciRuntime(cfg Config) OciRuntime {
+	if lookupPath, err := exec.LookPath(cfg.RuntimePath); err == nil {
+		cfg.RuntimePath = lookupPath
+	}
+
+	r := &defaultRuntime{cfg: cfg}
 
 	r.generateCachedSpec()
 	return r
 }
 
-func (r *defaultRunc) State(ctx context.Context, id string) (*ContainerState, error) {
-	defer trace.StartRegion(ctx, "runc.State").End()
+func (r *defaultRuntime) State(ctx context.Context, id string) (*ContainerState, error) {
 	cmd := r.command(ctx, "state", id)
 	var outputBuffer, errorBuffer bytes.Buffer
 	cmd.Stdout = &outputBuffer
@@ -118,13 +173,11 @@ func (r *defaultRunc) State(ctx context.Context, id string) (*ContainerState, er
 	return &state, nil
 }
 
-func (r *defaultRunc) Create(ctx context.Context, image string, id string) (ContainerBundle, error) {
-	defer trace.StartRegion(ctx, "runc.Create").End()
-
+func (r *defaultRuntime) Create(ctx context.Context, image string, id string) (ContainerBundle, error) {
 	bundle := containerBundle{
-		id:   id,
-		path: filepath.Join(bundlesPath, id),
-		runc: r,
+		id:      id,
+		path:    filepath.Join(steadybitBundlesPath, id),
+		runtime: r,
 	}
 
 	if _, err := os.Stat(bundle.path); err == nil {
@@ -181,16 +234,22 @@ func (r *defaultRunc) Create(ctx context.Context, image string, id string) (Cont
 	return &bundle, nil
 }
 
-func (r *defaultRunc) Delete(ctx context.Context, id string, force bool) error {
-	defer trace.StartRegion(ctx, "runc.Delete").End()
+func (r *defaultRuntime) Delete(ctx context.Context, id string, force bool) error {
 	log.Trace().Str("id", id).Msg("deleting container")
-	if output, err := r.command(ctx, "delete", fmt.Sprintf("--force=%t", force), id).CombinedOutput(); err != nil {
+
+	var args = []string{"delete"}
+	if force {
+		args = append(args, "--force")
+	}
+	args = append(args, id)
+
+	if output, err := r.command(ctx, args...).CombinedOutput(); err != nil {
 		return r.toError(err, output)
 	}
 	return nil
 }
 
-func (r *defaultRunc) toError(err error, output []byte) error {
+func (r *defaultRuntime) toError(err error, output []byte) error {
 	if bytes.Contains(output, []byte("msg=\"container does not exist\"")) {
 		return ErrContainerNotFound
 	}
@@ -211,8 +270,7 @@ func (o IoOpts) WithStdin(reader io.Reader) IoOpts {
 	}
 }
 
-func (r *defaultRunc) Run(ctx context.Context, container ContainerBundle, ioOpts IoOpts) error {
-	defer trace.StartRegion(ctx, "runc.Run").End()
+func (r *defaultRuntime) Run(ctx context.Context, container ContainerBundle, ioOpts IoOpts) error {
 	cmd, err := r.RunCommand(ctx, container)
 	if err != nil {
 		return err
@@ -229,8 +287,7 @@ func (r *defaultRunc) Run(ctx context.Context, container ContainerBundle, ioOpts
 	return err
 }
 
-func (r *defaultRunc) RunCommand(ctx context.Context, container ContainerBundle) (*exec.Cmd, error) {
-	defer trace.StartRegion(ctx, "runc.RunCommand").End()
+func (r *defaultRuntime) RunCommand(ctx context.Context, container ContainerBundle) (*exec.Cmd, error) {
 	bundle, ok := container.(*containerBundle)
 	if !ok {
 		return nil, fmt.Errorf("invalid bundle type: %T", container)
@@ -239,8 +296,7 @@ func (r *defaultRunc) RunCommand(ctx context.Context, container ContainerBundle)
 	return r.command(ctx, "run", "--bundle", bundle.path, bundle.id), nil
 }
 
-func (r *defaultRunc) Kill(ctx context.Context, id string, signal syscall.Signal) error {
-	defer trace.StartRegion(ctx, "runc.Kill").End()
+func (r *defaultRuntime) Kill(ctx context.Context, id string, signal syscall.Signal) error {
 	log.Trace().Str("id", id).Int("signal", int(signal)).Msg("sending signal to container")
 	if output, err := r.command(ctx, "kill", id, strconv.Itoa(int(signal))).CombinedOutput(); err != nil {
 		return r.toError(err, output)
@@ -263,7 +319,7 @@ func (b *containerBundle) EditSpec(editors ...SpecEditor) error {
 	}
 
 	err = b.writeSpec(spec)
-	log.Trace().Str("bundle", b.path).Interface("createSpec", spec).Msg("written runc createSpec")
+	log.Trace().Str("bundle", b.path).Interface("createSpec", spec).Msg("written runtime createSpec")
 	return err
 }
 
@@ -289,8 +345,8 @@ func (b *containerBundle) writeSpec(spec *specs.Spec) error {
 	return os.WriteFile(filepath.Join(b.path, "config.json"), content, 0644)
 }
 
-func (r *defaultRunc) generateCachedSpec() {
-	bundle := filepath.Join(bundlesPath, "temp")
+func (r *defaultRuntime) generateCachedSpec() {
+	bundle := filepath.Join(steadybitBundlesPath, "temp")
 	if err := os.MkdirAll(bundle, 0775); err != nil {
 		r.cachedSpec.err = fmt.Errorf("failed to create temporary bundle directory '%s': %w", bundle, err)
 		return
@@ -298,19 +354,18 @@ func (r *defaultRunc) generateCachedSpec() {
 	defer func() { _ = os.RemoveAll(bundle) }()
 
 	if output, err := r.command(context.Background(), "spec", "--bundle", bundle).CombinedOutput(); err != nil {
-		r.cachedSpec.err = fmt.Errorf("failed to generate runc spec: %w: %s", err, output)
+		r.cachedSpec.err = fmt.Errorf("failed to generate runtime spec: %w: %s", err, output)
 		return
 	}
 
 	var err error
 	r.cachedSpec.value, err = os.ReadFile(filepath.Join(bundle, "config.json"))
 	if err != nil {
-		r.cachedSpec.err = fmt.Errorf("failed to read runc spec: %w", err)
+		r.cachedSpec.err = fmt.Errorf("failed to read runtime spec: %w", err)
 	}
 }
 
-func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
-	defer trace.StartRegion(ctx, "runc.Spec").End()
+func (r *defaultRuntime) createSpec(_ context.Context, bundle string) error {
 	log.Trace().Str("bundle", bundle).Msg("creating container createSpec")
 	if r.cachedSpec.err != nil {
 		return fmt.Errorf("%w: %s", r.cachedSpec.err, r.cachedSpec.value)
@@ -318,14 +373,14 @@ func (r *defaultRunc) createSpec(ctx context.Context, bundle string) error {
 	return os.WriteFile(filepath.Join(bundle, "config.json"), r.cachedSpec.value, 0644)
 }
 
-func (r *defaultRunc) command(ctx context.Context, args ...string) *exec.Cmd {
-	nsenterArgs := []string{"-t", "1", "-C", "--", "runc"}
-	nsenterArgs = append(nsenterArgs, r.defaultArgs()...)
-	nsenterArgs = append(nsenterArgs, args...)
+func (r *defaultRuntime) command(ctx context.Context, args ...string) *exec.Cmd {
+	runtimeArgs := append(r.defaultArgs(), args...)
+	nsenterArgs := append([]string{"-t", "1", "-C", "--", r.cfg.RuntimePath}, runtimeArgs...)
+	log.Trace().Str("path", r.cfg.RuntimePath).Strs("args", runtimeArgs).Msg("exec oci-runtime")
 	return utils.RootCommandContext(ctx, nsenterPath, nsenterArgs...)
 }
 
-func (r *defaultRunc) defaultArgs() []string {
+func (r *defaultRuntime) defaultArgs() []string {
 	var out []string
 	if r.cfg.Root != "" {
 		out = append(out, "--root", r.cfg.Root)
@@ -394,19 +449,13 @@ func WithMountIfNotPresent(mount specs.Mount) SpecEditor {
 	}
 }
 
-func WithDisableOOMKiller() SpecEditor {
+func WithOOMScoreAdj(adj int) SpecEditor {
 	return func(spec *specs.Spec) {
-		t := true
-		if spec.Linux.Resources == nil {
-			spec.Linux.Resources = &specs.LinuxResources{}
+		if spec.Process == nil {
+			spec.Process = &specs.Process{}
 		}
 
-		if spec.Linux.Resources.Memory == nil {
-			spec.Linux.Resources.Memory = &specs.LinuxMemory{}
-
-		}
-
-		spec.Linux.Resources.Memory.DisableOOMKiller = &t
+		spec.Process.OOMScoreAdj = &adj
 	}
 }
 

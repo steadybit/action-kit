@@ -6,7 +6,7 @@ package network
 
 import (
 	"context"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"os/exec"
@@ -48,7 +48,7 @@ func Test_generateAndRunCommands_should_serialize(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			sidecar := SidecarOpts{
-				TargetProcess: runc.LinuxProcessInfo{},
+				TargetProcess: ociruntime.LinuxProcessInfo{},
 				IdSuffix:      "test",
 			}
 
@@ -94,17 +94,17 @@ type MockedRunc struct {
 	mock.Mock
 }
 
-func (m *MockedRunc) State(ctx context.Context, id string) (*runc.ContainerState, error) {
+func (m *MockedRunc) State(ctx context.Context, id string) (*ociruntime.ContainerState, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(*runc.ContainerState), args.Error(1)
+	return args.Get(0).(*ociruntime.ContainerState), args.Error(1)
 }
 
-func (m *MockedRunc) Create(ctx context.Context, image, id string) (runc.ContainerBundle, error) {
+func (m *MockedRunc) Create(ctx context.Context, image, id string) (ociruntime.ContainerBundle, error) {
 	args := m.Called(ctx, image, id)
-	return args.Get(0).(runc.ContainerBundle), args.Error(1)
+	return args.Get(0).(ociruntime.ContainerBundle), args.Error(1)
 }
 
-func (m *MockedRunc) Run(ctx context.Context, container runc.ContainerBundle, ioOpts runc.IoOpts) error {
+func (m *MockedRunc) Run(ctx context.Context, container ociruntime.ContainerBundle, ioOpts ociruntime.IoOpts) error {
 	args := m.Called(ctx, container, ioOpts)
 	return args.Error(0)
 }
@@ -114,7 +114,7 @@ func (m *MockedRunc) Delete(ctx context.Context, id string, force bool) error {
 	return args.Error(0)
 }
 
-func (m *MockedRunc) RunCommand(_ context.Context, _ runc.ContainerBundle) (*exec.Cmd, error) {
+func (m *MockedRunc) RunCommand(_ context.Context, _ ociruntime.ContainerBundle) (*exec.Cmd, error) {
 	panic("implement me")
 }
 
@@ -128,7 +128,7 @@ type MockBundle struct {
 	id   string
 }
 
-func (m *MockBundle) EditSpec(editors ...runc.SpecEditor) error {
+func (m *MockBundle) EditSpec(editors ...ociruntime.SpecEditor) error {
 	args := m.Called(editors)
 	return args.Error(0)
 }

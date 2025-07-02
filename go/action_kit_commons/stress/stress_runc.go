@@ -12,7 +12,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"syscall"
 	"time"
@@ -21,21 +21,21 @@ import (
 const mountPointInContainer = "/stress-temp"
 
 type stressRunc struct {
-	bundle runc.ContainerBundle
-	runc   runc.Runc
+	bundle ociruntime.ContainerBundle
+	runc   ociruntime.OciRuntime
 
 	state *utils.BackgroundState
 	args  []string
 }
 
 type SidecarOpts struct {
-	TargetProcess runc.LinuxProcessInfo
+	TargetProcess ociruntime.LinuxProcessInfo
 	IdSuffix      string
 	ImagePath     string
 	ExecutionId   uuid.UUID
 }
 
-func NewStressRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts Opts) (Stress, error) {
+func NewStressRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, opts Opts) (Stress, error) {
 	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
 
 	bundle, err := r.Create(ctx, "/", containerId)
@@ -61,36 +61,35 @@ func NewStressRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, opts O
 		}
 	}
 
-	runc.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)
+	ociruntime.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)
 
 	stressngPath := utils.LocateExecutable("stress-ng", "STEADYBIT_EXTENSION_STRESSNG_PATH")
 	processArgs := append([]string{stressngPath}, opts.Args()...)
 
-	caps := []string{"CAP_DAC_OVERRIDE"}
-	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
-		caps = append(caps, "CAP_SYS_RESOURCE")
-	} else {
-		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
-	}
-
-	editors := []runc.SpecEditor{
-		runc.WithHostname(containerId),
-		runc.WithAnnotations(map[string]string{
+	editors := []ociruntime.SpecEditor{
+		ociruntime.WithHostname(containerId),
+		ociruntime.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(processArgs...),
-		runc.WithProcessCwd("/tmp"),
-		runc.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
-		runc.WithCapabilities(caps...),
-		runc.WithDisableOOMKiller(),
-		runc.WithNamespaces(runc.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)),
-		runc.WithMountIfNotPresent(specs.Mount{
+		ociruntime.WithCopyEnviron(),
+		ociruntime.WithProcessArgs(processArgs...),
+		ociruntime.WithProcessCwd("/tmp"),
+		ociruntime.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
+		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace, specs.CgroupNamespace)),
+		ociruntime.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
 	}
+	caps := []string{"CAP_DAC_OVERRIDE"}
+	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
+		caps = append(caps, "CAP_SYS_RESOURCE")
+		editors = append(editors, ociruntime.WithOOMScoreAdj(-1000))
+	} else {
+		log.Warn().Msg("CAP_SYS_RESOURCE not available. Cannot prevent OOM kill.")
+	}
+	editors = append(editors, ociruntime.WithCapabilities(caps...))
 
 	if err := bundle.EditSpec(editors...); err != nil {
 		return nil, err
@@ -118,7 +117,7 @@ func (s *stressRunc) Start() error {
 		Strs("args", s.args).
 		Msg("Starting stress-ng")
 
-	if state, err := runc.RunBundleInBackground(context.Background(), s.runc, s.bundle); err != nil {
+	if state, err := ociruntime.RunBundleInBackground(context.Background(), s.runc, s.bundle); err != nil {
 		return fmt.Errorf("failed to start stress-ng: %w", err)
 	} else {
 		s.state = state
@@ -147,7 +146,7 @@ func (s *stressRunc) Stop() {
 
 	if err := s.runc.Delete(ctx, s.bundle.ContainerId(), false); err != nil {
 		level := zerolog.WarnLevel
-		if errors.Is(err, runc.ErrContainerNotFound) {
+		if errors.Is(err, ociruntime.ErrContainerNotFound) {
 			level = zerolog.DebugLevel
 		}
 		log.WithLevel(level).Str("id", s.bundle.ContainerId()).Err(err).Msg("failed to delete container")
