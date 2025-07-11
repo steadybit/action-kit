@@ -879,11 +879,11 @@ components:
         minValue:
           type: integer
           description: >-
-            The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
+            The minimum value for this parameter. Only applicable for parameters of type `integer`, `percentage`, and `duration`. In the case of `duration`, the value is in milliseconds.
         maxValue:
           type: integer
           description: >-
-            The minimum value for this parameter. Only applicable for parameters of type `integer` and `percentage`.
+            The minimum value for this parameter. Only applicable for parameters of type `integer`, `percentage`, and `duration`. In the case of `duration`, the value is in milliseconds.
         defaultValue:
           type: string
           description: >-
