@@ -12,7 +12,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"os/exec"
@@ -43,7 +43,7 @@ func (c *CommandDigRunner) Run(ctx context.Context, arg []string, stdin io.Reade
 }
 
 type RuncDigRunner struct {
-	Runc    runc.Runc
+	Runc    ociruntime.OciRuntime
 	Sidecar SidecarOpts
 }
 
@@ -71,28 +71,28 @@ func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) 
 		log.Warn().Err(err).Msg("failed to copy /etc/hosts")
 	}
 
-	runc.RefreshNamespaces(ctx, r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
+	ociruntime.RefreshNamespaces(ctx, r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
 
 	digPath := utils.LocateExecutable("dig", "STEADYBIT_EXTENSION_DIG_PATH")
 	if err = bundle.EditSpec(
-		runc.WithHostname(fmt.Sprintf("dig-%s", id)),
-		runc.WithAnnotations(map[string]string{
+		ociruntime.WithHostname(fmt.Sprintf("dig-%s", id)),
+		ociruntime.WithAnnotations(map[string]string{
 			"com.steadybit.sidecar": "true",
 		}),
-		runc.WithNamespaces(runc.FilterNamespaces(r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		runc.WithCapabilities("CAP_NET_ADMIN"),
-		runc.WithCopyEnviron(),
-		runc.WithProcessArgs(append([]string{digPath}, arg...)...),
+		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(r.Sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
+		ociruntime.WithCapabilities("CAP_NET_ADMIN"),
+		ociruntime.WithCopyEnviron(),
+		ociruntime.WithProcessArgs(append([]string{digPath}, arg...)...),
 	); err != nil {
 		return nil, err
 	}
 
 	var outb, errb bytes.Buffer
-	err = r.Runc.Run(ctx, bundle, runc.IoOpts{Stdin: stdin, Stdout: &outb, Stderr: &errb})
+	err = r.Runc.Run(ctx, bundle, ociruntime.IoOpts{Stdin: stdin, Stdout: &outb, Stderr: &errb})
 	defer func() {
 		if err := r.Runc.Delete(context.Background(), id, true); err != nil {
 			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
+			if errors.Is(err, ociruntime.ErrContainerNotFound) {
 				level = zerolog.DebugLevel
 			}
 			log.WithLevel(level).Str("id", id).Err(err).Msg("failed to delete container")

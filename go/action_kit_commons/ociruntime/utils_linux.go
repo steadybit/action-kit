@@ -3,7 +3,7 @@
 
 //go:build linux
 
-package runc
+package ociruntime
 
 import (
 	"context"

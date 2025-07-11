@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"path/filepath"
 )
@@ -71,7 +71,7 @@ func (o Opts) Args(tempPathOverride string, readDiskUsageFn func(path string) (*
 }
 
 func levelForErr(err error) zerolog.Level {
-	if errors.Is(err, runc.ErrContainerNotFound) {
+	if errors.Is(err, ociruntime.ErrContainerNotFound) {
 		return zerolog.DebugLevel
 	}
 	return zerolog.WarnLevel

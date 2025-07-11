@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2023 Steadybit GmbH
 //go:build !windows
 
-package runc
+package ociruntime
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ type containerBundle struct {
 	id         string
 	path       string
 	finalizers []func() error
-	runc       *defaultRunc
+	runtime    OciRuntime
 }
 
 func (b *containerBundle) Path() string {
@@ -113,7 +113,7 @@ func (b *containerBundle) MountFromProcess(ctx context.Context, fromPid int, fro
 	}
 
 	var out bytes.Buffer
-	cmd := utils.RootCommandContext(ctx, b.runc.cfg.NsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint)
+	cmd := utils.RootCommandContext(ctx, nsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
