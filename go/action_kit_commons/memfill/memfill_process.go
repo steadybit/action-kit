@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os/exec"
 	"strconv"
@@ -21,7 +21,7 @@ type memfillRunc struct {
 	args  []string
 }
 
-func NewMemfillProcess(targetProcess runc.LinuxProcessInfo, opts Opts) (Memfill, error) {
+func NewMemfillProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Memfill, error) {
 	args := append([]string{
 		"nsenter", "-t", "1", "-C", "--",
 		//when util-linux package >= 2.39 is broadly available we could also the cgroup change using nsenter,

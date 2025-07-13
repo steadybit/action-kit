@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"strconv"
@@ -25,7 +25,7 @@ type DiskUsage struct {
 	Available int64
 }
 
-func readDiskUsageRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, path string) (*DiskUsage, error) {
+func readDiskUsageRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, path string) (*DiskUsage, error) {
 	bundle, err := createBundle(ctx, r, sidecar, path, "df", "-Pk", mountpointInContainer)
 	if err != nil {
 		return nil, err
@@ -37,11 +37,11 @@ func readDiskUsageRunc(ctx context.Context, r runc.Runc, sidecar SidecarOpts, pa
 	}()
 
 	var outb, errb bytes.Buffer
-	err = r.Run(ctx, bundle, runc.IoOpts{Stdout: &outb, Stderr: &errb})
+	err = r.Run(ctx, bundle, ociruntime.IoOpts{Stdout: &outb, Stderr: &errb})
 	defer func() {
 		if err := r.Delete(context.Background(), bundle.ContainerId(), true); err != nil {
 			level := zerolog.WarnLevel
-			if errors.Is(err, runc.ErrContainerNotFound) {
+			if errors.Is(err, ociruntime.ErrContainerNotFound) {
 				level = zerolog.DebugLevel
 			}
 			log.WithLevel(level).Str("id", bundle.ContainerId()).Err(err).Msg("failed to delete container")
