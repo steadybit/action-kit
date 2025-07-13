@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+
+- refa: rename runc package to ociruntime package
+- feat: add support to run steadybit sidecar containers with crun
+
 ## 1.4.1
 
 - feat: add option to ignore cgroup to fill memory
