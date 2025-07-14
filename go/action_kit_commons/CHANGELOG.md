@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- refa: rename STEADYBIT_EXTENSION_OCIRUNTIME_RUNTIME_PATH to STEADYBIT_EXTENSION_OCIRUNTIME_PATH
+
 ## 1.5.0
 
 - refa: rename runc package to ociruntime package

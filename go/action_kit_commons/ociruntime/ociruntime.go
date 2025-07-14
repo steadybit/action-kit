@@ -70,7 +70,7 @@ type ContainerBundle interface {
 }
 
 type Config struct {
-	RuntimePath   string `json:"runtimePath" split_words:"true" default:"runc"`
+	Path          string `json:"path" split_words:"true" default:"runc"`
 	Root          string `json:"root" split_words:"true" required:"false"`
 	Debug         bool   `json:"debug" split_words:"true" required:"false"`
 	SystemdCgroup bool   `json:"systemdCgroup" split_words:"true" required:"false"`
@@ -131,7 +131,7 @@ func NewOciRuntimeWithCrunForSidecars(cfg Config) OciRuntime {
 
 		//the sb runtime (using crun) is used for all `sb-` containers, when available.
 		sbCfg := cfg
-		sbCfg.RuntimePath = crunPath
+		sbCfg.Path = crunPath
 		sbCfg.Root = steadybitRoot
 		sbRuntime := NewOciRuntime(sbCfg)
 		log.Info().Any("config", sbCfg).Msg("Using crun as OCI runtime for steadybit containers.")
@@ -142,8 +142,8 @@ func NewOciRuntimeWithCrunForSidecars(cfg Config) OciRuntime {
 }
 
 func NewOciRuntime(cfg Config) OciRuntime {
-	if lookupPath, err := exec.LookPath(cfg.RuntimePath); err == nil {
-		cfg.RuntimePath = lookupPath
+	if lookupPath, err := exec.LookPath(cfg.Path); err == nil {
+		cfg.Path = lookupPath
 	}
 
 	r := &defaultRuntime{cfg: cfg}
@@ -375,8 +375,8 @@ func (r *defaultRuntime) createSpec(_ context.Context, bundle string) error {
 
 func (r *defaultRuntime) command(ctx context.Context, args ...string) *exec.Cmd {
 	runtimeArgs := append(r.defaultArgs(), args...)
-	nsenterArgs := append([]string{"-t", "1", "-C", "--", r.cfg.RuntimePath}, runtimeArgs...)
-	log.Trace().Str("path", r.cfg.RuntimePath).Strs("args", runtimeArgs).Msg("exec oci-runtime")
+	nsenterArgs := append([]string{"-t", "1", "-C", "--", r.cfg.Path}, runtimeArgs...)
+	log.Trace().Str("path", r.cfg.Path).Strs("args", runtimeArgs).Msg("exec oci-runtime")
 	return utils.RootCommandContext(ctx, nsenterPath, nsenterArgs...)
 }
 
