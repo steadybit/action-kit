@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2
+
+- fix: don't use crun on cgroup v1 systems
+
 ## 1.5.1
 
 - refa: rename STEADYBIT_EXTENSION_OCIRUNTIME_RUNTIME_PATH to STEADYBIT_EXTENSION_OCIRUNTIME_PATH

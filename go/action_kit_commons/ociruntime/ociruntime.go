@@ -124,6 +124,9 @@ func NewOciRuntimeWithCrunForSidecars(cfg Config) OciRuntime {
 		if ok, _ := capability.GetBound(capability.CAP_SETPCAP); !ok {
 			return runtime
 		}
+		if _, err := os.Open("/sys/fs/cgroup/cpu,cpuacct"); err == nil {
+			return runtime // crun is not compatible with cgroup v1
+		}
 
 		if err = os.MkdirAll(steadybitRoot, 0755); err != nil {
 			return runtime
