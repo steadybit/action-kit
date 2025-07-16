@@ -117,6 +117,10 @@ func ConfigFromEnvironment() Config {
 func NewOciRuntimeWithCrunForSidecars(cfg Config) OciRuntime {
 	runtime := NewOciRuntime(cfg)
 
+	if os.Getenv("STEADYBIT_EXTENSION_OCIRUNTIME_DISABLE_CRUN") == "true" {
+		return runtime
+	}
+
 	if crunPath, err := exec.LookPath("crun"); err == nil {
 		if ok, _ := capability.GetBound(capability.CAP_MKNOD); !ok {
 			return runtime
