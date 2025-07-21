@@ -1,4 +1,5 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
+//go:build !windows
 
 package network
 
