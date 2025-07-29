@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.5
+
+- fix: make DNS hostname resoultion lenient towards case changed
+- refa: add STEADYBIT_EXTENSION_DIG_TIMEOUT to configure DNS hostname resolution timeout
+- chore: add full trace logging for the dig output and extend the error messages
+
 ## 1.5.2
 
 - fix: don't use crun on cgroup v1 systems
