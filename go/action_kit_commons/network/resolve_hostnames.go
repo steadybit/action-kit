@@ -1,6 +1,4 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
-//go:build !windows
+// Copyright 2025 steadybit GmbH. All rights reserved.
 
 package network
 
@@ -84,6 +82,11 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 	if len(unresolved) > 0 {
 		return nil, fmt.Errorf("could not resolve hostnames: '%s'", strings.Join(unresolved, "', '"))
 	}
+
+	slices.SortFunc(resolved, func(a, b net.IP) int {
+		return bytes.Compare(a, b)
+	})
+
 	return resolved, nil
 }
 
