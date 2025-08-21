@@ -1,6 +1,4 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
-//go:build !windows
+// Copyright 2025 steadybit GmbH. All rights reserved.
 
 package network
 
@@ -8,11 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os/exec"
+	"reflect"
 	"slices"
 	"sync"
+
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
 
 const maxTcCommands = 2048
@@ -144,7 +144,11 @@ func pushActiveTc(netNsId string, opts Opts) error {
 	defer activeTCLock.Unlock()
 
 	for _, active := range activeTc[netNsId] {
-		if !equals(opts, active) {
+		if !reflect.DeepEqual(opts, active) {
+			log.Warn().
+				Str("active", active.String()).
+				Str("new", opts.String()).
+				Msg("running multiple network attacks at the same time on the same network namespace is not supported")
 			return errors.New("running multiple network attacks at the same time on the same network namespace is not supported")
 		}
 	}
@@ -162,15 +166,11 @@ func popActiveTc(id string, opts Opts) {
 		return
 	}
 	for i, a := range active {
-		if equals(opts, a) {
+		if !reflect.DeepEqual(opts, a) {
 			activeTc[id] = append(active[:i], active[i+1:]...)
 			return
 		}
 	}
-}
-
-func equals(opts Opts, active Opts) bool {
-	return opts.String() == active.String()
 }
 
 var ipv6Supported = defaultIpv6Supported

@@ -1,14 +1,9 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
-//go:build !windows
+// Copyright 2025 steadybit GmbH. All rights reserved.
 
 package network
 
 import (
 	"context"
-	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"os/exec"
 	"slices"
 	"strings"
@@ -17,6 +12,10 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
