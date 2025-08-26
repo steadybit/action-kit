@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.6
+
+ - fix: ensure stable sortet includes/excludes for network attacks
+
+
 ## 1.5.5
 
 - fix: make DNS hostname resoultion lenient towards case changed
