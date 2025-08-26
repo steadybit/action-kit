@@ -167,7 +167,7 @@ func popActiveTc(id string, opts Opts) {
 		return
 	}
 	for i, a := range active {
-		if !reflect.DeepEqual(opts, a) {
+		if reflect.DeepEqual(opts, a) {
 			activeTc[id] = append(active[:i], active[i+1:]...)
 			return
 		}
