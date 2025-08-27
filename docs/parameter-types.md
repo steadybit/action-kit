@@ -11,7 +11,6 @@ Supported parameter types:
 * [`percentage`](#percentage)
 * [`string`](#string)
 * [`string_array`](#string_array)
-* [`password`](#password)
 * [`file`](#file)
 * [`key_value`](#key_value)
 * [`textarea`](#textarea)
@@ -347,13 +346,6 @@ identifiable by the `label` and `value` properties). Or options based on target 
   "lightsaberCombatForm": null
 }
 ```
-
-## `password`
-
-The `password` parameter behaves like the `string` parameter type, except for the visual presentation in the Steadybit
-user interface.
-
-<img src="img/parameters/password.png" width="512" alt="Screenshot showing what the Steadybit user interface element for a password parameter looks like. Depicting a textual label and a password input." />
 
 ## `file`
 
