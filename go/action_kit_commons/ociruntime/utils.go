@@ -427,7 +427,7 @@ func WithNamespaceCandidates(ctx context.Context, pids ...int) context.Context {
 func findNamespaceInProcessesImpl(ctx context.Context, inode uint64, nsType specs.LinuxNamespaceType) (string, error) {
 	//we need to check for the host pid first, for the host network detection to work correctly
 	pids := []int{1}
-	if c, ok := ctx.Value(refreshNamespaceCandidatesKey{}).([]int); ok && len(pids) > 0 {
+	if c, ok := ctx.Value(refreshNamespaceCandidatesKey{}).([]int); ok && len(c) > 0 {
 		pids = append(pids, c...)
 	}
 
