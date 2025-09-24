@@ -8,13 +8,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"github.com/stretchr/testify/assert"
 	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_ListNamedNetworkNamespace(t *testing.T) {
@@ -24,6 +26,7 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	}
 	e := exec.Command("ip").Run()
 	if errors.Is(e, exec.ErrNotFound) {
+		t.Skip("ip command not found, skipping test")
 		return
 	}
 
@@ -41,16 +44,17 @@ func Test_ListNamedNetworkNamespace(t *testing.T) {
 	pid := process.Process.Pid
 	fmt.Printf("Started process in network namespace %q with pid %d\n", networkNamespaceName, pid)
 
-	executeListNamespaces = executeListNamespacesFilesystem
+	// Wait for process to consistently show up with namespace.
+	time.Sleep(100 * time.Millisecond)
+
 	fs, e := listNamespaces(context.Background(), pid)
 	assert.NoError(t, e, "Could not list namespaces via the filesystem")
 	fsNet := FilterNamespaces(fs, specs.NetworkNamespace)
-
 	assert.NotEmpty(t, fsNet)
 
 	err = process.Process.Kill()
 	assert.NoError(t, err)
-	process.Wait()
+	_ = process.Wait()
 	fmt.Printf("Stopped process in network namespace %q with pid %d\n", networkNamespaceName, pid)
 
 	RefreshNamespaces(context.Background(), fsNet, specs.NetworkNamespace)
