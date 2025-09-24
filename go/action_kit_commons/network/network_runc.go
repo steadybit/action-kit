@@ -9,15 +9,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"strconv"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"path"
-	"strconv"
-	"time"
 )
 
 type runcRunner struct {
@@ -65,12 +66,12 @@ func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, proc
 	netns := ""
 	for _, n := range r.sidecar.TargetProcess.Namespaces {
 		if n.Type == specs.NetworkNamespace {
-			netns = n.Path
+			netns = ociruntime.TrimNameNetworkNamespacePrefix(n.Path)
 			break
 		}
 	}
 
-	log.Info().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
+	log.Info().Str("netns", netns).Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using ip netns")
 
 	ipArgs := append([]string{"netns", "exec", netns}, processArgs...)
 	var outb, errb bytes.Buffer

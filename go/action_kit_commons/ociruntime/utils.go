@@ -9,10 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"iter"
 	"os"
@@ -23,6 +19,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
+	"golang.org/x/sync/errgroup"
 )
 
 var nsenterPath = utils.LocateExecutable("nsenter", "STEADYBIT_EXTENSION_NSENTER_PATH")
@@ -326,6 +327,10 @@ func HasNamedNetworkNamespace(namespaces ...LinuxNamespace) bool {
 	return slices.ContainsFunc(namespaces, func(ns LinuxNamespace) bool {
 		return ns.Type == specs.NetworkNamespace && strings.HasPrefix(ns.Path, netnsDir)
 	})
+}
+
+func TrimNameNetworkNamespacePrefix(path string) string {
+	return strings.TrimPrefix(path, fmt.Sprintf("%s/", netnsDir))
 }
 
 func refreshNamespace(ctx context.Context, ns *LinuxNamespace) {
