@@ -1,9 +1,12 @@
 # Changelog
 
+## 1.5.7
+
+- fix: correctly reference named network namespace in ip netns exec calls
+
 ## 1.5.6
 
  - fix: ensure stable sortet includes/excludes for network attacks
-
 
 ## 1.5.5
 
