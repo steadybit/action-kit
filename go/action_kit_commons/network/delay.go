@@ -32,9 +32,7 @@ func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem delay %dms %dms", mode, ifc, handleInclude, o.Delay.Milliseconds(), o.Jitter.Milliseconds()))
 
-		var filterCmds []string
-		var err error
-		filterCmds, err = tcCommandsForDelayFilter(mode, filter, ifc, o.TcpPshOnly)
+		filterCmds, err := tcCommandsForDelayFilter(mode, filter, ifc, o.TcpPshOnly)
 		if err != nil {
 			return nil, err
 		}
