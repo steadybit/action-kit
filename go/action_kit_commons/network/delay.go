@@ -6,9 +6,10 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type DelayOpts struct {
@@ -16,6 +17,7 @@ type DelayOpts struct {
 	Delay      time.Duration
 	Jitter     time.Duration
 	Interfaces []string
+	TcpPshOnly bool
 }
 
 func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
@@ -30,7 +32,9 @@ func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem delay %dms %dms", mode, ifc, handleInclude, o.Delay.Milliseconds(), o.Jitter.Milliseconds()))
 
-		filterCmds, err := tcCommandsForFilter(mode, filter, ifc)
+		var filterCmds []string
+		var err error
+		filterCmds, err = tcCommandsForDelayFilter(mode, filter, ifc, o.TcpPshOnly)
 		if err != nil {
 			return nil, err
 		}
