@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.8
+
+- feat: add support for delay attack to delay only on TCP PSH packets
+
 ## 1.5.7
 
 - fix: correctly reference named network namespace in ip netns exec calls

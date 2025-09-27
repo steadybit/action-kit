@@ -5,10 +5,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func reorderForMode(cmds []string, mode Mode) {
@@ -60,6 +61,23 @@ func tcCommandsForFilter(mode Mode, f Filter, ifc string) ([]string, error) {
 	return cmds, nil
 }
 
+func tcCommandsForDelayFilter(mode Mode, f Filter, ifc string, tcpPshOnly bool) ([]string, error) {
+	var cmds []string
+	if filterCmds, err := tcCommandsForDelayNets(f.Exclude, mode, ifc, "1:", handleExclude, len(cmds), tcpPshOnly); err == nil {
+		cmds = append(cmds, filterCmds...)
+	} else {
+		return nil, err
+	}
+
+	if filterCmds, err := tcCommandsForDelayNets(f.Include, mode, ifc, "1:", handleInclude, len(cmds), tcpPshOnly); err == nil {
+		cmds = append(cmds, filterCmds...)
+	} else {
+		return nil, err
+	}
+
+	return cmds, nil
+}
+
 // necessaryExcludes returns the excludes, which are overlapping with one of the includes.
 func necessaryExcludes(excludes []NetWithPortRange, includes []NetWithPortRange) []NetWithPortRange {
 	result := make([]NetWithPortRange, 0, len(excludes))
@@ -95,6 +113,27 @@ func tcCommandsForNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, par
 	return cmds, nil
 }
 
+func tcCommandsForDelayNets(netWithPortRanges []NetWithPortRange, mode Mode, ifc, parent, flowId string, prio int, tcpPshOnly bool) ([]string, error) {
+	var cmds []string
+	for _, nwp := range netWithPortRanges {
+		protocol, err := getProtocol(nwp.Net)
+		if err != nil {
+			return nil, err
+		}
+
+		matchers, err := getMatchersForDelay(nwp, tcpPshOnly)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, matcher := range matchers {
+			prio += 1
+			cmds = append(cmds, fmt.Sprintf("filter %s dev %s protocol %s parent %s prio %d u32 %s flowid %s", mode, ifc, protocol, parent, prio, matcher, flowId))
+		}
+	}
+	return cmds, nil
+}
+
 func getMatchers(nwp NetWithPortRange) ([]string, error) {
 	family, err := getFamily(nwp.Net)
 	if err != nil {
@@ -117,6 +156,96 @@ func getMatchers(nwp NetWithPortRange) ([]string, error) {
 		matchers = append(matchers, fmt.Sprintf("match %s dst %s match %s dport %s", selector, nwp.Net.String(), selector, pr))
 	}
 	return matchers, nil
+}
+
+func getMatchersForDelay(nwp NetWithPortRange, tcpPshOnly bool) ([]string, error) {
+	family, err := getFamily(nwp.Net)
+	if err != nil {
+		return nil, err
+	}
+
+	var selector, protoTcp, protoUdp string
+	var tcpFlagsOffset int
+	switch family {
+	case FamilyV4:
+		selector = "ip"
+		protoTcp = "match ip protocol 6 0xff"
+		protoUdp = "match ip protocol 17 0xff"
+		// TCP flags offset calculation assumes:
+		// - Standard 20-byte IPv4 header with no IP options
+		// - Standard TCP header with flags at byte 13
+		tcpFlagsOffset = 33 // 20 bytes IPv4 header + 13 bytes to TCP flags
+	case FamilyV6:
+		selector = "ip6"
+		protoTcp = "match ip6 nexthdr 6 0xff"
+		protoUdp = "match ip6 nexthdr 17 0xff"
+		// TCP flags offset calculation assumes:
+		// - Standard 40-byte IPv6 header with no extension headers
+		// - Standard TCP header with flags at byte 13
+		tcpFlagsOffset = 53 // 40 bytes IPv6 header + 13 bytes to TCP flags
+	default:
+		return nil, fmt.Errorf("unknown family %s", family)
+	}
+
+	var matchers []string
+	for _, pr := range getMask(nwp.PortRange) {
+		if tcpPshOnly {
+			// TCP PSH: src direction
+			matchers = append(matchers, fmt.Sprintf("%s match %s src %s match u16 %s at %d match u8 0x08 0x08 at %d",
+				protoTcp, selector, nwp.Net.String(), pr, getTcpSrcPortOffset(family), tcpFlagsOffset))
+			// TCP PSH: dst direction
+			matchers = append(matchers, fmt.Sprintf("%s match %s dst %s match u16 %s at %d match u8 0x08 0x08 at %d",
+				protoTcp, selector, nwp.Net.String(), pr, getTcpDstPortOffset(family), tcpFlagsOffset))
+			// UDP pass-through (delay all UDP too)
+			matchers = append(matchers, fmt.Sprintf("%s match %s src %s match u16 %s at %d",
+				protoUdp, selector, nwp.Net.String(), pr, getTcpSrcPortOffset(family)))
+			matchers = append(matchers, fmt.Sprintf("%s match %s dst %s match u16 %s at %d",
+				protoUdp, selector, nwp.Net.String(), pr, getTcpDstPortOffset(family)))
+		} else {
+			// Normal filtering without PSH flag
+			matchers = append(matchers, fmt.Sprintf("match %s src %s match %s sport %s", selector, nwp.Net.String(), selector, pr))
+			matchers = append(matchers, fmt.Sprintf("match %s dst %s match %s dport %s", selector, nwp.Net.String(), selector, pr))
+		}
+	}
+	return matchers, nil
+}
+
+// getTcpSrcPortOffset returns the byte offset for TCP source port in the packet.
+//
+// IMPORTANT ASSUMPTIONS:
+// - IPv4: Assumes standard 20-byte IP header with no IP options
+// - IPv6: Assumes standard 40-byte IPv6 header with no extension headers
+// - TCP: Assumes standard TCP header with source port at offset 0
+// - These offsets are used by tc u32 classifier for packet matching
+// - If IP options or IPv6 extension headers are present, these offsets will be incorrect
+func getTcpSrcPortOffset(family Family) int {
+	switch family {
+	case FamilyV4:
+		return 20 // IP header length (20 bytes) + 0 (TCP src port offset)
+	case FamilyV6:
+		return 40 // IPv6 header length (40 bytes) + 0 (TCP src port offset)
+	default:
+		return 0
+	}
+}
+
+// getTcpDstPortOffset returns the byte offset for TCP destination port in the packet.
+//
+// IMPORTANT ASSUMPTIONS:
+// - IPv4: Assumes standard 20-byte IP header with no IP options
+// - IPv6: Assumes standard 40-byte IPv6 header with no extension headers
+// - TCP: Assumes standard TCP header with destination port at offset 2
+// - These offsets are used by tc u32 classifier for packet matching
+// - If IP options or IPv6 extension headers are present, these offsets will be incorrect
+func getTcpDstPortOffset(family Family) int {
+	switch family {
+	case FamilyV4:
+		return 22 // IP header length (20 bytes) + 2 (TCP dst port offset)
+	case FamilyV6:
+		return 42 // IPv6 header length (40 bytes) + 2 (TCP dst port offset)
+	default:
+		return 0
+	}
 }
 
 const portMaxValue uint16 = 0xffff
