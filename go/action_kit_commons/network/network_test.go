@@ -4,12 +4,101 @@
 package network
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type fakeRunner struct {
+	calls []struct {
+		args []string
+		cmds []string
+	}
+}
+
+func (f *fakeRunner) run(_ context.Context, args []string, cmds []string) (string, error) {
+	f.calls = append(f.calls, struct {
+		args []string
+		cmds []string
+	}{args: args, cmds: cmds})
+	return "", nil
+}
+
+func (f *fakeRunner) id() string { return "testns" }
+
+func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
+	// Disable ipv6 for the test to avoid ip6tables invocation
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	opts := &DelayOpts{
+		Filter:     Filter{Include: []NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
+		Delay:      100 * time.Millisecond,
+		Jitter:     10 * time.Millisecond,
+		Interfaces: []string{"eth0"},
+		TcpPshOnly: true,
+	}
+
+	r := &fakeRunner{}
+	err := Apply(context.Background(), r, opts)
+	assert.NoError(t, err)
+
+	iptablesIdx := -1
+	tcBatchIdx := -1
+	for i, c := range r.calls {
+		if len(c.args) > 0 && c.args[0] == "iptables-restore" {
+			iptablesIdx = i
+		}
+		if len(c.args) > 0 && c.args[0] == "tc" && len(c.cmds) > 0 && strings.HasPrefix(c.cmds[0], "qdisc add") {
+			tcBatchIdx = i
+		}
+	}
+
+	if !(iptablesIdx >= 0 && tcBatchIdx >= 0) {
+		t.Fatalf("expected both iptables-restore and tc batch calls, got: %+v", r.calls)
+	}
+	if !(iptablesIdx < tcBatchIdx) {
+		t.Fatalf("expected iptables-restore to run before tc batch: iptablesIdx=%d, tcBatchIdx=%d", iptablesIdx, tcBatchIdx)
+	}
+}
+
+func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
+	opts := &DelayOpts{
+		Filter: Filter{
+			Include: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.0/24", "80-81"),
+				mustParseNetWithPortRange("ff02::114/128", "8000-8001"),
+			},
+			Exclude: []NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+				// Overlapping IPv6 exclude to ensure it is retained after optimizeFilter
+				mustParseNetWithPortRange("ff02::114/128", "8000"),
+			},
+		},
+		TcpPshOnly: true,
+	}
+
+	v4, v6, err := opts.IptablesScripts(ModeAdd)
+	assert.NoError(t, err)
+	// v4 script should not contain IPv6 addresses
+	assert.NotContains(t, v4, "ff02::")
+	assert.Contains(t, v4, "*mangle\n")
+	assert.Contains(t, v4, "-A OUTPUT -j STEADYBIT_DELAY\n")
+	assert.Contains(t, v4, "-A POSTROUTING -j STEADYBIT_DELAY\n")
+	assert.Contains(t, v4, "--tcp-flags PSH PSH")
+	assert.Contains(t, v4, "-d 192.168.2.1/32 --dport 80 -j RETURN")
+	assert.Contains(t, v4, "-s 192.168.2.0/24 --sport 80:81 -j MARK --set-mark 0x1")
+
+	// v6 script should not contain IPv4 addresses
+	assert.NotContains(t, v6, "192.168.")
+	assert.Contains(t, v6, "--tcp-flags PSH PSH")
+	assert.Contains(t, v6, "-d ff02::114/128 --dport 8000 -j RETURN")
+	assert.Contains(t, v6, "-s ff02::114/128 --sport 8000:8001 -j MARK --set-mark 0x1")
+}
 
 func TestCondenseNetWithPortRange(t *testing.T) {
 	tests := []struct {

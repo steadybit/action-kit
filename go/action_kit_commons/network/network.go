@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -67,6 +68,18 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		return err
 	}
 
+	if log.Debug().Enabled() {
+		if len(ipCommandsV4) > 0 {
+			log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v4", ipCommandsV4).Msg("prepared ip batch commands (IPv4)")
+		}
+		if len(ipCommandsV6) > 0 {
+			log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v6", ipCommandsV6).Msg("prepared ip batch commands (IPv6)")
+		}
+		if len(tcCommands) > 0 {
+			log.Debug().Str("mode", string(mode)).Strs("tc_cmds", tcCommands).Msg("prepared tc batch commands")
+		}
+	}
+
 	netNsID := runner.id()
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
@@ -87,6 +100,34 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 
 	if len(tcCommands) > 0 {
 		logCurrentTcRules(ctx, runner, "before")
+	}
+
+	// If opts provide iptables scripts, execute them first
+	if provider, ok := opts.(IptablesScriptProvider); ok {
+		v4, v6, scriptErr := provider.IptablesScripts(mode)
+		if scriptErr != nil {
+			return scriptErr
+		}
+		if log.Debug().Enabled() {
+			if strings.TrimSpace(v4) != "" {
+				log.Debug().Str("mode", string(mode)).Str("iptables_v4", v4).Msg("prepared iptables-restore script (IPv4)")
+			}
+			if strings.TrimSpace(v6) != "" {
+				log.Debug().Str("mode", string(mode)).Str("iptables_v6", v6).Msg("prepared ip6tables-restore script (IPv6)")
+			}
+		}
+		if len(strings.TrimSpace(v4)) > 0 {
+			lines := strings.Split(strings.TrimRight(v4, "\n"), "\n")
+			if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, lines); restoreErr != nil {
+				err = errors.Join(err, restoreErr)
+			}
+		}
+		if ipv6Supported() && len(strings.TrimSpace(v6)) > 0 {
+			lines := strings.Split(strings.TrimRight(v6, "\n"), "\n")
+			if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, lines); restoreErr != nil {
+				err = errors.Join(err, restoreErr)
+			}
+		}
 	}
 
 	if len(ipCommandsV4) > 0 {
