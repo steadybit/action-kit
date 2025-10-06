@@ -162,7 +162,7 @@ func (op *ActionOperations) prepareWithFileUpload(t *testing.T) action_kit_api.A
 	return response.State
 }
 
-func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState) action_kit_api.ActionState {
+func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState) *action_kit_api.StartResult {
 	startBody := action_kit_api.StartActionRequestBody{State: state, ExecutionId: op.executionId}
 	jsonBody, err := json.Marshal(startBody)
 	require.NoError(t, err)
@@ -174,7 +174,10 @@ func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState
 	var response action_kit_api.StartResult
 	err = json.Unmarshal(body, &response)
 	require.NoError(t, err)
+	return &response
+}
 
+func assertStartResult(t *testing.T, response action_kit_api.StartResult) {
 	assert.Equal(t, "This is a test Message from Start", (*response.Messages)[0].Message)
 	assert.Equal(t, "10s", (*response.State)["Duration"])
 	assert.Equal(t, "Start", (*response.State)["TestStep"])
@@ -185,16 +188,27 @@ func (op *ActionOperations) start(t *testing.T, state action_kit_api.ActionState
 	require.NoError(t, err)
 	assert.Len(t, executionIds, 1)
 
-	pState, err := statePersister.GetState(context.Background(), executionIds[0])
+	state, err := statePersister.GetState(context.Background(), executionIds[0])
 	require.NoError(t, err)
-	assert.Equal(t, "Start", (*pState).State["TestStep"])
-
-	return *response.State
+	assert.Equal(t, "Start", (*state).State["TestStep"])
 }
 
-func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionState) action_kit_api.ActionState {
-	response := op.statusResult(t, state)
+func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionState) *action_kit_api.StatusResult {
+	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: op.executionId}
+	jsonBody, err := json.Marshal(statusBody)
+	require.NoError(t, err)
+	bodyReader := bytes.NewReader(jsonBody)
+	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Status.Path), "application/json", bodyReader)
+	require.NoError(t, err)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	var response action_kit_api.StatusResult
+	err = json.Unmarshal(body, &response)
+	require.NoError(t, err)
+	return &response
+}
 
+func assertStatusResult(t *testing.T, response action_kit_api.StatusResult) {
 	assert.Equal(t, "This is a test Message from Status", (*response.Messages)[0].Message)
 	assert.Equal(t, "10s", (*response.State)["Duration"])
 	assert.Equal(t, "Status", (*response.State)["TestStep"])
@@ -208,23 +222,6 @@ func (op *ActionOperations) status(t *testing.T, state action_kit_api.ActionStat
 	pState, err := statePersister.GetState(context.Background(), executionIds[0])
 	require.NoError(t, err)
 	assert.Equal(t, "Status", (*pState).State["TestStep"])
-
-	return *response.State
-}
-
-func (op *ActionOperations) statusResult(t *testing.T, state action_kit_api.ActionState) action_kit_api.StatusResult {
-	statusBody := action_kit_api.ActionStatusRequestBody{State: state, ExecutionId: op.executionId}
-	jsonBody, err := json.Marshal(statusBody)
-	require.NoError(t, err)
-	bodyReader := bytes.NewReader(jsonBody)
-	res, err := http.Post(fmt.Sprintf("%s%s", op.basePath, op.description.Status.Path), "application/json", bodyReader)
-	require.NoError(t, err)
-	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
-	var response action_kit_api.StatusResult
-	err = json.Unmarshal(body, &response)
-	require.NoError(t, err)
-	return response
 }
 
 func (op *ActionOperations) queryMetrics(t *testing.T) {

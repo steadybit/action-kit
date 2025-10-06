@@ -1,5 +1,3 @@
-//go:build !windows
-
 package action_kit_sdk
 
 import (
@@ -47,12 +45,28 @@ func Test_SDK(t *testing.T) {
 			Fn:   testcaseHeartbeatTimeout,
 		},
 		{
-			Name: "should return error from prepare",
-			Fn:   testCasePrepareWithGenericError,
+			Name: "should return error from prepare and update state",
+			Fn:   testCasePrepareWithGenericErrorAndStateUpdate,
 		},
 		{
-			Name: "should return extension error from prepare",
-			Fn:   testCasePrepareWithExtensionKitError,
+			Name: "should return extension error from prepare and update state",
+			Fn:   testCasePrepareWithExtensionKitErrorAndStateUpdate,
+		},
+		{
+			Name: "should return error from start and update state",
+			Fn:   testCaseStartWithGenericErrorAndStateUpdate,
+		},
+		{
+			Name: "should return extension start from prepare and update state",
+			Fn:   testCaseStartWithExtensionKitErrorAndStateUpdate,
+		},
+		{
+			Name: "should return error from status and update state",
+			Fn:   testCaseStatusWithGenericErrorAndStateUpdate,
+		},
+		{
+			Name: "should return extension status from prepare and update state",
+			Fn:   testCaseStatusWithExtensionKitErrorAndStateUpdate,
 		},
 	}
 	calls := make(chan Call, 1024)
@@ -101,10 +115,14 @@ func testcaseSimple(t *testing.T, op ActionOperations) {
 	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
 	state := result.State
 
-	state = op.start(t, state)
+	startResult := op.start(t, state)
+	assertStartResult(t, *startResult)
+	state = *startResult.State
 	op.assertCall(t, "Start", toExampleState(state))
 
-	state = op.status(t, state)
+	statusResult := op.status(t, state)
+	assertStatusResult(t, *statusResult)
+	state = *statusResult.State
 	op.assertCall(t, "Status", toExampleState(state))
 
 	op.queryMetrics(t)
@@ -123,10 +141,14 @@ func testcaseWithFileUpload(t *testing.T, op ActionOperations) {
 	require.NoError(t, err)
 	assert.Equal(t, "This is a test file", string(fileContent[:]))
 
-	state = op.start(t, state)
+	startResult := op.start(t, state)
+	assertStartResult(t, *startResult)
+	state = *startResult.State
 	op.assertCall(t, "Start", toExampleState(state))
 
-	state = op.status(t, state)
+	statusResult := op.status(t, state)
+	assertStatusResult(t, *statusResult)
+	state = *statusResult.State
 	op.assertCall(t, "Status", toExampleState(state))
 
 	op.queryMetrics(t)
@@ -145,7 +167,9 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	result, _ := op.prepare(t)
 	state := result.State
 
-	state = op.start(t, state)
+	startResult := op.start(t, state)
+	assertStartResult(t, *startResult)
+	state = *startResult.State
 	op.resetCalls()
 
 	err := extsignals.Kill(os.Getpid())
@@ -153,7 +177,7 @@ func testcaseUsr1Signal(t *testing.T, op ActionOperations) {
 	require.NoError(t, err)
 	op.assertCall(t, "Stop", toExampleState(state))
 
-	statusResult := op.statusResult(t, state)
+	statusResult := op.status(t, state)
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 
@@ -165,28 +189,70 @@ func testcaseHeartbeatTimeout(t *testing.T, op ActionOperations) {
 	result, _ := op.prepare(t)
 	state := result.State
 
-	state = op.start(t, state)
+	startResult := op.start(t, state)
+	assertStartResult(t, *startResult)
+	state = *startResult.State
 	op.resetCalls()
 
 	time.Sleep(25 * time.Second)
 	op.assertCall(t, "Stop", toExampleState(state))
 
-	statusResult := op.statusResult(t, state)
+	statusResult := op.status(t, state)
 	require.NotNil(t, statusResult.Error)
 	assert.Equal(t, action_kit_api.Errored, *statusResult.Error.Status)
 	assert.Equal(t, "Action was stopped by extension: heartbeat timeout", statusResult.Error.Title)
 }
 
-func testCasePrepareWithGenericError(t *testing.T, op ActionOperations) {
+func testCasePrepareWithGenericErrorAndStateUpdate(t *testing.T, op ActionOperations) {
 	op.action.prepareError = fmt.Errorf("this is a test error")
-	_, response := op.prepare(t)
-	assert.Equal(t, &action_kit_api.ActionKitError{Title: "Failed to prepare.", Detail: extutil.Ptr("this is a test error")}, response)
+	prepareResult, actionError := op.prepare(t)
+	assert.Nil(t, actionError)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "Failed to prepare.", Detail: extutil.Ptr("this is a test error")}, prepareResult.Error)
+	assert.Equal(t, "PrepareBeforeError", prepareResult.State["TestStep"].(string))
 	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
 }
 
-func testCasePrepareWithExtensionKitError(t *testing.T, op ActionOperations) {
-	op.action.prepareError = extutil.Ptr(extension_kit.ToError("this is a test error", errors.New("with some setails")))
-	_, response := op.prepare(t)
-	assert.Equal(t, &action_kit_api.ActionKitError{Title: "this is a test error", Detail: extutil.Ptr("with some setails")}, response)
+func testCasePrepareWithExtensionKitErrorAndStateUpdate(t *testing.T, op ActionOperations) {
+	op.action.prepareError = extutil.Ptr(extension_kit.ToError("this is a test error", errors.New("with some details")))
+	prepareResult, actionError := op.prepare(t)
+	assert.Nil(t, actionError)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "this is a test error", Detail: extutil.Ptr("with some details")}, prepareResult.Error)
+	assert.Equal(t, "PrepareBeforeError", prepareResult.State["TestStep"].(string))
 	op.assertCall(t, "Prepare", ANY_ARG, ANY_ARG)
+}
+
+func testCaseStartWithGenericErrorAndStateUpdate(t *testing.T, op ActionOperations) {
+	op.action.startError = fmt.Errorf("this is a test error")
+	var state action_kit_api.ActionState
+	startResult := op.start(t, state)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "Failed to start action.", Detail: extutil.Ptr("this is a test error")}, startResult.Error)
+	assert.Equal(t, "StartBeforeError", (*startResult.State)["TestStep"].(string))
+	op.assertCall(t, "Start", ANY_ARG)
+}
+
+func testCaseStartWithExtensionKitErrorAndStateUpdate(t *testing.T, op ActionOperations) {
+	op.action.startError = extutil.Ptr(extension_kit.ToError("this is a test error", errors.New("with some details")))
+	var state action_kit_api.ActionState
+	startResult := op.start(t, state)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "this is a test error", Detail: extutil.Ptr("with some details")}, startResult.Error)
+	assert.Equal(t, "StartBeforeError", (*startResult.State)["TestStep"].(string))
+	op.assertCall(t, "Start", ANY_ARG)
+}
+
+func testCaseStatusWithGenericErrorAndStateUpdate(t *testing.T, op ActionOperations) {
+	op.action.statusError = fmt.Errorf("this is a test error")
+	var state action_kit_api.ActionState
+	startResult := op.status(t, state)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "Failed to read status.", Detail: extutil.Ptr("this is a test error")}, startResult.Error)
+	assert.Equal(t, "StatusBeforeError", (*startResult.State)["TestStep"].(string))
+	op.assertCall(t, "Status", ANY_ARG)
+}
+
+func testCaseStatusWithExtensionKitErrorAndStateUpdate(t *testing.T, op ActionOperations) {
+	op.action.statusError = extutil.Ptr(extension_kit.ToError("this is a test error", errors.New("with some details")))
+	var state action_kit_api.ActionState
+	startResult := op.status(t, state)
+	assert.Equal(t, &action_kit_api.ActionKitError{Title: "this is a test error", Detail: extutil.Ptr("with some details")}, startResult.Error)
+	assert.Equal(t, "StatusBeforeError", (*startResult.State)["TestStep"].(string))
+	op.assertCall(t, "Status", ANY_ARG)
 }
