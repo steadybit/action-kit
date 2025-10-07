@@ -6,8 +6,16 @@ package action_kit_sdk
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
@@ -16,13 +24,6 @@ import (
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extutil"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (
@@ -84,18 +85,10 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 	}
 	state := a.action.NewEmptyState()
 	result, err := a.action.Prepare(r.Context(), &state, *prepareActionRequestBody)
-	if err != nil {
-		var extErr *extension_kit.ExtensionError
-		if errors.As(err, &extErr) {
-			exthttp.WriteError(w, *extErr)
-		} else {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to prepare.", err))
-		}
-		return
-	}
 	if result == nil {
 		result = &action_kit_api.PrepareResult{}
 	}
+
 	if result.State != nil {
 		exthttp.WriteError(w, extension_kit.ToError("Please modify the state using the given state pointer.", err))
 	}
@@ -112,12 +105,26 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 	}
 
 	var convertedState action_kit_api.ActionState
-	err = extconversion.Convert(state, &convertedState)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+	conversionErr := extconversion.Convert(state, &convertedState)
+	if conversionErr != nil {
+		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", conversionErr))
 		return
 	}
 	result.State = convertedState
+
+	if err != nil {
+		var extensionError *extension_kit.ExtensionError
+		isExtensionError := errors.As(err, &extensionError)
+		if !isExtensionError {
+			extensionError = extutil.Ptr(extension_kit.ToError("Failed to prepare.", err))
+		}
+		result.Error = &action_kit_api.ActionKitError{
+			Title:    extensionError.Title,
+			Detail:   extensionError.Detail,
+			Type:     extensionError.Type,
+			Instance: extensionError.Instance,
+		}
+	}
 
 	if a.description.Stop != nil {
 		err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: prepareActionRequestBody.ExecutionId, ActionId: a.description.Id, State: convertedState})
@@ -216,26 +223,32 @@ func (a *actionHttpAdapter[T]) handleStart(w http.ResponseWriter, r *http.Reques
 	if result == nil {
 		result = &action_kit_api.StartResult{}
 	}
-	if err != nil {
-		if extensionError, ok := err.(extension_kit.ExtensionError); ok {
-			exthttp.WriteError(w, extensionError)
-		} else {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to start action.", err))
-		}
-		return
-	}
 
 	if result.State != nil {
 		exthttp.WriteError(w, extension_kit.ToError("Please modify the state using the given state pointer.", err))
 	}
 
 	var convertedState action_kit_api.ActionState
-	err = extconversion.Convert(state, &convertedState)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+	conversionErr := extconversion.Convert(state, &convertedState)
+	if conversionErr != nil {
+		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", conversionErr))
 		return
 	}
 	result.State = &convertedState
+
+	if err != nil {
+		var extensionError *extension_kit.ExtensionError
+		isExtensionError := errors.As(err, &extensionError)
+		if !isExtensionError {
+			extensionError = extutil.Ptr(extension_kit.ToError("Failed to start action.", err))
+		}
+		result.Error = &action_kit_api.ActionKitError{
+			Title:    extensionError.Title,
+			Detail:   extensionError.Detail,
+			Type:     extensionError.Type,
+			Instance: extensionError.Instance,
+		}
+	}
 
 	if a.description.Stop != nil {
 		err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: a.description.Id, State: convertedState})
@@ -302,27 +315,32 @@ func (a *actionHttpAdapter[T]) handleStatus(w http.ResponseWriter, r *http.Reque
 	if result == nil {
 		result = &action_kit_api.StatusResult{}
 	}
-	if err != nil {
-		extensionError, isExtensionError := err.(extension_kit.ExtensionError)
-		if isExtensionError {
-			exthttp.WriteError(w, extensionError)
-		} else {
-			exthttp.WriteError(w, extension_kit.ToError("Failed to read status.", err))
-		}
-		return
-	}
 
 	if result.State != nil {
 		exthttp.WriteError(w, extension_kit.ToError("Please modify the state using the given state pointer.", err))
 	}
 
 	var convertedState action_kit_api.ActionState
-	err = extconversion.Convert(state, &convertedState)
-	if err != nil {
-		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", err))
+	conversionErr := extconversion.Convert(state, &convertedState)
+	if conversionErr != nil {
+		exthttp.WriteError(w, extension_kit.ToError("Failed to encode action state.", conversionErr))
 		return
 	}
 	result.State = &convertedState
+
+	if err != nil {
+		var extensionError *extension_kit.ExtensionError
+		isExtensionError := errors.As(err, &extensionError)
+		if !isExtensionError {
+			extensionError = extutil.Ptr(extension_kit.ToError("Failed to read status.", err))
+		}
+		result.Error = &action_kit_api.ActionKitError{
+			Title:    extensionError.Title,
+			Detail:   extensionError.Detail,
+			Type:     extensionError.Type,
+			Instance: extensionError.Instance,
+		}
+	}
 
 	if a.description.Stop != nil {
 		err = statePersister.PersistState(r.Context(), &state_persister.PersistedState{ExecutionId: parsedBody.ExecutionId, ActionId: a.description.Id, State: convertedState})

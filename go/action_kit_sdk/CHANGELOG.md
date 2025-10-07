@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+- Fixed state handling bug: 
+  - when 
+    - an action was returning an error directly (not as part of the `*Result` types)
+    - from the `prepare`, `start` and `status` methods
+    - and the action had modified the state before
+  - then
+    - the modified state was not passed to the `stop` method
+- Update dependencies
+
 ## 1.2.0
 
 - Update dependencies (golang 1.24)

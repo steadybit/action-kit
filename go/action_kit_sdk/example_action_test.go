@@ -5,6 +5,7 @@ package action_kit_sdk
 
 import (
 	"context"
+
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extconversion"
@@ -19,6 +20,8 @@ type Call struct {
 type ExampleAction struct {
 	calls        chan<- Call
 	prepareError error
+	startError   error
+	statusError  error
 }
 
 type ExampleState struct {
@@ -115,6 +118,7 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 		return nil, extension_kit.ToError("Failed to unmarshal the config.", err)
 	}
 
+	state.TestStep = "PrepareBeforeError"
 	if action.prepareError != nil {
 		return nil, action.prepareError
 	}
@@ -137,6 +141,11 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 
 func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*action_kit_api.StartResult, error) {
 	action.calls <- Call{"Start", []interface{}{state}}
+	state.TestStep = "StartBeforeError"
+	if action.startError != nil {
+		return nil, action.startError
+	}
+
 	state.TestStep = "Start"
 	return &action_kit_api.StartResult{
 		Artifacts: &action_kit_api.Artifacts{
@@ -153,6 +162,11 @@ func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*act
 
 func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*action_kit_api.StatusResult, error) {
 	action.calls <- Call{"Status", []interface{}{state}}
+	state.TestStep = "StatusBeforeError"
+	if action.statusError != nil {
+		return nil, action.statusError
+	}
+
 	state.TestStep = "Status"
 	return &action_kit_api.StatusResult{
 		Artifacts: &action_kit_api.Artifacts{
