@@ -225,6 +225,8 @@ The state object is later used in HTTP requests to the start and stop endpoints.
 state object, e.g., a subset of the target's attributes, the configuration options and the original state (in case you are going to do some system modification
 as part of the start step).
 
+The stop method is not called if there is an error during the `prepare` step. The preparation step is not intended to do any system modifications that requires a rollback via `stop`.
+
 If a parameter of type [file](parameter-types.md#file) is defined, the request will be a multipart request. The first part will contain a JSON defined by
 PrepareActionRequestBody (part='request'). The following will be the files with the name of the parameter as key (part='example-parameter').
 
@@ -383,12 +385,16 @@ The agent will stop the experiment execution, if the extension:
 - returns a body of type `ActionKitError`
 - returns its specific response type and an attribute `error` containing `ActionKitError`
 
+
 The attribute `status` in `ActionKitError` defines, how Steadybit will show the error.
 
 - `failed` - The action has detected some failures, for example a failing test which has been implemented by the action. The action will be stopped, if this
   status is returned by the status endpoint.
 - `errored` - There was a technical error while executing the action. Will be marked as red in the platform. The action will be stopped, if this status is
   returned by the status endpoint.
+
+The `stop` endpoint of the extension is called, if the `start` or `status` endpoint returns an error. The `stop` endpoint is not called, if the `prepare` endpoint returns an error.
+The latest state will be passed to the `stop` endpoint.
 
 #### References
 
