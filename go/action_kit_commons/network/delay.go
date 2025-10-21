@@ -6,6 +6,7 @@ package network
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -42,47 +43,47 @@ func (o *DelayOpts) IptablesScripts(mode Mode) (string, string, error) {
 		v6 := buildIptablesScript(filter, true)
 		return v4, v6, nil
 	case ModeDelete:
-		v4 := buildIptablesDeleteScript(false)
-		v6 := buildIptablesDeleteScript(true)
-		return v4, v6, nil
+		script := buildIptablesDeleteScript()
+		return script, script, nil
 	default:
 		return "", "", fmt.Errorf("unsupported mode: %s", mode)
 	}
 }
 
 func buildIptablesScript(f Filter, v6 bool) string {
-	// We create chain STEADYBIT_DELAY and jump from OUTPUT to it.
-	// First add early RETURN rules for all excludes, then mark includes.
-	// Only mark TCP packets with PSH flag set.
 	var b strings.Builder
-	b.WriteString("*mangle\n")
-	b.WriteString(":STEADYBIT_DELAY - [0:0]\n")
-	b.WriteString("-A OUTPUT -j STEADYBIT_DELAY\n")
-	b.WriteString("-A POSTROUTING -j STEADYBIT_DELAY\n")
-
-	for _, nwp := range f.Exclude {
-		if fam, err := getFamily(nwp.Net); err == nil {
-			if (v6 && fam == FamilyV6) || (!v6 && fam == FamilyV4) {
-				b.WriteString(iptablesRule(nwp, true))
-				b.WriteString("\n")
-			}
-		}
-	}
-
-	for _, nwp := range f.Include {
-		if fam, err := getFamily(nwp.Net); err == nil {
-			if (v6 && fam == FamilyV6) || (!v6 && fam == FamilyV4) {
-				b.WriteString(iptablesRule(nwp, false))
-				b.WriteString("\n")
-			}
-		}
-	}
-
+	writeIptablesHeader(&b)
+	writeIptablesRules(&b, f.Exclude, v6, true)
+	writeIptablesRules(&b, f.Include, v6, false)
 	b.WriteString("COMMIT\n")
 	return b.String()
 }
 
-func buildIptablesDeleteScript(v6 bool) string {
+func writeIptablesHeader(b *strings.Builder) {
+	b.WriteString("*mangle\n")
+	b.WriteString(":STEADYBIT_DELAY - [0:0]\n")
+	b.WriteString("-A OUTPUT -j STEADYBIT_DELAY\n")
+	b.WriteString("-A POSTROUTING -j STEADYBIT_DELAY\n")
+}
+
+func writeIptablesRules(b *strings.Builder, nwps []NetWithPortRange, v6 bool, isExclude bool) {
+	for _, nwp := range nwps {
+		if shouldIncludeRule(nwp.Net, v6) {
+			b.WriteString(iptablesRule(nwp, isExclude))
+			b.WriteString("\n")
+		}
+	}
+}
+
+func shouldIncludeRule(net net.IPNet, v6 bool) bool {
+	fam, err := getFamily(net)
+	if err != nil {
+		return false
+	}
+	return (v6 && fam == FamilyV6) || (!v6 && fam == FamilyV4)
+}
+
+func buildIptablesDeleteScript() string {
 	var b strings.Builder
 	b.WriteString("*mangle\n")
 	b.WriteString("-D OUTPUT -j STEADYBIT_DELAY\n")
@@ -91,13 +92,6 @@ func buildIptablesDeleteScript(v6 bool) string {
 	b.WriteString("-X STEADYBIT_DELAY\n")
 	b.WriteString("COMMIT\n")
 	return b.String()
-}
-
-func ipFamilySelector(v6 bool) string {
-	if v6 {
-		return "ip6"
-	}
-	return "ip"
 }
 
 func iptablesRule(nwp FilteredNetWithPortRange, isExclude bool) string {
