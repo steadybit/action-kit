@@ -109,22 +109,20 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 			return scriptErr
 		}
 		if log.Debug().Enabled() {
-			if strings.TrimSpace(v4) != "" {
-				log.Debug().Str("mode", string(mode)).Str("iptables_v4", v4).Msg("prepared iptables-restore script (IPv4)")
+			if len(v4) > 0 {
+				log.Debug().Str("mode", string(mode)).Str("iptables_v4", strings.Join(v4, "\n")).Msg("prepared iptables-restore script (IPv4)")
 			}
-			if strings.TrimSpace(v6) != "" {
-				log.Debug().Str("mode", string(mode)).Str("iptables_v6", v6).Msg("prepared ip6tables-restore script (IPv6)")
+			if len(v6) > 0 {
+				log.Debug().Str("mode", string(mode)).Str("iptables_v6", strings.Join(v6, "\n")).Msg("prepared ip6tables-restore script (IPv6)")
 			}
 		}
-		if len(strings.TrimSpace(v4)) > 0 {
-			lines := strings.Split(strings.TrimRight(v4, "\n"), "\n")
-			if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, lines); restoreErr != nil {
+		if len(v4) > 0 {
+			if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, v4); restoreErr != nil {
 				err = errors.Join(err, restoreErr)
 			}
 		}
-		if ipv6Supported() && len(strings.TrimSpace(v6)) > 0 {
-			lines := strings.Split(strings.TrimRight(v6, "\n"), "\n")
-			if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, lines); restoreErr != nil {
+		if ipv6Supported() && len(v6) > 0 {
+			if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, v6); restoreErr != nil {
 				err = errors.Join(err, restoreErr)
 			}
 		}

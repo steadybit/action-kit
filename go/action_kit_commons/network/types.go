@@ -43,7 +43,7 @@ type IptablesScriptProvider interface {
 	// IptablesScripts should return shell scripts for IPv4 and IPv6.
 	// The scripts will be executed using "sh -s" with root privileges.
 	// Return empty strings if no script is required for the respective family.
-	IptablesScripts(mode Mode) (v4 string, v6 string, err error)
+	IptablesScripts(mode Mode) (v4 []string, v6 []string, err error)
 }
 
 type Filter struct {

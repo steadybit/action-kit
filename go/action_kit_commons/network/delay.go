@@ -28,11 +28,9 @@ func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 
 const steadybitDelayFwMark uint32 = 0x1
 
-// IptablesScripts implements optional iptables marking when TcpPshOnly is enabled.
-// It returns iptables-restore scripts for IPv4 and IPv6.
-func (o *DelayOpts) IptablesScripts(mode Mode) (string, string, error) {
+func (o *DelayOpts) IptablesScripts(mode Mode) ([]string, []string, error) {
 	if !o.TcpPshOnly {
-		return "", "", nil
+		return nil, nil, nil
 	}
 
 	filter := optimizeFilter(o.Filter)
@@ -43,36 +41,50 @@ func (o *DelayOpts) IptablesScripts(mode Mode) (string, string, error) {
 		v6 := buildIptablesScript(filter, true)
 		return v4, v6, nil
 	case ModeDelete:
-		script := buildIptablesDeleteScript()
+		script := ipTablesDeleteScript
 		return script, script, nil
 	default:
-		return "", "", fmt.Errorf("unsupported mode: %s", mode)
+		return nil, nil, fmt.Errorf("unsupported mode: %s", mode)
 	}
 }
 
-func buildIptablesScript(f Filter, v6 bool) string {
-	var b strings.Builder
-	writeIptablesHeader(&b)
-	writeIptablesRules(&b, f.Exclude, v6, true)
-	writeIptablesRules(&b, f.Include, v6, false)
-	b.WriteString("COMMIT\n")
-	return b.String()
+var ipTablesHeader = []string{
+	"*mangle",
+	":STEADYBIT_DELAY - [0:0]",
+	"-A OUTPUT -j STEADYBIT_DELAY",
+	"-A POSTROUTING -j STEADYBIT_DELAY",
 }
 
-func writeIptablesHeader(b *strings.Builder) {
-	b.WriteString("*mangle\n")
-	b.WriteString(":STEADYBIT_DELAY - [0:0]\n")
-	b.WriteString("-A OUTPUT -j STEADYBIT_DELAY\n")
-	b.WriteString("-A POSTROUTING -j STEADYBIT_DELAY\n")
+var ipTablesDeleteScript = []string{
+	"*mangle",
+	"-D OUTPUT -j STEADYBIT_DELAY",
+	"-D POSTROUTING -j STEADYBIT_DELAY",
+	"-F STEADYBIT_DELAY",
+	"-X STEADYBIT_DELAY",
+	"COMMIT",
 }
 
-func writeIptablesRules(b *strings.Builder, nwps []NetWithPortRange, v6 bool, isExclude bool) {
+func buildIptablesScript(f Filter, v6 bool) []string {
+	script := make([]string, 0, 10)
+	script = append(script, ipTablesHeader...)
+	script = append(script, writeIptablesRules(f.Exclude, v6, true)...)
+	script = append(script, writeIptablesRules(f.Include, v6, false)...)
+	script = append(script, "COMMIT")
+	return script
+}
+
+func writeIptablesRules(nwps []NetWithPortRange, v6 bool, isExclude bool) []string {
+	rules := make([]string, 0, len(nwps))
 	for _, nwp := range nwps {
 		if shouldIncludeRule(nwp.Net, v6) {
-			b.WriteString(iptablesRule(nwp, isExclude))
-			b.WriteString("\n")
+			rules = append(rules,
+				// We emit two rules: one for dst/dport and one for src/sport to match to/from.
+				buildSingleIptables(nwp, true, isExclude),
+				buildSingleIptables(nwp, false, isExclude),
+			)
 		}
 	}
+	return rules
 }
 
 func shouldIncludeRule(net net.IPNet, v6 bool) bool {
@@ -81,35 +93,6 @@ func shouldIncludeRule(net net.IPNet, v6 bool) bool {
 		return false
 	}
 	return (v6 && fam == FamilyV6) || (!v6 && fam == FamilyV4)
-}
-
-func buildIptablesDeleteScript() string {
-	var b strings.Builder
-	b.WriteString("*mangle\n")
-	b.WriteString("-D OUTPUT -j STEADYBIT_DELAY\n")
-	b.WriteString("-D POSTROUTING -j STEADYBIT_DELAY\n")
-	b.WriteString("-F STEADYBIT_DELAY\n")
-	b.WriteString("-X STEADYBIT_DELAY\n")
-	b.WriteString("COMMIT\n")
-	return b.String()
-}
-
-func iptablesRule(nwp FilteredNetWithPortRange, isExclude bool) string {
-	return buildIptablesRulesFromNwp(nwp, isExclude)
-}
-
-// Helper struct to allow direction expansion; reuse NetWithPortRange directly.
-type FilteredNetWithPortRange = NetWithPortRange
-
-func buildIptablesRulesFromNwp(nwp NetWithPortRange, isExclude bool) string {
-	// We emit two rules: one for dst/dport and one for src/sport to match to/from.
-	// Example: -A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -d 1.2.3.0/24 --dport 80 -j MARK --set-mark 0x1
-	// For exclude we jump to RETURN early, for include we MARK.
-	var rules []string
-	dst := buildSingleIptables(nwp, true, isExclude)
-	src := buildSingleIptables(nwp, false, isExclude)
-	rules = append(rules, dst, src)
-	return strings.Join(rules, "\n")
 }
 
 func buildSingleIptables(nwp NetWithPortRange, isDst bool, isExclude bool) string {
@@ -140,6 +123,7 @@ func buildSingleIptables(nwp NetWithPortRange, isDst bool, isExclude bool) strin
 		}
 	}
 
+	// For exclude we jump to RETURN early, for include we MARK.
 	if isExclude {
 		sb.WriteString("-j RETURN")
 	} else {

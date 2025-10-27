@@ -86,18 +86,31 @@ func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
 	assert.NoError(t, err)
 	// v4 script should not contain IPv6 addresses
 	assert.NotContains(t, v4, "ff02::")
-	assert.Contains(t, v4, "*mangle\n")
-	assert.Contains(t, v4, "-A OUTPUT -j STEADYBIT_DELAY\n")
-	assert.Contains(t, v4, "-A POSTROUTING -j STEADYBIT_DELAY\n")
-	assert.Contains(t, v4, "--tcp-flags PSH PSH")
-	assert.Contains(t, v4, "-d 192.168.2.1/32 --dport 80 -j RETURN")
-	assert.Contains(t, v4, "-s 192.168.2.0/24 --sport 80:81 -j MARK --set-mark 0x1")
+	assert.Equal(t, v4, []string{
+		"*mangle",
+		":STEADYBIT_DELAY - [0:0]",
+		"-A OUTPUT -j STEADYBIT_DELAY",
+		"-A POSTROUTING -j STEADYBIT_DELAY",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -d 192.168.2.1/32 --dport 80 -j RETURN",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -s 192.168.2.1/32 --sport 80 -j RETURN",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -d 192.168.2.0/24 --dport 80:81 -j MARK --set-mark 0x1",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -s 192.168.2.0/24 --sport 80:81 -j MARK --set-mark 0x1",
+		"COMMIT",
+	})
 
 	// v6 script should not contain IPv4 addresses
 	assert.NotContains(t, v6, "192.168.")
-	assert.Contains(t, v6, "--tcp-flags PSH PSH")
-	assert.Contains(t, v6, "-d ff02::114/128 --dport 8000 -j RETURN")
-	assert.Contains(t, v6, "-s ff02::114/128 --sport 8000:8001 -j MARK --set-mark 0x1")
+	assert.Equal(t, v6, []string{
+		"*mangle",
+		":STEADYBIT_DELAY - [0:0]",
+		"-A OUTPUT -j STEADYBIT_DELAY",
+		"-A POSTROUTING -j STEADYBIT_DELAY",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -d ff02::114/128 --dport 8000 -j RETURN",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -s ff02::114/128 --sport 8000 -j RETURN",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -d ff02::114/128 --dport 8000:8001 -j MARK --set-mark 0x1",
+		"-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH -s ff02::114/128 --sport 8000:8001 -j MARK --set-mark 0x1",
+		"COMMIT",
+	})
 }
 
 func TestCondenseNetWithPortRange(t *testing.T) {
