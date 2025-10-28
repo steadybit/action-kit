@@ -6,6 +6,10 @@ package e2e
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
@@ -13,9 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
-	"strings"
-	"testing"
-	"time"
 )
 
 type Nginx struct {
@@ -167,6 +168,38 @@ func (n *Nginx) AssertCannotReach(t *testing.T, url string, errContains string) 
 
 func (n *Nginx) ContainerStatus() (*corev1.ContainerStatus, error) {
 	return GetContainerStatus(n.Minikube, n.Pod, "nginx")
+}
+
+func (n *Nginx) MeasureHttpLatency() (time.Duration, error) {
+	c, err := n.Minikube.NewRestClientForService(n.Service)
+	if err != nil {
+		return 0, err
+	}
+	defer c.Close()
+
+	r, err := c.R().Get("/")
+	if err != nil {
+		return 0, err
+	}
+	return r.Time(), nil
+}
+
+func (n *Nginx) AssertHttpLatency(t *testing.T, min time.Duration, max time.Duration) {
+	t.Helper()
+
+	measurements := make([]time.Duration, 0, 5)
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
+		latency, err := n.MeasureHttpLatency()
+		if err != nil {
+			r.Failed = true
+			_, _ = fmt.Fprintf(r.Log, "failed to measure http latency: %s", err)
+		}
+		if latency < min || latency > max {
+			r.Failed = true
+			measurements = append(measurements, latency)
+			_, _ = fmt.Fprintf(r.Log, "http latency %v is not in expected range [%s, %s]", measurements, min, max)
+		}
+	})
 }
 
 func (n *Nginx) Delete() error {
