@@ -693,6 +693,7 @@ components:
             The value to set.
           type: object
           additionalProperties: true
+          x-go-type: interface{}
       required:
         - type
         - propertyKey
@@ -737,6 +738,7 @@ components:
             The value to add.
           type: object
           additionalProperties: true
+          x-go-type: interface{}
       required:
         - type
         - propertyKey
