@@ -645,6 +645,90 @@ components:
       required:
         - endpoint
         - parameters
+    ExecutionCommands:
+      title: ExecutionCommands
+      type: array
+      items:
+        $ref: '#/components/schemas/ExecutionCommand'
+    ExecutionCommand:
+      title: ExecutionCommand
+      description: >-
+        A command that can be used to modify the experiment execution (e.g. properties)
+        Any of
+          - `action_kit_api.ExecutionCommandSetPropertyValue`
+          - `action_kit_api.ExecutionCommandDeletePropertyValue`
+          - `action_kit_api.ExecutionCommandAddValueToListProperty`
+      anyOf:
+        - $ref: '#/components/schemas/ExecutionCommandSetPropertyValue'
+    ExecutionCommandSetPropertyValue:
+      title: ExecutionCommandSetPropertyValue
+      description: >-
+        Set the value of a property within the experiment execution's properties.
+      type: object
+      properties:
+        type:
+          description: >-
+            The type of the command. Needs to be set to `action_kit_api.SetPropertyValue`.
+          type: string
+          enum: [ set_property_value ]
+        propertyKey:
+          description: >-
+            The key of the property.
+          type: string
+          maxLength: 64
+        value:
+          description: >-
+            The value to set.
+          type: object
+          additionalProperties: true
+      required:
+        - type
+        - propertyKey
+        - value
+    ExecutionCommandDeletePropertyValue:
+      title: ExecutionCommandDeletePropertyValue
+      description: >-
+        Delete the value of a property within the experiment execution's properties.
+      type: object
+      properties:
+        type:
+          description: >-
+            The type of the command. Needs to be set to `action_kit_api.DeletePropertyValue`.
+          type: string
+          enum: [ delete_property_value ]
+        propertyKey:
+          description: >-
+            The key of the property.
+          type: string
+          maxLength: 64
+      required:
+        - type
+        - propertyKey
+    ExecutionCommandAddValueToListProperty:
+      title: ExecutionCommandAddValueToListProperty
+      description: >-
+        Adds a value to a list property within the experiment execution's properties.
+      type: object
+      properties:
+        type:
+          description: >-
+            The type of the command. Needs to be set to `action_kit_api.AddValueToListProperty`.
+          type: string
+          enum: [ add_value_to_list_property ]
+        propertyKey:
+          description: >-
+            The key of the property.
+          type: string
+          maxLength: 64
+        value:
+          description: >-
+            The value to add.
+          type: object
+          additionalProperties: true
+      required:
+        - type
+        - propertyKey
+        - value
     ActionDescription:
       title: Action Description
       description: >-

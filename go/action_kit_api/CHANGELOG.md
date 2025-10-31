@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.1
+
+- Support property changes via actions
+
 ## 2.10.0
 
 - Update dependencies (golang 1.24)
