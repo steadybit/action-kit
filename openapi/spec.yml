@@ -201,7 +201,13 @@ components:
     Widgets:
       title: Widgets
       description: >-
-        Widgets that will be rendered in the experiment result view after an experiment has finished.
+        A list of widgets that can be rendered in the experiment result view after an experiment has finished.
+        Any of
+          - `action_kit_api.StateOverTimeWidget`
+          - `action_kit_api.LogWidget`
+          - `action_kit_api.MarkdownWidget`
+          - `action_kit_api.PredefinedWidget`
+          - `action_kit_api.LineChartWidget`
       type: array
       items:
         $ref: '#/components/schemas/Widget'
@@ -647,6 +653,12 @@ components:
         - parameters
     ExecutionCommands:
       title: ExecutionCommands
+      description: >-
+        A list of commands that can be used to modify the experiment execution (e.g. properties)
+        Any of
+          - `action_kit_api.ExecutionCommandSetPropertyValue`
+          - `action_kit_api.ExecutionCommandDeletePropertyValue`
+          - `action_kit_api.ExecutionCommandAddValueToListProperty`
       type: array
       items:
         $ref: '#/components/schemas/ExecutionCommand'
@@ -1133,6 +1145,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        commands:
+          $ref: '#/components/schemas/ExecutionCommands'
       required:
         - state
     StartResult:
@@ -1148,6 +1162,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        commands:
+          $ref: '#/components/schemas/ExecutionCommands'
     StatusResult:
       properties:
         completed:
@@ -1163,6 +1179,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        commands:
+          $ref: '#/components/schemas/ExecutionCommands'
       required:
         - completed
     StopResult:
@@ -1175,6 +1193,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        commands:
+          $ref: '#/components/schemas/ExecutionCommands'
     QueryMetricsResult:
       properties:
         messages:
