@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
-//go:build !windows
 
 package diskfill
 
@@ -10,15 +9,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"io"
-	"strconv"
-	"strings"
 )
 
+// DiskUsage represents disk usage statistics. Measured in 1K blocks.
 type DiskUsage struct {
 	Capacity  int64
 	Used      int64
