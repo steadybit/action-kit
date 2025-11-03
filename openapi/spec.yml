@@ -670,6 +670,7 @@ components:
           - `action_kit_api.ExecutionModificationAddValueToListProperty`
       anyOf:
         - $ref: '#/components/schemas/ExecutionModificationSetPropertyValue'
+        - $ref: '#/components/schemas/ExecutionModificationAddValueToListProperty'
     ExecutionModificationSetPropertyValue:
       title: ExecutionModificationSetPropertyValue
       description: >-
