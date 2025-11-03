@@ -651,36 +651,34 @@ components:
       required:
         - endpoint
         - parameters
-    ExecutionCommands:
-      title: ExecutionCommands
+    ExecutionModifications:
+      title: ExecutionModifications
       description: >-
-        A list of commands that can be used to modify the experiment execution (e.g. properties)
+        A list of execution modifications (e.g. property updates)
         Any of
-          - `action_kit_api.ExecutionCommandSetPropertyValue`
-          - `action_kit_api.ExecutionCommandDeletePropertyValue`
-          - `action_kit_api.ExecutionCommandAddValueToListProperty`
+          - `action_kit_api.ExecutionModificationSetPropertyValue`
+          - `action_kit_api.ExecutionModificationAddValueToListProperty`
       type: array
       items:
-        $ref: '#/components/schemas/ExecutionCommand'
-    ExecutionCommand:
-      title: ExecutionCommand
+        $ref: '#/components/schemas/ExecutionModification'
+    ExecutionModification:
+      title: ExecutionModification
       description: >-
-        A command that can be used to modify the experiment execution (e.g. properties)
+        An execution modification (e.g. property update)
         Any of
-          - `action_kit_api.ExecutionCommandSetPropertyValue`
-          - `action_kit_api.ExecutionCommandDeletePropertyValue`
-          - `action_kit_api.ExecutionCommandAddValueToListProperty`
+          - `action_kit_api.ExecutionModificationSetPropertyValue`
+          - `action_kit_api.ExecutionModificationAddValueToListProperty`
       anyOf:
-        - $ref: '#/components/schemas/ExecutionCommandSetPropertyValue'
-    ExecutionCommandSetPropertyValue:
-      title: ExecutionCommandSetPropertyValue
+        - $ref: '#/components/schemas/ExecutionModificationSetPropertyValue'
+    ExecutionModificationSetPropertyValue:
+      title: ExecutionModificationSetPropertyValue
       description: >-
         Set the value of a property within the experiment execution's properties.
       type: object
       properties:
         type:
           description: >-
-            The type of the command. Needs to be set to `action_kit_api.SetPropertyValue`.
+            The type of the modification. Needs to be set to `action_kit_api.SetPropertyValue`.
           type: string
           enum: [ set_property_value ]
         propertyKey:
@@ -698,34 +696,15 @@ components:
         - type
         - propertyKey
         - value
-    ExecutionCommandDeletePropertyValue:
-      title: ExecutionCommandDeletePropertyValue
-      description: >-
-        Delete the value of a property within the experiment execution's properties.
-      type: object
-      properties:
-        type:
-          description: >-
-            The type of the command. Needs to be set to `action_kit_api.DeletePropertyValue`.
-          type: string
-          enum: [ delete_property_value ]
-        propertyKey:
-          description: >-
-            The key of the property.
-          type: string
-          maxLength: 64
-      required:
-        - type
-        - propertyKey
-    ExecutionCommandAddValueToListProperty:
-      title: ExecutionCommandAddValueToListProperty
+    ExecutionModificationAddValueToListProperty:
+      title: ExecutionModificationAddValueToListProperty
       description: >-
         Adds a value to a list property within the experiment execution's properties.
       type: object
       properties:
         type:
           description: >-
-            The type of the command. Needs to be set to `action_kit_api.AddValueToListProperty`.
+            The type of the modification. Needs to be set to `action_kit_api.AddValueToListProperty`.
           type: string
           enum: [ add_value_to_list_property ]
         propertyKey:
@@ -1147,8 +1126,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
-        commands:
-          $ref: '#/components/schemas/ExecutionCommands'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
       required:
         - state
     StartResult:
@@ -1164,8 +1143,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
-        commands:
-          $ref: '#/components/schemas/ExecutionCommands'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
     StatusResult:
       properties:
         completed:
@@ -1181,8 +1160,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
-        commands:
-          $ref: '#/components/schemas/ExecutionCommands'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
       required:
         - completed
     StopResult:
@@ -1195,8 +1174,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
-        commands:
-          $ref: '#/components/schemas/ExecutionCommands'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
     QueryMetricsResult:
       properties:
         messages:
