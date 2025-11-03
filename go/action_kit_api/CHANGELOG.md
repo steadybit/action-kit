@@ -2,7 +2,7 @@
 
 ## 2.10.1
 
-- Support property changes via actions
+- Support property changes via actions (requires steadybit platform >= 2.3.25 and agent >= 2.2.2)
 
 ## 2.10.0
 
