@@ -8,5 +8,6 @@ output-options:
     - ParameterOption
     - Widget
     - LineChartWidgetGroupMatcher
+    - ExecutionModification
 additional-imports:
   - package: "github.com/google/uuid"

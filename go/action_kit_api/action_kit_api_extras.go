@@ -3,6 +3,7 @@ package action_kit_api
 type ParameterOption interface{}
 type Widget interface{}
 type LineChartWidgetGroupMatcher interface{}
+type ExecutionModification interface{}
 
 const (
 	// Deprecated: Use action_kit_api.ActionParameterTypeBitrate instead.

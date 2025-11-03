@@ -400,3 +400,33 @@ The latest state will be passed to the `stop` endpoint.
 
 - [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ActionKitError`
 - [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ActionKitError`
+
+### Property Modifications
+
+Actions can update properties for the current experiment execution from the `prepare`, `start`, `status` and `stop` endpoints.
+
+The response body of these endpoints can contain an optional `modifications` attribute. This attribute is a list of property modifications to be applied.
+
+The following example shows how to set a property named `example-property` with value `example-value`.
+
+```json
+{
+  "modifications": [
+    {
+      "type": "set_property_value",
+      "property": "example-property",
+      "value": "example-value"
+    }
+  ]
+}
+```
+
+- Properties that have been assigned to an experiment design are copied to each experiment execution before the start. 
+In order to update the value via action, it needs to be configured as editable for executions.
+- Properties that are not yet present will be added to the execution and will keep editable.
+- All properties that gets modified during an experiment execution needs a matching property definition.
+
+#### References
+
+- [Go API](https://github.com/steadybit/action-kit/tree/main/go/action_kit_api): `ExecutionModifications`
+- [OpenAPI Schema](https://github.com/steadybit/action-kit/tree/main/openapi): `ExecutionModification`

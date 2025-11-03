@@ -201,7 +201,13 @@ components:
     Widgets:
       title: Widgets
       description: >-
-        Widgets that will be rendered in the experiment result view after an experiment has finished.
+        A list of widgets that can be rendered in the experiment result view after an experiment has finished.
+        Any of
+          - `action_kit_api.StateOverTimeWidget`
+          - `action_kit_api.LogWidget`
+          - `action_kit_api.MarkdownWidget`
+          - `action_kit_api.PredefinedWidget`
+          - `action_kit_api.LineChartWidget`
       type: array
       items:
         $ref: '#/components/schemas/Widget'
@@ -645,6 +651,78 @@ components:
       required:
         - endpoint
         - parameters
+    ExecutionModifications:
+      title: ExecutionModifications
+      description: >-
+        A list of execution modifications (e.g. property updates)
+        Any of
+          - `action_kit_api.ExecutionModificationSetPropertyValue`
+          - `action_kit_api.ExecutionModificationAddValueToListProperty`
+      type: array
+      items:
+        $ref: '#/components/schemas/ExecutionModification'
+    ExecutionModification:
+      title: ExecutionModification
+      description: >-
+        An execution modification (e.g. property update)
+        Any of
+          - `action_kit_api.ExecutionModificationSetPropertyValue`
+          - `action_kit_api.ExecutionModificationAddValueToListProperty`
+      anyOf:
+        - $ref: '#/components/schemas/ExecutionModificationSetPropertyValue'
+        - $ref: '#/components/schemas/ExecutionModificationAddValueToListProperty'
+    ExecutionModificationSetPropertyValue:
+      title: ExecutionModificationSetPropertyValue
+      description: >-
+        Set the value of a property within the experiment execution's properties.
+      type: object
+      properties:
+        type:
+          description: >-
+            The type of the modification. Needs to be set to `action_kit_api.SetPropertyValue`.
+          type: string
+          enum: [ set_property_value ]
+        propertyKey:
+          description: >-
+            The key of the property.
+          type: string
+          maxLength: 64
+        value:
+          description: >-
+            The value to set.
+          type: object
+          additionalProperties: true
+          x-go-type: interface{}
+      required:
+        - type
+        - propertyKey
+        - value
+    ExecutionModificationAddValueToListProperty:
+      title: ExecutionModificationAddValueToListProperty
+      description: >-
+        Adds a value to a list property within the experiment execution's properties.
+      type: object
+      properties:
+        type:
+          description: >-
+            The type of the modification. Needs to be set to `action_kit_api.AddValueToListProperty`.
+          type: string
+          enum: [ add_value_to_list_property ]
+        propertyKey:
+          description: >-
+            The key of the property.
+          type: string
+          maxLength: 64
+        value:
+          description: >-
+            The value to add.
+          type: object
+          additionalProperties: true
+          x-go-type: interface{}
+      required:
+        - type
+        - propertyKey
+        - value
     ActionDescription:
       title: Action Description
       description: >-
@@ -1049,6 +1127,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
       required:
         - state
     StartResult:
@@ -1064,6 +1144,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
     StatusResult:
       properties:
         completed:
@@ -1079,6 +1161,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
       required:
         - completed
     StopResult:
@@ -1091,6 +1175,8 @@ components:
           $ref: '#/components/schemas/Artifacts'
         metrics:
           $ref: '#/components/schemas/Metrics'
+        modifications:
+          $ref: '#/components/schemas/ExecutionModifications'
     QueryMetricsResult:
       properties:
         messages:
