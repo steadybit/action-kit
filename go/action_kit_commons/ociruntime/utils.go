@@ -523,9 +523,19 @@ func readCgroupPath(ctx context.Context, pid int) (string, error) {
 		return "", fmt.Errorf("%w: %s", err, out.String())
 	}
 
-	minHid := 9999
-	cgroup := ""
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+	if cgroup := parseProcCgroupFile(out.String()); cgroup != "" {
+		return cgroup, nil
+	} else {
+		return "", fmt.Errorf("failed to read cgroup for pid %d\n%s", pid, out.String())
+	}
+}
+
+func parseProcCgroupFile(s string) string {
+	cgroupV2 := ""
+	cgroupV1 := ""
+	cgroupV1MinHid := 9999
+
+	for _, line := range strings.Split(strings.TrimSpace(s), "\n") {
 		fields := strings.Split(line, ":")
 		if len(fields) != 3 {
 			continue
@@ -534,13 +544,16 @@ func readCgroupPath(ctx context.Context, pid int) (string, error) {
 		if err != nil {
 			continue
 		}
-		if hid < minHid {
-			minHid = hid
-			cgroup = fields[2]
+		if hid == 0 {
+			cgroupV2 = fields[2]
+		} else if hid < cgroupV1MinHid {
+			cgroupV1 = fields[2]
+			cgroupV1MinHid = hid
 		}
 	}
-	if cgroup == "" {
-		return "", fmt.Errorf("failed to read cgroup for pid %d\n%s", pid, out.String())
+	if len(cgroupV1) > 0 {
+		return cgroupV1
+	} else {
+		return cgroupV2
 	}
-	return cgroup, nil
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.9
+
+- fix: failing to read correct cgroupV1 path when mixed with v2
+
 ## 1.5.7
 
 - fix: correctly reference named network namespace in ip netns exec calls
