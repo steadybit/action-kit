@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
-//go:build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package ociruntime
 
@@ -551,9 +550,15 @@ func parseProcCgroupFile(s string) string {
 			cgroupV1MinHid = hid
 		}
 	}
-	if len(cgroupV1) > 0 {
+	if len(cgroupV1) > 0 && cgroupV1 != "/" {
+		if len(cgroupV2) > 0 {
+			log.Warn().Str("cgroup-v2", cgroupV2).Str("cgroup-v1", cgroupV1).Msg("Both cgroup v1 and v2 detected, using v1")
+		}
 		return cgroupV1
 	} else {
+		if len(cgroupV1) > 0 {
+			log.Warn().Str("cgroup-v2", cgroupV2).Str("cgroup-v1", cgroupV1).Msg("Both cgroup v1 and v2 detected, using v2")
+		}
 		return cgroupV2
 	}
 }

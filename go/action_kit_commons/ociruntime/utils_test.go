@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2023 Steadybit GmbH
-//go:build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package ociruntime
 
@@ -164,7 +163,7 @@ func Test_parseProcCgroupFile(t *testing.T) {
 			want:    "/system.slice/docker.service",
 		},
 		{
-			name: "mixed cgroup v1 + v2 output",
+			name: "mixed cgroup v1 + v2 output - v1 used",
 			content: `11:freezer:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
 10:pids:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
 9:memory:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
@@ -177,6 +176,22 @@ func Test_parseProcCgroupFile(t *testing.T) {
 2:net_cls,net_prio:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
 1:name=systemd:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
 0::/`,
+			want: "/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope",
+		},
+		{
+			name: "mixed cgroup v1 + v2 output - v2used",
+			content: `11:freezer:/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope
+10:pids:/
+9:memory:/
+8:blkio:/
+7:hugetlb:/
+6:devices:/
+5:cpuset:/
+4:cpu,cpuacct:/
+3:perf_event:/
+2:net_cls,net_prio:/
+1:name=systemd:/
+0::/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope`,
 			want: "/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod70565f42_b704_42f2_83fe_1ffb77a67800.slice/cri-containerd-a678b5127d3f1a1bfd029818c628a8cd106d7b873ff64cd6bfaa7022579cbab5.scope",
 		},
 	}
