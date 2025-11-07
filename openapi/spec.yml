@@ -1292,9 +1292,16 @@ components:
                 $ref: '#/components/schemas/Target'
               executionContext:
                 $ref: '#/components/schemas/ExecutionContext'
+              properties:
+                type: object
+                additionalProperties: true
+                description: The current properties of the experiment execution
+                example:
+                  EXAMPLE_CUSTOM_PROPERTY: Chuck Norris allows that execution
             required:
               - executionId
               - config
+              - properties
     StartActionRequestBody:
       title: Start Action Request
       description: The HTTP request payload passed to the start action endpoints.
