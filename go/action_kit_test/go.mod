@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/rs/zerolog v1.34.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.1
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.2
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.0
 	github.com/steadybit/extension-kit v1.10.0
