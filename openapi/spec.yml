@@ -651,6 +651,30 @@ components:
       required:
         - endpoint
         - parameters
+    Summary:
+        title: Summary
+        description: >-
+            A short summary that will be displayed in the experiment execution details.
+        type: object
+        properties:
+          text:
+            description: >-
+              The text to be displayed in the summary.
+            type: string
+            maxLength: 512
+          level:
+            description: >-
+              The severity level of the summary.
+            type: string
+            enum:
+              - info
+              - warning
+            x-enum-varnames:
+              - SummaryLevelInfo
+              - SummaryLevelWarning
+        required:
+          - text
+          - level
     ExecutionModifications:
       title: ExecutionModifications
       description: >-
@@ -1129,6 +1153,8 @@ components:
           $ref: '#/components/schemas/Metrics'
         modifications:
           $ref: '#/components/schemas/ExecutionModifications'
+        summary:
+          $ref: '#/components/schemas/Summary'
       required:
         - state
     StartResult:
@@ -1146,6 +1172,8 @@ components:
           $ref: '#/components/schemas/Metrics'
         modifications:
           $ref: '#/components/schemas/ExecutionModifications'
+        summary:
+          $ref: '#/components/schemas/Summary'
     StatusResult:
       properties:
         completed:
@@ -1163,6 +1191,8 @@ components:
           $ref: '#/components/schemas/Metrics'
         modifications:
           $ref: '#/components/schemas/ExecutionModifications'
+        summary:
+          $ref: '#/components/schemas/Summary'
       required:
         - completed
     StopResult:
@@ -1177,6 +1207,8 @@ components:
           $ref: '#/components/schemas/Metrics'
         modifications:
           $ref: '#/components/schemas/ExecutionModifications'
+        summary:
+          $ref: '#/components/schemas/Summary'
     QueryMetricsResult:
       properties:
         messages:

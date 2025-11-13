@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.3 (next release)
+
+- Added an option to return a summary from action endpoints
+
 ## 2.10.2
 
 - The current state of execution properties are passed to the action in the `prepare` endpoint. (requires steadybit platform >= 2.3.25 and agent >= 2.2.2)
