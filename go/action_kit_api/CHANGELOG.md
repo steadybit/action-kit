@@ -1,8 +1,8 @@
 # Changelog
 
-## 2.10.3 (next release)
+## 2.10.3
 
-- Added an option to return a summary from action endpoints
+- Added an option to return a summary from action endpoints (requires steadybit platform >= 2.3.26 and agent >= 2.2.3)
 
 ## 2.10.2
 
