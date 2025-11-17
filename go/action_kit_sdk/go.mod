@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.34.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.2
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.3
 	github.com/steadybit/extension-kit v1.10.0
 	github.com/stretchr/testify v1.11.1
 )
