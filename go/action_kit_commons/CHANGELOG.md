@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.5.10
+## 1.5.11
 
 - Update dependencies
+
+## 1.5.10
 
 ## 1.5.9
 
