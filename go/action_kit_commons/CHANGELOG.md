@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.10
+
+- Update dependencies
+
 ## 1.5.9
 
 - fix: failing to read correct cgroupV1 path when mixed with v2
