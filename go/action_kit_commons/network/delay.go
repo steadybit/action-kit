@@ -7,6 +7,7 @@ package network
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 	"time"
 
@@ -15,11 +16,46 @@ import (
 
 type DelayOpts struct {
 	Filter
+	ExecutionContext
 	Delay      time.Duration
 	Jitter     time.Duration
 	Interfaces []string
 	// When true, only delay TCP packets with PSH flag set. Uses iptables marks + tc fw filter.
 	TcpPshOnly bool
+}
+
+func (o *DelayOpts) ToExecutionContext() ExecutionContext {
+	return o.ExecutionContext
+}
+
+func (o *DelayOpts) DoesConflictWith(opts Opts) bool {
+	other, ok := opts.(*DelayOpts)
+
+	if !ok {
+		return true
+	}
+
+	if o.Delay != other.Delay {
+		return true
+	}
+
+	if o.Jitter != other.Jitter {
+		return true
+	}
+
+	if o.TcpPshOnly != other.TcpPshOnly {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Filter, other.Filter) {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Interfaces, other.Interfaces) {
+		return true
+	}
+
+	return false
 }
 
 func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {

@@ -6,14 +6,43 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"reflect"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type CorruptPackagesOpts struct {
 	Filter
+	ExecutionContext
 	Corruption uint
 	Interfaces []string
+}
+
+func (o *CorruptPackagesOpts) ToExecutionContext() ExecutionContext {
+	return o.ExecutionContext
+}
+
+func (o *CorruptPackagesOpts) DoesConflictWith(opts Opts) bool {
+	other, ok := opts.(*CorruptPackagesOpts)
+
+	if !ok {
+		return true
+	}
+
+	if o.Corruption != other.Corruption {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Filter, other.Filter) {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Interfaces, other.Interfaces) {
+		return true
+	}
+
+	return false
 }
 
 func (o *CorruptPackagesOpts) IpCommands(_ Family, _ Mode) ([]string, error) {

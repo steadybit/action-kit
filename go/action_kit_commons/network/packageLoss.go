@@ -6,16 +6,44 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"reflect"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type PackageLossOpts struct {
 	Filter
+	ExecutionContext
 	Loss       uint
 	Interfaces []string
 }
 
+func (o *PackageLossOpts) ToExecutionContext() ExecutionContext {
+	return o.ExecutionContext
+}
+
+func (o *PackageLossOpts) DoesConflictWith(opts Opts) bool {
+	other, ok := opts.(*PackageLossOpts)
+
+	if !ok {
+		return true
+	}
+
+	if o.Loss != other.Loss {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Filter, other.Filter) {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Interfaces, other.Interfaces) {
+		return true
+	}
+
+	return false
+}
 func (o *PackageLossOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 	return nil, nil
 }

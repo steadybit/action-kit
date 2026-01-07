@@ -184,12 +184,15 @@ func pushActiveTc(netNsId string, opts Opts) error {
 	defer activeTCLock.Unlock()
 
 	for _, active := range activeTc[netNsId] {
-		if !reflect.DeepEqual(opts, active) {
+		if opts.DoesConflictWith(active) {
+			activeContext := active.ToExecutionContext()
+			err := fmt.Sprintf("running multiple network attacks at the same time on the same network namespace is not supported. attack active for experiment: %s/%d step %s", activeContext.ExperimentKey, activeContext.ExperimentExecutionId, activeContext.TargetExecutionId)
+
 			log.Warn().
 				Str("active", active.String()).
 				Str("new", opts.String()).
 				Msg("running multiple network attacks at the same time on the same network namespace is not supported")
-			return errors.New("running multiple network attacks at the same time on the same network namespace is not supported")
+			return errors.New(err)
 		}
 	}
 
