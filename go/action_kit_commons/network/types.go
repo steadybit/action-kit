@@ -34,6 +34,14 @@ type Opts interface {
 	IpCommands(family Family, mode Mode) ([]string, error)
 	TcCommands(mode Mode) ([]string, error)
 	String() string
+	ToExecutionContext() ExecutionContext
+	DoesConflictWith(opts Opts) bool
+}
+
+type ExecutionContext struct {
+	ExperimentKey         string
+	ExperimentExecutionId int
+	TargetExecutionId     string
 }
 
 // IptablesScriptProvider is an optional interface that Opts can implement

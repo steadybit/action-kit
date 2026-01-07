@@ -6,15 +6,44 @@ package network
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type LimitBandwidthOpts struct {
 	Filter
+	ExecutionContext
 	Bandwidth  string
 	Interfaces []string
+}
+
+func (o *LimitBandwidthOpts) ToExecutionContext() ExecutionContext {
+	return o.ExecutionContext
+}
+
+func (o *LimitBandwidthOpts) DoesConflictWith(opts Opts) bool {
+	other, ok := opts.(*LimitBandwidthOpts)
+
+	if !ok {
+		return true
+	}
+
+	if o.Bandwidth != other.Bandwidth {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Filter, other.Filter) {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Interfaces, other.Interfaces) {
+		return true
+	}
+
+	return false
 }
 
 func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) ([]string, error) {

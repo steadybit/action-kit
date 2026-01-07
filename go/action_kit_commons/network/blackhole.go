@@ -6,6 +6,7 @@ package network
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -16,7 +17,30 @@ const IpProtoUdp IpProto = "udp"
 
 type BlackholeOpts struct {
 	Filter
+	ExecutionContext
 	IpProto IpProto
+}
+
+func (o *BlackholeOpts) ToExecutionContext() ExecutionContext {
+	return o.ExecutionContext
+}
+
+func (o *BlackholeOpts) DoesConflictWith(opts Opts) bool {
+	other, ok := opts.(*BlackholeOpts)
+
+	if !ok {
+		return true
+	}
+
+	if o.IpProto != other.IpProto {
+		return true
+	}
+
+	if !reflect.DeepEqual(o.Filter, other.Filter) {
+		return true
+	}
+
+	return false
 }
 
 func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
