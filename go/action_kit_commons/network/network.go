@@ -186,7 +186,7 @@ func pushActiveTc(netNsId string, opts Opts) error {
 	for _, active := range activeTc[netNsId] {
 		if opts.DoesConflictWith(active) {
 			activeContext := active.ToExecutionContext()
-			err := fmt.Sprintf("running multiple network attacks at the same time on the same network namespace is not supported. attack active for experiment: %s/%d step %s", activeContext.ExperimentKey, activeContext.ExperimentExecutionId, activeContext.TargetExecutionId)
+			err := fmt.Sprintf("running multiple network attacks at the same time on the same network namespace is not supported. Already running attack started by %s (#%d) in targetExecution %s", activeContext.ExperimentKey, activeContext.ExperimentExecutionId, activeContext.TargetExecutionId)
 
 			log.Warn().
 				Str("active", active.String()).

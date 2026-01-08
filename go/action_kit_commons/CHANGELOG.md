@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.13
+
+- Rephrase conflicting network attack message
+
 ## 1.5.12
 
 - Add more context when network attack is conflicting with active one
