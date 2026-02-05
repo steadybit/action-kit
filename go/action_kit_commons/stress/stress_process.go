@@ -7,12 +7,13 @@ package stress
 import (
 	"context"
 	"fmt"
-	"github.com/moby/sys/capability"
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os/exec"
 	"strconv"
 	"time"
+
+	"github.com/moby/sys/capability"
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
 
 type stressProcess struct {
@@ -54,12 +55,12 @@ func (s *stressProcess) Stop() {
 	//as the process is running with a different user, we also need to do so, for sending signals
 	ctx := context.Background()
 	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(s.cmd.Process.Pid)).Run(); err != nil {
-		log.Warn().Err(err).Msg("failed to send SIGINT to memfill")
+		log.Warn().Err(err).Msg("failed to send SIGINT to stress-ng")
 	}
 
 	timer := time.AfterFunc(10*time.Second, func() {
 		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(s.cmd.Process.Pid)).Run(); err != nil {
-			log.Warn().Err(err).Msg("failed to send SIGTERM to memfill")
+			log.Warn().Err(err).Msg("failed to send SIGTERM to stress-ng")
 		}
 	})
 
