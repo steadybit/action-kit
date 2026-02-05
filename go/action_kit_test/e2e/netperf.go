@@ -6,6 +6,12 @@ package e2e
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
 	"golang.org/x/sync/errgroup"
@@ -13,11 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
-	"strconv"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 const (
@@ -128,6 +129,7 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 
 func (n *Netperf) buildImages() error {
 	n.imageOnce.Do(func() {
+		_ = n.Minikube.PullImage("ubuntu:latest") // netperf and netserver images are based on ubuntu, so we pull it to speed up the build
 		eg := errgroup.Group{}
 		eg.Go(func() error {
 			return n.Minikube.BuildImage(netserverDockerfile, netserverImage)
