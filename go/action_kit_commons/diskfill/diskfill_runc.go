@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+// SPDX-FileCopyrightText: 2026 Steadybit GmbH
 //go:build !windows
 
 package diskfill
@@ -7,16 +7,17 @@ package diskfill
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"path/filepath"
-	"strings"
-	"syscall"
-	"time"
 )
 
 type diskfillRunc struct {
@@ -147,13 +148,6 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 
 	ociruntime.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.PIDNamespace)
 
-	caps := []string{"CAP_DAC_OVERRIDE"}
-	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
-		caps = append(caps, "CAP_SYS_RESOURCE")
-	} else {
-		log.Warn().Msg("CAP_SYS_RESOURCE not available. oom_score_adj will fail.")
-	}
-
 	editors := []ociruntime.SpecEditor{
 		ociruntime.WithHostname(containerId),
 		ociruntime.WithAnnotations(map[string]string{
@@ -163,13 +157,22 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 		ociruntime.WithProcessArgs(processArgs...),
 		ociruntime.WithProcessCwd("/tmp"),
 		ociruntime.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),
-		ociruntime.WithCapabilities(caps...),
 		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.PIDNamespace)),
 		ociruntime.WithMountIfNotPresent(specs.Mount{
 			Destination: "/tmp",
 			Type:        "tmpfs",
 			Options:     []string{"noexec", "nosuid", "nodev", "rprivate"},
 		}),
+	}
+
+	caps := []string{"CAP_DAC_OVERRIDE"}
+	if ok, _ := capability.GetBound(capability.CAP_SYS_RESOURCE); ok {
+		caps = append(caps, "CAP_SYS_RESOURCE")
+		editors = append(editors,
+			ociruntime.WithOOMScoreAdj(-1000),
+			ociruntime.WithCapabilities(caps...))
+	} else {
+		log.Warn().Msg("CAP_SYS_RESOURCE not available. Cannot prevent OOM kill.")
 	}
 
 	if err := bundle.EditSpec(editors...); err != nil {
