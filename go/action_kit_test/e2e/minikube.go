@@ -9,12 +9,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
-	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -28,15 +38,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
 	"k8s.io/client-go/util/homedir"
-	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"slices"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 var (
@@ -234,14 +235,12 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, extFactory ExtensionFactory,
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"})
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		err := extFactory.CreateImage()
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
-		wg.Done()
-	}()
+	})
 
 	for _, runtime := range mOpts.runtimes {
 		t.Run(string(runtime), func(t *testing.T) {
@@ -747,6 +746,12 @@ func (m *Minikube) BuildImage(url string, tag string) error {
 		return m.LoadImage(tag)
 	}
 	command := m.command("image", "build", url, "-t", tag)
+	log.Info().Msgf("Running: %v", command.String())
+	return command.Run()
+}
+
+func (m *Minikube) PullImage(image string) error {
+	command := m.command("image", "pull", image)
 	log.Info().Msgf("Running: %v", command.String())
 	return command.Run()
 }
