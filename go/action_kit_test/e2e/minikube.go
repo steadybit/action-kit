@@ -135,6 +135,58 @@ func (m *Minikube) waitForDefaultServiceAccount() error {
 	}
 }
 
+func (m *Minikube) waitForDNSReady(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	start := time.Now()
+
+	// First, wait for CoreDNS pods to be Running
+	pods, err := m.WaitForDeploymentPhase(
+		&metav1.ObjectMeta{Name: "coredns", Namespace: "kube-system"},
+		corev1.PodRunning,
+		"k8s-app=kube-dns",
+		timeout,
+	)
+	if err != nil {
+		return fmt.Errorf("coredns pods not running: %w", err)
+	}
+
+	// Then wait for CoreDNS pods to be Ready (readiness probe passed)
+	remaining := timeout - time.Since(start)
+	if remaining <= 0 {
+		remaining = 10 * time.Second
+	}
+	for _, pod := range pods {
+		if err := m.WaitForPodReady(pod.GetObjectMeta(), remaining); err != nil {
+			return fmt.Errorf("coredns pod %s not ready: %w", pod.Name, err)
+		}
+	}
+
+	// Finally, wait for kube-dns service to have ready endpoints.
+	// This ensures kube-proxy has updated iptables rules to route DNS traffic.
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("kube-dns endpoints not ready within %s", timeout)
+		case <-time.After(500 * time.Millisecond):
+			endpoints, epErr := m.GetClient().CoreV1().Endpoints("kube-system").Get(context.Background(), "kube-dns", metav1.GetOptions{})
+			if epErr != nil {
+				continue
+			}
+			for _, subset := range endpoints.Subsets {
+				if len(subset.Addresses) > 0 {
+					log.Info().
+						Int("endpoints", len(subset.Addresses)).
+						TimeDiff("duration", time.Now(), start).
+						Msg("kube-dns is ready")
+					return nil
+				}
+			}
+		}
+	}
+}
+
 func (m *Minikube) delete() error {
 	globalMinikubeMutex.Lock()
 	defer globalMinikubeMutex.Unlock()
@@ -263,8 +315,8 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, extFactory ExtensionFactory,
 				}
 			}
 
-			if _, dnsErr := minikube.WaitForDeploymentPhase(&metav1.ObjectMeta{Name: "coredns", Namespace: "kube-system"}, corev1.PodRunning, "k8s-app=kube-dns", 1*time.Minute); dnsErr != nil {
-				log.Warn().Err(dnsErr).Msg("coredns not started withing 1 minute.")
+			if dnsErr := minikube.waitForDNSReady(2 * time.Minute); dnsErr != nil {
+				t.Fatal("DNS not ready:", dnsErr)
 			}
 
 			wg.Wait()
