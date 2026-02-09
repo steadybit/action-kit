@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5
+
+- wait for dns to be ready before running tests
+- Update dependencies
+
 ## 1.4.4
 
 - Update dependencies
