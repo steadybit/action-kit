@@ -321,7 +321,7 @@ func WithMinikube(t *testing.T, mOpts MinikubeOpts, extFactory ExtensionFactory,
 
 			wg.Wait()
 			extension, err := extFactory.Start(minikube)
-			if err != nil {
+			if err == nil {
 				defer func() { _ = extension.stop() }()
 			}
 			require.NoError(t, err)

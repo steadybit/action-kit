@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.6
+
+- fix: shutdown minikube after e2e tests
+
 ## 1.4.5
 
 - wait for dns to be ready before running tests
