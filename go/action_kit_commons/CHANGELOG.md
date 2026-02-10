@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.14
+
+- Set OOM score adjustment in disc fill command 
+
 ## 1.5.13
 
 - Rephrase conflicting network attack message
