@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.15
+
+- Add filldisk helpers to validate target directory 
+
 ## 1.5.14
 
 - Set OOM score adjustment in disc fill command 

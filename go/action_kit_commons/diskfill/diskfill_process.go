@@ -7,13 +7,14 @@ package diskfill
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
 
 type diskfillProcess struct {
@@ -91,4 +92,18 @@ func (df *diskfillProcess) Args() []string {
 
 func (df *diskfillProcess) Noop() bool {
 	return df.cmd.Args[0] == "echo" && df.cmd.Args[1] == "noop"
+}
+
+func CheckPathWritableProcess(ctx context.Context, targetPath string) error {
+	if out, err := utils.RootCommandContext(ctx, "test", "-d", targetPath).CombinedOutput(); err != nil {
+		return fmt.Errorf("target path %q does not exist: %w: %s", targetPath, err, string(out))
+	}
+
+	checkFile := filepath.Join(targetPath, ".steadybit-diskfill-check")
+	if out, err := utils.RootCommandContext(ctx, "touch", checkFile).CombinedOutput(); err != nil {
+		return fmt.Errorf("target path %q is not writable: %w: %s", targetPath, err, string(out))
+	}
+
+	_ = utils.RootCommandContext(ctx, "rm", "-f", checkFile).Run()
+	return nil
 }

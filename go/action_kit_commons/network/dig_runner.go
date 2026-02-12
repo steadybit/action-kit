@@ -16,7 +16,6 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"io"
 	"os/exec"
-	"runtime/trace"
 )
 
 type DigRunner interface {
@@ -50,7 +49,6 @@ type RuncDigRunner struct {
 var _ DigRunner = (*RuncDigRunner)(nil)
 
 func (r *RuncDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
-	defer trace.StartRegion(ctx, "RuncDigRunner.Run").End()
 	id := getNextContainerId(r.Sidecar.ExecutionId, "dig", r.Sidecar.IdSuffix)
 
 	bundle, err := r.Runc.Create(ctx, "/", id)

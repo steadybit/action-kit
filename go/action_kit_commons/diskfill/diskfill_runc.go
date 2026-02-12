@@ -5,6 +5,7 @@
 package diskfill
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -142,7 +143,7 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 
 	if targetPath != "" {
 		if err := bundle.MountFromProcess(ctx, sidecar.TargetProcess.Pid, targetPath, mountpointInContainer); err != nil {
-			return nil, fmt.Errorf("failed to mount %s: %w", targetPath, err)
+			return nil, err
 		}
 	}
 
@@ -181,6 +182,30 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 
 	success = true
 	return bundle, nil
+}
+
+func CheckPathWritableRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, targetPath string) error {
+	bundle, err := createBundle(ctx, r, sidecar, targetPath, "sh", "-c", fmt.Sprintf("test -d %s && touch %s/.steadybit-diskfill-check && rm -f %s/.steadybit-diskfill-check", mountpointInContainer, mountpointInContainer, mountpointInContainer))
+	if err != nil {
+		return fmt.Errorf("target path %q is not accessible: %w", targetPath, err)
+	}
+	defer func() {
+		if err := bundle.Remove(); err != nil {
+			log.Warn().Str("id", bundle.ContainerId()).Err(err).Msg("failed to remove bundle")
+		}
+	}()
+
+	var errb bytes.Buffer
+	err = r.Run(ctx, bundle, ociruntime.IoOpts{Stderr: &errb})
+	defer func() {
+		if err := r.Delete(context.Background(), bundle.ContainerId(), true); err != nil {
+			log.Debug().Str("id", bundle.ContainerId()).Err(err).Msg("failed to delete check container")
+		}
+	}()
+	if err != nil {
+		return fmt.Errorf("target path %q does not exist or is not writable: %w: %s", targetPath, err, errb.String())
+	}
+	return nil
 }
 
 func getNextContainerId(executionId uuid.UUID, suffix string) string {

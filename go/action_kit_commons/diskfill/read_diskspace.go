@@ -68,9 +68,7 @@ func readDiskUsageProcess(ctx context.Context, path string) (*DiskUsage, error) 
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("failed to read disk usage: %w: %s", err, errb.String())
 	}
 
