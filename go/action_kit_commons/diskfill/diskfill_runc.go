@@ -142,7 +142,7 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 
 	if targetPath != "" {
 		if err := bundle.MountFromProcess(ctx, sidecar.TargetProcess.Pid, targetPath, mountpointInContainer); err != nil {
-			log.Warn().Err(err).Msgf("failed to mount %s", targetPath)
+			return nil, fmt.Errorf("failed to mount %s: %w", targetPath, err)
 		}
 	}
 
