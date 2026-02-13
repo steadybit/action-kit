@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
@@ -15,9 +19,6 @@ import (
 	"github.com/steadybit/extension-kit/extconversion"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"strings"
-	"sync"
-	"time"
 )
 
 type File struct {
@@ -39,6 +40,7 @@ type ActionExecution interface {
 	Cancel() error
 	Metrics() []action_kit_api.Metric
 	Messages() []action_kit_api.Message
+	Duration() time.Duration
 }
 
 type clientImpl struct {
@@ -75,6 +77,19 @@ type actionExecutionImpl struct {
 	metricsMutex  sync.RWMutex
 	messages      []action_kit_api.Message
 	messagesMutex sync.RWMutex
+	started       time.Time
+	ended         time.Time
+	endedMutex    sync.RWMutex
+}
+
+func (a *actionExecutionImpl) Duration() time.Duration {
+	a.endedMutex.RLock()
+	defer a.endedMutex.RUnlock()
+
+	if a.ended.IsZero() || a.started.IsZero() {
+		return 0
+	}
+	return a.ended.Sub(a.started)
 }
 
 func (a *actionExecutionImpl) Wait() error {
@@ -95,15 +110,21 @@ func (a *actionExecutionImpl) Cancel() error {
 
 func (a *actionExecutionImpl) appendMetrics(metrics []action_kit_api.Metric) {
 	a.metricsMutex.Lock()
+	defer a.metricsMutex.Unlock()
 	a.metrics = append(a.metrics, metrics...)
-	a.metricsMutex.Unlock()
+}
+
+func (a *actionExecutionImpl) setEnded(time time.Time) {
+	a.endedMutex.Lock()
+	defer a.endedMutex.Unlock()
+	a.ended = time
 }
 
 func (a *actionExecutionImpl) Metrics() []action_kit_api.Metric {
 	a.metricsMutex.RLock()
+	defer a.metricsMutex.RUnlock()
 	result := make([]action_kit_api.Metric, len(a.metrics))
 	copy(result, a.metrics)
-	a.metricsMutex.RUnlock()
 	return result
 }
 
@@ -165,6 +186,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 		}
 		return &actionExecutionImpl{}, err
 	}
+	started := time.Now()
 	log.Info().Str("actionId", action.Id).
 		Stringer("executionId", executionId).
 		Interface("state", state).
@@ -178,11 +200,21 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	} else {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
-	actionExecution := &actionExecutionImpl{ch: ch, cancel: cancel, metrics: nil, metricsMutex: sync.RWMutex{}, messages: nil, messagesMutex: sync.RWMutex{}}
+	actionExecution := &actionExecutionImpl{
+		ch:            ch,
+		cancel:        cancel,
+		metrics:       nil,
+		metricsMutex:  sync.RWMutex{},
+		messages:      nil,
+		messagesMutex: sync.RWMutex{},
+		started:       started,
+	}
 
-	go func() {
-		defer cancel()
-		defer close(ch)
+	go func(actionExecution *actionExecutionImpl) {
+		defer func() {
+			cancel()
+			close(ch)
+		}()
 
 		var err error
 		if action.Status != nil {
@@ -193,6 +225,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 
 		if action.Stop != nil {
 			stopErr := c.stopAction(action, executionId, state, actionExecution.appendMetrics, actionExecution.appendMessages)
+			actionExecution.setEnded(time.Now())
 			if stopErr != nil {
 				err = errors.Join(err, stopErr)
 			} else {
@@ -206,7 +239,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 		} else {
 			log.Info().Str("actionId", action.Id).Stringer("executionId", executionId).Msg("Action ended")
 		}
-	}()
+	}(actionExecution)
 
 	return actionExecution, nil
 }
