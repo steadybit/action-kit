@@ -13,7 +13,7 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.4
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1
-	github.com/steadybit/extension-kit v1.10.1
+	github.com/steadybit/extension-kit v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/sync v0.19.0
