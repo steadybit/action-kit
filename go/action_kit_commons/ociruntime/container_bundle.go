@@ -5,16 +5,15 @@
 package ociruntime
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"os"
 	"path/filepath"
-	"runtime/trace"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
 
 type containerBundle struct {
@@ -86,38 +85,28 @@ func (b *containerBundle) mountRootfsOverlay(ctx context.Context, image string) 
 }
 
 func (b *containerBundle) CopyFileFromProcess(ctx context.Context, pid int, fromPath, toPath string) error {
-	defer trace.StartRegion(ctx, "utils.CopyFileFromProcessToBundle").End()
-	var out bytes.Buffer
-	cmd := utils.RootCommandContext(ctx, "cat", filepath.Join("/proc", strconv.Itoa(pid), "root", fromPath))
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%w: %s", err, out.String())
+	out, err := utils.RootCommandContext(ctx, "cat", filepath.Join("/proc", strconv.Itoa(pid), "root", fromPath)).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to mount %s (%w): %s", fromPath, err, out)
 	}
 
-	return os.WriteFile(filepath.Join(b.path, "rootfs", toPath), out.Bytes(), 0644)
+	return os.WriteFile(filepath.Join(b.path, "rootfs", toPath), out, 0644)
 }
 
 func (b *containerBundle) MountFromProcess(ctx context.Context, fromPid int, fromPath, toPath string) error {
-	defer trace.StartRegion(ctx, "utils.MountFromProcessToBundle").End()
-
 	mountpoint := filepath.Join(b.path, "rootfs", toPath)
 	log.Trace().
 		Int("fromPid", fromPid).
 		Str("fromPath", fromPath).
-		Str("mountpoint", mountpoint).
+		Str("mount-point", mountpoint).
 		Msg("mount from process to bundle")
 
 	if err := os.Mkdir(mountpoint, 0755); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create mountpoint %s: %w", mountpoint, err)
+		return fmt.Errorf("failed to create mount point %s: %w", mountpoint, err)
 	}
 
-	var out bytes.Buffer
-	cmd := utils.RootCommandContext(ctx, nsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint)
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%w: %s", err, out.String())
+	if out, err := utils.RootCommandContext(ctx, nsmountPath, strconv.Itoa(fromPid), fromPath, strconv.Itoa(os.Getpid()), mountpoint).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to mount %s (%w): %s", fromPath, err, out)
 	}
 	b.addFinalizer(func() error {
 		return unmount(context.Background(), mountpoint)

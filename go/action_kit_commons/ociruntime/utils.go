@@ -515,19 +515,16 @@ func searchNamespacePathInProcess(ctx context.Context, inode uint64, nsType spec
 }
 
 func readCgroupPath(ctx context.Context, pid int) (string, error) {
-	var out bytes.Buffer
-	cmd := utils.RootCommandContext(ctx, nsenterPath, "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%w: %s", err, out.String())
+	out, err := utils.RootCommandContext(ctx, nsenterPath, "-t", "1", "-C", "--", "cat", filepath.Join("/proc", strconv.Itoa(pid), "cgroup")).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, out)
 	}
 
-	if cgroup := parseProcCgroupFile(out.String()); cgroup != "" {
+	if cgroup := parseProcCgroupFile(string(out)); cgroup != "" {
 		return cgroup, nil
-	} else {
-		return "", fmt.Errorf("failed to read cgroup for pid %d\n%s", pid, out.String())
 	}
+
+	return "", fmt.Errorf("failed to read cgroup for pid %d\n%s", pid, out)
 }
 
 func parseProcCgroupFile(s string) string {
