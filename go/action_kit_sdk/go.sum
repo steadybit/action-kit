@@ -75,8 +75,8 @@ github.com/rs/zerolog v1.34.0/go.mod h1:bJsvje4Z08ROH4Nhs5iH600c3IkWhwp44iRc54W6
 github.com/spkg/bom v0.0.0-20160624110644-59b7046e48ad/go.mod h1:qLr4V1qq6nMqFKkMo8ZTx3f+BZEkzsRUY10Xsm2mwU0=
 github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.4 h1:JE8LeEiv1kZ9UKKFj8gxgl5CQpFuTkW71PUa5Nl+dv4=
 github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.4/go.mod h1:D+Mg/shU0nd6aiYlzHUiddMFgTspGr3Lv0J9BX6QpXI=
-github.com/steadybit/extension-kit v1.10.2 h1:ny62/TPgZIhZibY0+L8zuFEKqx3XuCEXZgij0Z2SDyM=
-github.com/steadybit/extension-kit v1.10.2/go.mod h1:vjcSUw8/eR11sQxR7cTEkU2oPoNvoKTihXQIqh3jlHM=
+github.com/steadybit/extension-kit v1.10.3 h1:4qMsfF0YqVwLDUARkbd6MZRcsVgHMQ0BXVAY1g8y33A=
+github.com/steadybit/extension-kit v1.10.3/go.mod h1:vjcSUw8/eR11sQxR7cTEkU2oPoNvoKTihXQIqh3jlHM=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=
 github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
