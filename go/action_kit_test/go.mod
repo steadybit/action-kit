@@ -16,7 +16,7 @@ require (
 	github.com/steadybit/extension-kit v1.10.3
 	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.34.0
 	k8s.io/api v0.35.2
 	k8s.io/apimachinery v0.35.2
