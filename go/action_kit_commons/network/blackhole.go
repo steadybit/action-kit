@@ -15,10 +15,17 @@ type IpProto string
 const IpProtoTcp IpProto = "tcp"
 const IpProtoUdp IpProto = "udp"
 
+type IpRuleType string
+
+const IpRuleTypeBlackhole IpRuleType = "blackhole"
+const IpRuleTypeUnreachable IpRuleType = "unreachable"
+const IpRuleTypeProhibit IpRuleType = "prohibit"
+
 type BlackholeOpts struct {
 	Filter
 	ExecutionContext
-	IpProto IpProto
+	IpProto    IpProto
+	IpRuleType IpRuleType
 }
 
 func (o *BlackholeOpts) ToExecutionContext() ExecutionContext {
@@ -51,6 +58,15 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 		ipprotoSelector = fmt.Sprintf(" ipproto %s", o.IpProto)
 	}
 
+	ruleType := IpRuleTypeBlackhole
+	if o.IpRuleType != "" {
+		ruleType = o.IpRuleType
+	}
+
+	if err := validateIpRuleType(ruleType); err != nil {
+		return nil, err
+	}
+
 	filter := optimizeFilter(o.Filter)
 	for _, nwp := range filter.Include {
 		net := nwp.Net
@@ -62,8 +78,8 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 			continue
 		}
 
-		cmds = append(cmds, fmt.Sprintf("rule %s blackhole to %s%s dport %s", mode, net.String(), ipprotoSelector, portRange.String()))
-		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s sport %s", mode, net.String(), ipprotoSelector, portRange.String()))
+		cmds = append(cmds, fmt.Sprintf("rule %s %s to %s%s dport %s", mode, ruleType, net.String(), ipprotoSelector, portRange.String()))
+		cmds = append(cmds, fmt.Sprintf("rule %s %s from %s%s sport %s", mode, ruleType, net.String(), ipprotoSelector, portRange.String()))
 	}
 
 	for _, nwp := range filter.Exclude {
@@ -92,4 +108,12 @@ func (o *BlackholeOpts) String() string {
 	sb.WriteString("blocking traffic ")
 	writeStringForFilters(&sb, o.Filter)
 	return sb.String()
+}
+
+func validateIpRuleType(ruleType IpRuleType) error {
+	if ruleType != IpRuleTypeBlackhole && ruleType != IpRuleTypeUnreachable && ruleType != IpRuleTypeProhibit {
+		return fmt.Errorf("invalid ip rule type: %q", ruleType)
+	}
+
+	return nil
 }

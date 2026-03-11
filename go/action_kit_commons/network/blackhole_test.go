@@ -85,6 +85,99 @@ rule del blackhole to ::/0 ipproto udp dport 123
 `),
 			wantErr: false,
 		},
+		{
+			name: "unreachable",
+			opts: BlackholeOpts{
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+						mustParseNetWithPortRange("::0/0", "*"),
+					},
+					Exclude: []NetWithPortRange{
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
+					},
+				},
+				IpRuleType: IpRuleTypeUnreachable,
+			},
+			wantAddV4: []byte(`rule add unreachable to 0.0.0.0/0 dport 1-65534
+rule add unreachable from 0.0.0.0/0 sport 1-65534
+rule add to 192.168.2.1/32 dport 80 table main
+rule add from 192.168.2.1/32 sport 80 table main
+`),
+			wantDelV4: []byte(`rule del from 192.168.2.1/32 sport 80 table main
+rule del to 192.168.2.1/32 dport 80 table main
+rule del unreachable from 0.0.0.0/0 sport 1-65534
+rule del unreachable to 0.0.0.0/0 dport 1-65534
+`),
+			wantAddV6: []byte(`rule add unreachable to ::/0 dport 1-65534
+rule add unreachable from ::/0 sport 1-65534
+rule add to ff02::114/128 dport 8000-8999 table main
+rule add from ff02::114/128 sport 8000-8999 table main
+`),
+			wantDelV6: []byte(`rule del from ff02::114/128 sport 8000-8999 table main
+rule del to ff02::114/128 dport 8000-8999 table main
+rule del unreachable from ::/0 sport 1-65534
+rule del unreachable to ::/0 dport 1-65534
+`),
+			wantErr: false,
+		},
+		{
+			name: "prohibit",
+			opts: BlackholeOpts{
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+						mustParseNetWithPortRange("::0/0", "*"),
+					},
+					Exclude: []NetWithPortRange{
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
+					},
+				},
+				IpRuleType: IpRuleTypeProhibit,
+			},
+			wantAddV4: []byte(`rule add prohibit to 0.0.0.0/0 dport 1-65534
+rule add prohibit from 0.0.0.0/0 sport 1-65534
+rule add to 192.168.2.1/32 dport 80 table main
+rule add from 192.168.2.1/32 sport 80 table main
+`),
+			wantDelV4: []byte(`rule del from 192.168.2.1/32 sport 80 table main
+rule del to 192.168.2.1/32 dport 80 table main
+rule del prohibit from 0.0.0.0/0 sport 1-65534
+rule del prohibit to 0.0.0.0/0 dport 1-65534
+`),
+			wantAddV6: []byte(`rule add prohibit to ::/0 dport 1-65534
+rule add prohibit from ::/0 sport 1-65534
+rule add to ff02::114/128 dport 8000-8999 table main
+rule add from ff02::114/128 sport 8000-8999 table main
+`),
+			wantDelV6: []byte(`rule del from ff02::114/128 sport 8000-8999 table main
+rule del to ff02::114/128 dport 8000-8999 table main
+rule del prohibit from ::/0 sport 1-65534
+rule del prohibit to ::/0 dport 1-65534
+`),
+			wantErr: false,
+		},
+		{
+			name: "invalid ip rule type",
+			opts: BlackholeOpts{
+				Filter: Filter{
+					Include: []NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: []NetWithPortRange{
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+					},
+				},
+				IpRuleType: IpRuleType("invalid"),
+			},
+			wantAddV4: []byte("\n"),
+			wantDelV4: []byte("\n"),
+			wantAddV6: []byte("\n"),
+			wantDelV6: []byte("\n"),
+			wantErr:   true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
