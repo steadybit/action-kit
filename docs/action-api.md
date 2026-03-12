@@ -145,6 +145,10 @@ our [extension-kit](https://github.com/steadybit/extension-kit/blob/main/extbuil
 
 If your Action requires a target, you can specify the target type here. The given value should match the `targetType` of one of the existing discoveries.
 
+#### Target Query
+
+This optional query, using Steadybit's query language, can be used to further narrow down selectable targets, e.g., by enforcing the presence of specific attributes or their content. 
+
 #### Target Selection Templates
 
 Creating the right target query might be difficult for the user. Therefore, you can provide a list of target selection templates which can be selected by the
