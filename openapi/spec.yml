@@ -116,6 +116,14 @@ components:
           description: >-
             What target type this action should be offered for. Matches the `id`
             field within `DescribeTargetTypeResponse` within DiscoveryKit.
+        targetQuery:
+          type: string
+          maxLength: 1024
+          description: >-
+            Optional target selection query using Steadybit's query language to further narrows down selectable targets.
+            For example: aws.account="" AND aws.zone.id=""
+            For more information about the query language, please inspect Steadybit's documentation:
+              https://docs.steadybit.com/use-steadybit/query-language
         selectionTemplates:
           $ref: '#/components/schemas/TargetSelectionTemplates'
         quantityRestriction:
