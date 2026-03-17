@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.10.5
+
+- Add target selector query to further narrow down action targets.
+- Update dependencies
+
 ## 2.10.4
 
 - Update dependencies
