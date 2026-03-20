@@ -128,6 +128,25 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 	})
 }
 
+func (n *Nginx) AssertIsUnreachable(t *testing.T, errContains string) {
+	t.Helper()
+
+	client, err := n.Minikube.NewRestClientForService(n.Service)
+	require.NoError(t, err)
+	defer client.Close()
+
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
+		_, err = client.R().Get("/")
+		if err == nil {
+			r.Failed = true
+			_, _ = fmt.Fprintf(r.Log, "expected nginx not to be reachble, but was")
+		} else if !strings.Contains(err.Error(), errContains) {
+			r.Failed = true
+			_, _ = fmt.Fprintf(r.Log, "expected nginx not to be reachble, with error containing '%s', but was '%s'", errContains, err)
+		}
+	})
+}
+
 func (n *Nginx) CanReach(url string) error {
 	out, err := n.Minikube.PodExec(n.Pod, "nginx", "curl", "--max-time", "2", url)
 	if err != nil {
