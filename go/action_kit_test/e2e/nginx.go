@@ -118,6 +118,11 @@ func (n *Nginx) AssertIsReachable(t *testing.T, expected bool) {
 
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		_, err = client.R().Get("/")
+
+		if err != nil {
+			t.Logf("AssertIsReachable err = %s", err.Error())
+		}
+
 		if expected && err != nil {
 			r.Failed = true
 			_, _ = fmt.Fprintf(r.Log, "expected nginx to be reachble, but was not: %s", err)
@@ -137,6 +142,11 @@ func (n *Nginx) AssertIsUnreachable(t *testing.T, errContains string) {
 
 	Retry(t, 8, 500*time.Millisecond, func(r *R) {
 		_, err = client.R().Get("/")
+
+		if err != nil {
+			t.Logf("AssertIsUnreachable err = %s", err.Error())
+		}
+
 		if err == nil {
 			r.Failed = true
 			_, _ = fmt.Fprintf(r.Log, "expected nginx not to be reachble, but was")
