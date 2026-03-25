@@ -25,8 +25,8 @@ var (
 
 	runLock = utils.NewHashedKeyMutex(10)
 
-	activeTCLock = sync.Mutex{}
-	activeTc     = map[string][]Opts{}
+	activeNetfaultLock = sync.Mutex{}
+	activeNetfault     = map[string][]Opts{}
 )
 
 type ErrTooManyTcCommands struct {
@@ -86,7 +86,7 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
 	if mode == modeAdd {
-		if err := pushActiveTc(netNsID, opts); err != nil {
+		if err := pushActiveNetfault(netNsID, opts); err != nil {
 			return err
 		}
 	}
@@ -160,7 +160,7 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if mode == modeDelete {
-		popActiveTc(netNsID, opts)
+		popActiveNetfault(netNsID, opts)
 	}
 
 	return err
@@ -180,11 +180,11 @@ func logCurrentIpRules(ctx context.Context, runner CommandRunner, family family,
 	}
 }
 
-func pushActiveTc(netNsId string, opts Opts) error {
-	activeTCLock.Lock()
-	defer activeTCLock.Unlock()
+func pushActiveNetfault(netNsId string, opts Opts) error {
+	activeNetfaultLock.Lock()
+	defer activeNetfaultLock.Unlock()
 
-	for _, active := range activeTc[netNsId] {
+	for _, active := range activeNetfault[netNsId] {
 		if opts.doesConflictWith(active) {
 			activeContext := active.toExecutionContext()
 			err := fmt.Sprintf("running multiple network attacks at the same time on the same network namespace is not supported. Already running attack started by %s (#%d) in targetExecution %s", activeContext.ExperimentKey, activeContext.ExperimentExecutionId, activeContext.TargetExecutionId)
@@ -197,21 +197,21 @@ func pushActiveTc(netNsId string, opts Opts) error {
 		}
 	}
 
-	activeTc[netNsId] = append(activeTc[netNsId], opts)
+	activeNetfault[netNsId] = append(activeNetfault[netNsId], opts)
 	return nil
 }
 
-func popActiveTc(id string, opts Opts) {
-	activeTCLock.Lock()
-	defer activeTCLock.Unlock()
+func popActiveNetfault(id string, opts Opts) {
+	activeNetfaultLock.Lock()
+	defer activeNetfaultLock.Unlock()
 
-	active, ok := activeTc[id]
+	active, ok := activeNetfault[id]
 	if !ok {
 		return
 	}
 	for i, a := range active {
 		if reflect.DeepEqual(opts, a) {
-			activeTc[id] = append(active[:i], active[i+1:]...)
+			activeNetfault[id] = append(active[:i], active[i+1:]...)
 			return
 		}
 	}
