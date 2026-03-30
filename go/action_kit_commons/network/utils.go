@@ -19,7 +19,7 @@ func reorderForMode(cmds []string, mode Mode) {
 	}
 }
 
-func ToReader(strs []string) io.Reader {
+func toReader(strs []string) io.Reader {
 	return strings.NewReader(fmt.Sprintf("%s\n", strings.Join(strs, "\n")))
 }
 

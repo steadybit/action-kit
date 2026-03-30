@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog/log"
@@ -119,13 +118,11 @@ func (df *diskfillRunc) Args() []string {
 
 type SidecarOpts struct {
 	TargetProcess ociruntime.LinuxProcessInfo
-	IdSuffix      string
-	ImagePath     string
-	ExecutionId   uuid.UUID
+	Id            string
 }
 
 func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, targetPath string, processArgs ...string) (ociruntime.ContainerBundle, error) {
-	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
+	containerId := fmt.Sprintf("sb-diskfill-%d-%s", time.Now().UnixMilli(), sidecar.Id)
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare bundle: %w", err)
@@ -208,9 +205,6 @@ func CheckPathWritableRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar
 	return nil
 }
 
-func getNextContainerId(executionId uuid.UUID, suffix string) string {
-	return fmt.Sprintf("sb-diskfill-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
-}
 
 func (df *diskfillRunc) Noop() bool {
 	return df.args[0] == "echo" && df.Args()[1] == "noop"

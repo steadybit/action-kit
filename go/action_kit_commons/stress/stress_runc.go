@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/moby/sys/capability"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
@@ -31,13 +30,11 @@ type stressRunc struct {
 
 type SidecarOpts struct {
 	TargetProcess ociruntime.LinuxProcessInfo
-	IdSuffix      string
-	ImagePath     string
-	ExecutionId   uuid.UUID
+	Id            string
 }
 
 func NewStressRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, opts Opts) (Stress, error) {
-	containerId := getNextContainerId(sidecar.ExecutionId, sidecar.IdSuffix)
+	containerId := fmt.Sprintf("sb-stress-%d-%s", time.Now().UnixMilli(), sidecar.Id)
 
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
@@ -104,9 +101,6 @@ func NewStressRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar Sidecar
 	}, nil
 }
 
-func getNextContainerId(executionId uuid.UUID, suffix string) string {
-	return fmt.Sprintf("sb-stress-%d-%s-%s", time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
-}
 
 func (s *stressRunc) Exited() (bool, error) {
 	return s.state.Exited()

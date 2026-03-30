@@ -44,14 +44,14 @@ type ExecutionContext struct {
 	TargetExecutionId     string
 }
 
-// IptablesScriptProvider is an optional interface that Opts can implement
+// iptablesScriptProvider is an optional interface that Opts can implement
 // to provide iptables/ip6tables shell scripts which will be executed before
 // tc commands. This is useful for marking packets that tc should act upon.
-type IptablesScriptProvider interface {
+type iptablesScriptProvider interface {
 	// IptablesScripts should return shell scripts for IPv4 and IPv6.
 	// The scripts will be executed using "sh -s" with root privileges.
 	// Return empty strings if no script is required for the respective family.
-	IptablesScripts(mode Mode) (v4 []string, v6 []string, err error)
+	iptablesScripts(mode Mode) (v4 []string, v6 []string, err error)
 }
 
 type Filter struct {

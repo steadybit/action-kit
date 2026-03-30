@@ -64,7 +64,7 @@ func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
 
 const steadybitDelayFwMark uint32 = 0x1
 
-func (o *DelayOpts) IptablesScripts(mode Mode) ([]string, []string, error) {
+func (o *DelayOpts) iptablesScripts(mode Mode) ([]string, []string, error) {
 	if !o.TcpPshOnly {
 		return nil, nil, nil
 	}

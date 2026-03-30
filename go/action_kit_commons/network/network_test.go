@@ -82,7 +82,7 @@ func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
 		TcpPshOnly: true,
 	}
 
-	v4, v6, err := opts.IptablesScripts(ModeAdd)
+	v4, v6, err := opts.iptablesScripts(ModeAdd)
 	assert.NoError(t, err)
 	// v4 script should not contain IPv6 addresses
 	assert.NotContains(t, v4, "ff02::")

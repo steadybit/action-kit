@@ -100,28 +100,28 @@ rule del blackhole to ::/0 ipproto udp dport 123
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAddV4), tt.wantAddV4))
+			assert.NoError(t, iotest.TestReader(toReader(gotAddV4), tt.wantAddV4))
 
 			gotDelV4, err := tt.opts.IpCommands(FamilyV4, ModeDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDelV4), tt.wantDelV4))
+			assert.NoError(t, iotest.TestReader(toReader(gotDelV4), tt.wantDelV4))
 
 			gotAddV6, err := tt.opts.IpCommands(FamilyV6, ModeAdd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAddV6), tt.wantAddV6))
+			assert.NoError(t, iotest.TestReader(toReader(gotAddV6), tt.wantAddV6))
 
 			gotDelV6, err := tt.opts.IpCommands(FamilyV6, ModeDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDelV6), tt.wantDelV6))
+			assert.NoError(t, iotest.TestReader(toReader(gotDelV6), tt.wantDelV6))
 		})
 	}
 }

@@ -103,8 +103,8 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	// If opts provide iptables scripts, execute them first
-	if provider, ok := opts.(IptablesScriptProvider); ok {
-		v4, v6, scriptErr := provider.IptablesScripts(mode)
+	if provider, ok := opts.(iptablesScriptProvider); ok {
+		v4, v6, scriptErr := provider.iptablesScripts(mode)
 		if scriptErr != nil {
 			return scriptErr
 		}
@@ -130,19 +130,19 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 
 	if len(ipCommandsV4) > 0 {
 		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
-			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV4))
+			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
 	if len(ipCommandsV6) > 0 {
 		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
-			err = errors.Join(err, FilterBatchErrors(ipErr, mode, ipCommandsV6))
+			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
 
 	if len(tcCommands) > 0 {
 		if _, tcErr := executeTcCommands(ctx, runner, tcCommands); tcErr != nil {
-			err = errors.Join(err, FilterBatchErrors(tcErr, mode, tcCommands))
+			err = errors.Join(err, filterBatchErrors(tcErr, mode, tcCommands))
 		}
 	}
 

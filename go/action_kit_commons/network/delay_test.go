@@ -173,7 +173,7 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 					return
 				}
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
+				assert.NoError(t, iotest.TestReader(toReader(gotAdd), tt.wantAdd))
 			}
 
 			gotDel, err := tt.opts.TcCommands(ModeDelete)
@@ -184,7 +184,7 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 					return
 				}
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
+				assert.NoError(t, iotest.TestReader(toReader(gotDel), tt.wantDel))
 			}
 		})
 	}
