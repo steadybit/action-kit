@@ -2,16 +2,17 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package dnsresolve
 
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net"
 	"os/exec"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHostnameResolver_Resolve(t *testing.T) {
@@ -51,7 +52,7 @@ func TestHostnameResolver_Resolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("Resolve(%+v)", tt.hostnames), func(t *testing.T) {
-			got, err := Resolve(context.Background(), tt.hostnames...)
+			got, err := NewDig().Resolve(context.Background(), tt.hostnames...)
 			if !tt.wantErr(t, err, fmt.Sprintf("Resolve(ctx, %v)", tt.hostnames)) {
 				return
 			}
@@ -105,12 +106,10 @@ no servers could be reached`, i...)
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("Resolve(%+v)", i), func(t *testing.T) {
-			resolver := &HostnameResolver{Dig: &mockDigRunner{
+			got, err := resolve(context.Background(), &mockDig{
 				tt.output,
 				tt.err,
-			}}
-
-			got, err := resolver.Resolve(context.Background(), "steadybit.com")
+			}, "steadybit.com")
 			if !tt.wantErr(t, err) {
 				return
 			}
@@ -119,11 +118,11 @@ no servers could be reached`, i...)
 	}
 }
 
-type mockDigRunner struct {
+type mockDig struct {
 	output []byte
 	err    error
 }
 
-func (m mockDigRunner) Run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
+func (m mockDig) run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
 	return m.output, m.err
 }

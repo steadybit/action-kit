@@ -42,7 +42,7 @@ func Test_generateAndRunCommands_using_runc_should_serialize(t *testing.T) {
 			defer wg.Done()
 			sidecar := SidecarOpts{
 				TargetProcess: ociruntime.LinuxProcessInfo{},
-				IdSuffix:      "test",
+				Id:            "test",
 			}
 
 			runner := NewRuncRunner(runcMock, sidecar)

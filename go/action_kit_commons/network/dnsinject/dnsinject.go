@@ -16,7 +16,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -60,8 +59,7 @@ type DNSInject interface {
 
 type SidecarOpts struct {
 	TargetProcess ociruntime.LinuxProcessInfo
-	IdSuffix      string
-	ExecutionId   uuid.UUID
+	Id            string
 }
 
 var dnsInjectPath = utils.LocateExecutable("dns-inject", "STEADYBIT_EXTENSION_DNS_INJECT_PATH")

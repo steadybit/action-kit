@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -28,8 +27,7 @@ type runcRunner struct {
 
 type SidecarOpts struct {
 	TargetProcess ociruntime.LinuxProcessInfo
-	IdSuffix      string
-	ExecutionId   uuid.UUID
+	Id            string
 }
 
 func NewRuncRunner(r ociruntime.OciRuntime, sidecar SidecarOpts) CommandRunner {
@@ -78,11 +76,11 @@ func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, proc
 	cmd := utils.RootCommandContext(ctx, ipPath, ipArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-	cmd.Stdin = ToReader(cmds)
+	cmd.Stdin = toReader(cmds)
 	err := cmd.Run()
 
 	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
+		if parsed := parseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
 			return "", parsed
 		}
 		return "", fmt.Errorf("netns exec failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
@@ -93,7 +91,7 @@ func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, proc
 func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, processArgs []string, cmds []string) (string, error) {
 	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
 
-	id := getNextContainerId(r.sidecar.ExecutionId, path.Base(processArgs[0]), r.sidecar.IdSuffix)
+	id := NextContainerId(path.Base(processArgs[0]), r.sidecar.Id)
 	bundle, err := r.runc.Create(ctx, "/", id)
 	if err != nil {
 		return "", err
@@ -117,7 +115,7 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 
 	var outb, errb bytes.Buffer
 	err = r.runc.Run(ctx, bundle, ociruntime.IoOpts{
-		Stdin:  ToReader(cmds),
+		Stdin:  toReader(cmds),
 		Stdout: &outb,
 		Stderr: &errb,
 	})
@@ -132,7 +130,7 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 	}()
 
 	if err != nil {
-		if parsed := ParseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
+		if parsed := parseBatchError(processArgs, bytes.NewReader(errb.Bytes())); parsed != nil {
 			return "", parsed
 		}
 		return "", fmt.Errorf("%s failed: %w, output: %s, error: %s", id, err, outb.String(), errb.String())
@@ -140,6 +138,6 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 	return outb.String(), err
 }
 
-func getNextContainerId(executionId uuid.UUID, tool, suffix string) string {
-	return fmt.Sprintf("sb-%s-%d-%s-%s", tool, time.Now().UnixMilli(), utils.ShortenUUID(executionId), suffix)
+func NextContainerId(tool, id string) string {
+	return fmt.Sprintf("sb-%s-%d-%s", tool, time.Now().UnixMilli(), id)
 }
