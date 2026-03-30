@@ -205,7 +205,6 @@ func CheckPathWritableRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar
 	return nil
 }
 
-
 func (df *diskfillRunc) Noop() bool {
 	return df.args[0] == "echo" && df.Args()[1] == "noop"
 }

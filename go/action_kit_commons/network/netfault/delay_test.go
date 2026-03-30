@@ -2,42 +2,61 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"testing/iotest"
+	"time"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestPackageLossOpts_TcCommands(t *testing.T) {
+func TestDelayOpts_TcCommands(t *testing.T) {
 	tests := []struct {
 		name         string
-		opts         PackageLossOpts
+		opts         DelayOpts
 		ipv6Disabled bool
 		wantAdd      []byte
 		wantDel      []byte
 		wantErr      bool
 	}{
 		{
-			name: "loss",
-			opts: PackageLossOpts{
+			name: "delay too many filters",
+			opts: DelayOpts{
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
+				Interfaces: []string{"eth0"},
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: generateNWPs(2000),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "delay",
+			opts: DelayOpts{
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+						mustParseNetWithPortRange("0.0.0.0/0", "*"), //should filter that duplicate
 						mustParseNetWithPortRange("::0/0", "*"),
 					},
-					Exclude: []NetWithPortRange{
+					Exclude: []network.NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
-						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should deduplicate
+						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should filter that duplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
-					},
-				},
-				Loss:       90,
+					}},
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
 				Interfaces: []string{"eth0"},
 			},
 			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-qdisc add dev eth0 parent 1:3 handle 30: netem loss random 90%
+qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
@@ -75,24 +94,68 @@ filter del dev eth0 protocol ipv6 parent 1: prio 4 u32 match ip6 dst ff02::114/1
 filter del dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
-qdisc del dev eth0 parent 1:3 handle 30: netem loss random 90%
+qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
 qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 `),
 			wantErr: false,
 		},
 		{
-			name: "loss",
-			opts: PackageLossOpts{
-				Loss:       90,
-				Interfaces: []string{"eth0"},
+			name: "delay tcp psh only uses fwmark filters",
+			opts: DelayOpts{
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
 					},
-					Exclude: generateNWPs(2000),
 				},
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
+				Interfaces: []string{"eth0"},
+				TcpPshOnly: true,
 			},
-			wantErr: true,
+			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
+filter add dev eth0 protocol ip parent 1: prio 1 handle 0x1 fw flowid 1:3
+filter add dev eth0 protocol ipv6 parent 1: prio 2 handle 0x1 fw flowid 1:3
+`),
+			wantDel: []byte(`filter del dev eth0 protocol ipv6 parent 1: prio 2 handle 0x1 fw flowid 1:3
+filter del dev eth0 protocol ip parent 1: prio 1 handle 0x1 fw flowid 1:3
+qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
+qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+`),
+			wantErr: false,
+		},
+		{
+			name: "delay with filtered excludes",
+			opts: DelayOpts{
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("192.168.2.1/24", "80"),
+					},
+					Exclude: []network.NetWithPortRange{
+						mustParseNetWithPortRange("192.168.2.1/32", "80"),
+						mustParseNetWithPortRange("192.168.2.1/32", "8080"), //should be filtered, wrong port range
+						mustParseNetWithPortRange("ff02::114/128", "*"),     // should be filtered CIDR not overlapping
+					},
+				},
+				Delay:      100 * time.Millisecond,
+				Jitter:     10 * time.Millisecond,
+				Interfaces: []string{"eth0"},
+			},
+			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+qdisc add dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
+filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
+filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
+filter add dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.0/24 match ip sport 80 0xffff flowid 1:3
+filter add dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.0/24 match ip dport 80 0xffff flowid 1:3
+`),
+			wantDel: []byte(`filter del dev eth0 protocol ip parent 1: prio 4 u32 match ip dst 192.168.2.0/24 match ip dport 80 0xffff flowid 1:3
+filter del dev eth0 protocol ip parent 1: prio 3 u32 match ip src 192.168.2.0/24 match ip sport 80 0xffff flowid 1:3
+filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
+filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
+qdisc del dev eth0 parent 1:3 handle 30: netem delay 100ms 10ms
+qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+`),
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -104,7 +167,7 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 				ipv6Supported = defaultIpv6Supported
 			}()
 
-			gotAdd, err := tt.opts.TcCommands(ModeAdd)
+			gotAdd, err := tt.opts.tcCommands(modeAdd)
 			if tt.wantErr {
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
@@ -114,8 +177,9 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 				assert.NoError(t, iotest.TestReader(toReader(gotAdd), tt.wantAdd))
 			}
 
-			gotDel, err := tt.opts.TcCommands(ModeDelete)
+			gotDel, err := tt.opts.tcCommands(modeDelete)
 			if tt.wantErr {
+
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 					return

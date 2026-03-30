@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"bytes"
@@ -91,7 +91,7 @@ func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, proc
 func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, processArgs []string, cmds []string) (string, error) {
 	log.Trace().Strs("cmds", cmds).Strs("processArgs", processArgs).Msg("running commands in network namespace using runc")
 
-	id := NextContainerId(path.Base(processArgs[0]), r.sidecar.Id)
+	id := nextContainerId(path.Base(processArgs[0]), r.sidecar.Id)
 	bundle, err := r.runc.Create(ctx, "/", id)
 	if err != nil {
 		return "", err
@@ -138,6 +138,6 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 	return outb.String(), err
 }
 
-func NextContainerId(tool, id string) string {
+func nextContainerId(tool, id string) string {
 	return fmt.Sprintf("sb-%s-%d-%s", tool, time.Now().UnixMilli(), id)
 }

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
 type DelayOpts struct {
@@ -24,11 +25,11 @@ type DelayOpts struct {
 	TcpPshOnly bool
 }
 
-func (o *DelayOpts) ToExecutionContext() ExecutionContext {
+func (o *DelayOpts) toExecutionContext() ExecutionContext {
 	return o.ExecutionContext
 }
 
-func (o *DelayOpts) DoesConflictWith(opts Opts) bool {
+func (o *DelayOpts) doesConflictWith(opts Opts) bool {
 	other, ok := opts.(*DelayOpts)
 
 	if !ok {
@@ -58,13 +59,13 @@ func (o *DelayOpts) DoesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *DelayOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *DelayOpts) ipCommands(_ family, _ mode) ([]string, error) {
 	return nil, nil
 }
 
 const steadybitDelayFwMark uint32 = 0x1
 
-func (o *DelayOpts) iptablesScripts(mode Mode) ([]string, []string, error) {
+func (o *DelayOpts) iptablesScripts(mode mode) ([]string, []string, error) {
 	if !o.TcpPshOnly {
 		return nil, nil, nil
 	}
@@ -72,11 +73,11 @@ func (o *DelayOpts) iptablesScripts(mode Mode) ([]string, []string, error) {
 	filter := optimizeFilter(o.Filter)
 
 	switch mode {
-	case ModeAdd:
+	case modeAdd:
 		v4 := buildIptablesScript(filter, false)
 		v6 := buildIptablesScript(filter, true)
 		return v4, v6, nil
-	case ModeDelete:
+	case modeDelete:
 		script := ipTablesDeleteScript
 		return script, script, nil
 	default:
@@ -109,7 +110,7 @@ func buildIptablesScript(f Filter, v6 bool) []string {
 	return script
 }
 
-func writeIptablesRules(nwps []NetWithPortRange, v6 bool, isExclude bool) []string {
+func writeIptablesRules(nwps []network.NetWithPortRange, v6 bool, isExclude bool) []string {
 	rules := make([]string, 0, len(nwps))
 	for _, nwp := range nwps {
 		if shouldIncludeRule(nwp.Net, v6) {
@@ -128,10 +129,10 @@ func shouldIncludeRule(net net.IPNet, v6 bool) bool {
 	if err != nil {
 		return false
 	}
-	return (v6 && fam == FamilyV6) || (!v6 && fam == FamilyV4)
+	return (v6 && fam == familyV6) || (!v6 && fam == familyV4)
 }
 
-func buildSingleIptables(nwp NetWithPortRange, isDst bool, isExclude bool) string {
+func buildSingleIptables(nwp network.NetWithPortRange, isDst bool, isExclude bool) string {
 	// Base: chain and proto/flags
 	var sb strings.Builder
 	sb.WriteString("-A STEADYBIT_DELAY -p tcp --tcp-flags PSH PSH ")
@@ -146,7 +147,7 @@ func buildSingleIptables(nwp NetWithPortRange, isDst bool, isExclude bool) strin
 	sb.WriteString(" ")
 
 	// Port match if not any
-	if nwp.PortRange != PortRangeAny {
+	if nwp.PortRange != network.PortRangeAny {
 		if isDst {
 			sb.WriteString("--dport ")
 		} else {
@@ -168,7 +169,7 @@ func buildSingleIptables(nwp NetWithPortRange, isDst bool, isExclude bool) strin
 	return sb.String()
 }
 
-func (o *DelayOpts) TcCommands(mode Mode) ([]string, error) {
+func (o *DelayOpts) tcCommands(mode mode) ([]string, error) {
 	var cmds []string
 
 	filter := optimizeFilter(o.Filter)

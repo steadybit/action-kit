@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -25,9 +26,9 @@ type dnsInjectProcess struct {
 	opts Opts
 }
 
-func newNetnsProcess(sidecar SidecarOpts, opts Opts) (DNSInject, error) {
+func newNetnsProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (DNSInject, error) {
 	netns := ""
-	for _, ns := range sidecar.TargetProcess.Namespaces {
+	for _, ns := range targetProcess.Namespaces {
 		if ns.Type == specs.NetworkNamespace {
 			netns = ociruntime.TrimNameNetworkNamespacePrefix(ns.Path)
 			break
@@ -60,18 +61,26 @@ func (p *dnsInjectProcess) Stop() error {
 		return nil
 	}
 
+	pid := p.cmd.Process.Pid
 	ctx := context.Background()
-	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(p.cmd.Process.Pid)).Run(); err != nil {
+	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(pid)).Run(); err != nil {
 		log.Warn().Err(err).Msg("failed to send SIGINT to dns-inject")
 	}
 
-	timer := time.AfterFunc(10*time.Second, func() {
-		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(p.cmd.Process.Pid)).Run(); err != nil {
+	termTimer := time.AfterFunc(10*time.Second, func() {
+		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(pid)).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to send SIGTERM to dns-inject")
 		}
 	})
 
+	killTimer := time.AfterFunc(15*time.Second, func() {
+		if err := p.cmd.Process.Signal(syscall.SIGKILL); err != nil {
+			log.Warn().Err(err).Msg("failed to send SIGKILL to dns-inject")
+		}
+	})
+
 	<-p.exited
-	timer.Stop()
+	termTimer.Stop()
+	killTimer.Stop()
 	return nil
 }

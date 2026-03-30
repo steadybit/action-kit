@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Steadybit GmbH
+
+//go:build !windows
+
 package dnsresolve
 
 import (
@@ -7,12 +12,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
@@ -31,7 +36,7 @@ func (d *digRunc) Resolve(ctx context.Context, hostnames ...string) ([]net.IP, e
 }
 
 func (d *digRunc) run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error) {
-	id := network.NextContainerId("dig", uuid.New().String())
+	id := fmt.Sprintf("sb-dig-%d-%s", time.Now().UnixMilli(), uuid.New().String())
 
 	bundle, err := d.runc.Create(ctx, "/", id)
 	if err != nil {

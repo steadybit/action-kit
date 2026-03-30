@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -86,7 +86,7 @@ Command failed -:3
 }
 
 func TestFilterBatchErrors(t *testing.T) {
-	assert.NoError(t, filterBatchErrors(nil, ModeAdd, nil))
+	assert.NoError(t, filterBatchErrors(nil, modeAdd, nil))
 
 	errAdd := parseBatchError([]string{"test", "-b -"}, strings.NewReader(`Error: Exclusivity flag on, cannot modify.
 RTNETLINK answers: File exists
@@ -95,8 +95,8 @@ RTNETLINK answers: File exists
 Command failed -:2
 `))
 
-	assert.NoError(t, filterBatchErrors(errAdd, ModeAdd, nil))
-	assert.Equal(t, errAdd, filterBatchErrors(errAdd, ModeDelete, nil))
+	assert.NoError(t, filterBatchErrors(errAdd, modeAdd, nil))
+	assert.Equal(t, errAdd, filterBatchErrors(errAdd, modeDelete, nil))
 
 	errDel := parseBatchError([]string{"test", "-b -"}, strings.NewReader(`Error: Invalid handle.
 Command failed -:1
@@ -104,6 +104,6 @@ Error: Parent Qdisc doesn't exists.
 Command failed -:2
 `))
 
-	assert.NoError(t, filterBatchErrors(errDel, ModeDelete, nil))
-	assert.Equal(t, errDel, filterBatchErrors(errDel, ModeAdd, nil))
+	assert.NoError(t, filterBatchErrors(errDel, modeDelete, nil))
+	assert.Equal(t, errDel, filterBatchErrors(errDel, modeAdd, nil))
 }

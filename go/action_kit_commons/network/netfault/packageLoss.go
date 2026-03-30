@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -19,11 +19,11 @@ type PackageLossOpts struct {
 	Interfaces []string
 }
 
-func (o *PackageLossOpts) ToExecutionContext() ExecutionContext {
+func (o *PackageLossOpts) toExecutionContext() ExecutionContext {
 	return o.ExecutionContext
 }
 
-func (o *PackageLossOpts) DoesConflictWith(opts Opts) bool {
+func (o *PackageLossOpts) doesConflictWith(opts Opts) bool {
 	other, ok := opts.(*PackageLossOpts)
 
 	if !ok {
@@ -44,11 +44,11 @@ func (o *PackageLossOpts) DoesConflictWith(opts Opts) bool {
 
 	return false
 }
-func (o *PackageLossOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *PackageLossOpts) ipCommands(_ family, _ mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *PackageLossOpts) TcCommands(mode Mode) ([]string, error) {
+func (o *PackageLossOpts) tcCommands(mode mode) ([]string, error) {
 	var cmds []string
 
 	filter := optimizeFilter(o.Filter)

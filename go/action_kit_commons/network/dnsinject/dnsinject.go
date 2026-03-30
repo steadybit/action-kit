@@ -57,20 +57,15 @@ type DNSInject interface {
 	Metrics() (*Metrics, error)
 }
 
-type SidecarOpts struct {
-	TargetProcess ociruntime.LinuxProcessInfo
-	Id            string
-}
-
 var dnsInjectPath = utils.LocateExecutable("dns-inject", "STEADYBIT_EXTENSION_DNS_INJECT_PATH")
 
-func NewProcess(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, opts Opts) (DNSInject, error) {
-	ociruntime.RefreshNamespaces(ctx, sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
+func NewProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess ociruntime.LinuxProcessInfo, id string, opts Opts) (DNSInject, error) {
+	ociruntime.RefreshNamespaces(ctx, targetProcess.Namespaces, specs.NetworkNamespace)
 
-	if ociruntime.HasNamedNetworkNamespace(sidecar.TargetProcess.Namespaces...) {
-		return newNetnsProcess(sidecar, opts)
+	if ociruntime.HasNamedNetworkNamespace(targetProcess.Namespaces...) {
+		return newNetnsProcess(targetProcess, opts)
 	}
-	return newRuncProcess(ctx, r, sidecar, opts)
+	return newRuncProcess(ctx, r, targetProcess, id, opts)
 }
 
 func (o *Opts) toArgs() []string {

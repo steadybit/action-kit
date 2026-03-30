@@ -26,8 +26,8 @@ type dnsInjectRunc struct {
 	opts   Opts
 }
 
-func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarOpts, opts Opts) (DNSInject, error) {
-	containerId := fmt.Sprintf("sb-dns-inject-%d-%s", time.Now().UnixMilli(), sidecar.Id)
+func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess ociruntime.LinuxProcessInfo, id string, opts Opts) (DNSInject, error) {
+	containerId := fmt.Sprintf("sb-dns-inject-%d-%s", time.Now().UnixMilli(), id)
 
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
@@ -39,7 +39,7 @@ func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, sidecar Sideca
 	if err := bundle.EditSpec(
 		ociruntime.WithHostname(containerId),
 		ociruntime.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
-		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
+		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(targetProcess.Namespaces, specs.NetworkNamespace)),
 		ociruntime.WithCapabilities("CAP_NET_ADMIN", "CAP_BPF", "CAP_SYS_ADMIN"),
 		ociruntime.WithCopyEnviron(),
 		ociruntime.WithProcessArgs(processArgs...),

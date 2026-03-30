@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -21,11 +21,11 @@ type BlackholeOpts struct {
 	IpProto IpProto
 }
 
-func (o *BlackholeOpts) ToExecutionContext() ExecutionContext {
+func (o *BlackholeOpts) toExecutionContext() ExecutionContext {
 	return o.ExecutionContext
 }
 
-func (o *BlackholeOpts) DoesConflictWith(opts Opts) bool {
+func (o *BlackholeOpts) doesConflictWith(opts Opts) bool {
 	other, ok := opts.(*BlackholeOpts)
 
 	if !ok {
@@ -43,7 +43,7 @@ func (o *BlackholeOpts) DoesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
+func (o *BlackholeOpts) ipCommands(family family, mode mode) ([]string, error) {
 	var cmds []string
 
 	ipprotoSelector := ""
@@ -83,7 +83,7 @@ func (o *BlackholeOpts) IpCommands(family Family, mode Mode) ([]string, error) {
 	return cmds, nil
 }
 
-func (o *BlackholeOpts) TcCommands(_ Mode) ([]string, error) {
+func (o *BlackholeOpts) tcCommands(_ mode) ([]string, error) {
 	return nil, nil
 }
 

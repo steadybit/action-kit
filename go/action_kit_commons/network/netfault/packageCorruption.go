@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -19,11 +19,11 @@ type CorruptPackagesOpts struct {
 	Interfaces []string
 }
 
-func (o *CorruptPackagesOpts) ToExecutionContext() ExecutionContext {
+func (o *CorruptPackagesOpts) toExecutionContext() ExecutionContext {
 	return o.ExecutionContext
 }
 
-func (o *CorruptPackagesOpts) DoesConflictWith(opts Opts) bool {
+func (o *CorruptPackagesOpts) doesConflictWith(opts Opts) bool {
 	other, ok := opts.(*CorruptPackagesOpts)
 
 	if !ok {
@@ -45,11 +45,11 @@ func (o *CorruptPackagesOpts) DoesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *CorruptPackagesOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) ipCommands(_ family, _ mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *CorruptPackagesOpts) TcCommands(mode Mode) ([]string, error) {
+func (o *CorruptPackagesOpts) tcCommands(mode mode) ([]string, error) {
 	var cmds []string
 
 	filter := optimizeFilter(o.Filter)

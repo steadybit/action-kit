@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
-package network
+package netfault
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -107,7 +108,7 @@ func addTcErrorHints(errs []batchError) []batchError {
 	return errs
 }
 
-func filterBatchErrors(err error, mode Mode, cmds []string) error {
+func filterBatchErrors(err error, mode mode, cmds []string) error {
 	be := new(batchErrors)
 	if !errors.As(err, &be) {
 		return err
@@ -116,9 +117,9 @@ func filterBatchErrors(err error, mode Mode, cmds []string) error {
 	var errs []batchError
 	var ignoreErrors []string
 	switch mode {
-	case ModeAdd:
+	case modeAdd:
 		ignoreErrors = ignoreErrorsBatchAdd
-	case ModeDelete:
+	case modeDelete:
 		ignoreErrors = ignoreErrorsBatchDelete
 	}
 

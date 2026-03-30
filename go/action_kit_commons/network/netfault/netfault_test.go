@@ -1,7 +1,7 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,7 +37,7 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	defer func() { ipv6Supported = defaultIpv6Supported }()
 
 	opts := &DelayOpts{
-		Filter:     Filter{Include: []NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
+		Filter:     Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
 		Delay:      100 * time.Millisecond,
 		Jitter:     10 * time.Millisecond,
 		Interfaces: []string{"eth0"},
@@ -69,11 +70,11 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
 	opts := &DelayOpts{
 		Filter: Filter{
-			Include: []NetWithPortRange{
+			Include: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.0/24", "80-81"),
 				mustParseNetWithPortRange("ff02::114/128", "8000-8001"),
 			},
-			Exclude: []NetWithPortRange{
+			Exclude: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				// Overlapping IPv6 exclude to ensure it is retained after optimizeFilter
 				mustParseNetWithPortRange("ff02::114/128", "8000"),
@@ -82,7 +83,7 @@ func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
 		TcpPshOnly: true,
 	}
 
-	v4, v6, err := opts.iptablesScripts(ModeAdd)
+	v4, v6, err := opts.iptablesScripts(modeAdd)
 	assert.NoError(t, err)
 	// v4 script should not contain IPv6 addresses
 	assert.NotContains(t, v4, "ff02::")
@@ -116,49 +117,49 @@ func TestDelayOpts_IptablesScripts_FilterByFamily(t *testing.T) {
 func TestCondenseNetWithPortRange(t *testing.T) {
 	tests := []struct {
 		name  string
-		nwps  []NetWithPortRange
+		nwps  []network.NetWithPortRange
 		limit int
-		want  []NetWithPortRange
+		want  []network.NetWithPortRange
 	}{
 		{
 			name: "must not condense when limit is higher than the number of elements",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("192.168.2.2/32", "80"),
 			},
 			limit: 3,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("192.168.2.2/32", "80"),
 			},
 		},
 		{
 			name: "must not condense ipv6 with ipv4",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("fe80::784c:f9ff:fe48:a552/128", "80"),
 			},
 			limit: 1,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("fe80::784c:f9ff:fe48:a552/128", "80"),
 			},
 		},
 		{
 			name: "must not condense different port ranges",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("192.168.2.1/32", "90"),
 			},
 			limit: 1,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80"),
 				mustParseNetWithPortRange("192.168.2.1/32", "90"),
 			},
 		},
 		{
 			name: "should condense greatest common prefix",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80-81"),
 				mustParseNetWithPortRange("192.168.2.4/32", "80-81"), //should be condensed with next
 				mustParseNetWithPortRange("192.168.2.5/32", "80-81"),
@@ -166,7 +167,7 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.2.10/32", "80-81"),
 			},
 			limit: 4,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80-81"),
 				mustParseNetWithPortRange("192.168.2.4/31", "80-81"),
 				mustParseNetWithPortRange("192.168.2.6/32", "80-8080"),
@@ -175,7 +176,7 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 		},
 		{
 			name: "should condense greatest common prefix further",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80-81"),
 				mustParseNetWithPortRange("192.168.2.4/32", "80-81"), //should be condensed with next
 				mustParseNetWithPortRange("192.168.2.5/32", "80-81"),
@@ -183,7 +184,7 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.2.10/32", "80-81"),
 			},
 			limit: 3,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.0/29", "80-81"),
 				mustParseNetWithPortRange("192.168.2.6/32", "80-8080"),
 				mustParseNetWithPortRange("192.168.2.10/32", "80-81"),
@@ -191,7 +192,7 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 		},
 		{
 			name: "should condense greatest common prefix further",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.1/32", "80-81"),
 				mustParseNetWithPortRange("192.168.2.4/32", "80-81"), //should be condensed with next
 				mustParseNetWithPortRange("192.168.2.5/32", "80-81"),
@@ -199,14 +200,14 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.2.10/32", "80-81"),
 			},
 			limit: 2,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.2.0/28", "80-81"),
 				mustParseNetWithPortRange("192.168.2.6/32", "80-8080"),
 			},
 		},
 		{
 			name: "should condense",
-			nwps: []NetWithPortRange{
+			nwps: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.0.0/30", "8086-8088"),
 				mustParseNetWithPortRange("192.168.0.4/30", "8086-8088"),
 				mustParseNetWithPortRange("192.168.0.8/30", "8086-8088"),
@@ -225,7 +226,7 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.0.60/30", "8086-8088"),
 			},
 			limit: 5,
-			want: []NetWithPortRange{
+			want: []network.NetWithPortRange{
 				mustParseNetWithPortRange("192.168.0.0/28", "8086-8088"),
 				mustParseNetWithPortRange("192.168.0.16/28", "8086-8088"),
 				mustParseNetWithPortRange("192.168.0.32/28", "8086-8088"),
@@ -242,8 +243,8 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 	}
 }
 
-func toString(s []NetWithPortRange) string {
-	slices.SortFunc(s, NetWithPortRange.Compare)
+func toString(s []network.NetWithPortRange) string {
+	slices.SortFunc(s, network.NetWithPortRange.Compare)
 	var sb strings.Builder
 	for _, portRange := range s {
 		sb.WriteString(portRange.String())

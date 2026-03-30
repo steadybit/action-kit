@@ -1,12 +1,13 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )

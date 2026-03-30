@@ -10,6 +10,18 @@ import (
 	"testing"
 )
 
+func mustParseNetWithPortRange(netStr, port string) NetWithPortRange {
+	parsedNet, err := ParseCIDR(netStr)
+	if err != nil {
+		panic(err)
+	}
+	parsedPort, err := ParsePortRange(port)
+	if err != nil {
+		panic(err)
+	}
+	return NetWithPortRange{Net: *parsedNet, PortRange: parsedPort}
+}
+
 func TestParsePortRange(t *testing.T) {
 	tests := []struct {
 		raw     string
@@ -305,62 +317,6 @@ func TestPortRange_Contains(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, tt.this.Contains(tt.port), "Contains(%v, %v)", tt.this, tt.port)
-		})
-	}
-}
-
-func Test_deduplicateNetWithPortRange(t *testing.T) {
-	tests := []struct {
-		name string
-		arg  []NetWithPortRange
-		want []NetWithPortRange
-	}{
-		{name: "Empty"},
-		{
-			name: "Simple Duplicate",
-			arg: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-			},
-			want: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-			},
-		},
-		{
-			name: "Already covered by port range",
-			arg: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-				mustParseNetWithPortRange("192.168.2.1/32", "80-8999"),
-			},
-			want: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80-8999"),
-			},
-		},
-		{
-			name: "Already covered by cidr",
-			arg: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-				mustParseNetWithPortRange("192.168.2.0/24", "80"),
-			},
-			want: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.0/24", "80"),
-			},
-		},
-		{
-			name: "Cannot be deduped",
-			arg: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-				mustParseNetWithPortRange("192.168.2.0/24", "8080"),
-			},
-			want: []NetWithPortRange{
-				mustParseNetWithPortRange("192.168.2.0/24", "8080"),
-				mustParseNetWithPortRange("192.168.2.1/32", "80"),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, deduplicateNetWithPortRange(tt.arg), "deduplicateNetWithPortRange(%v)", tt.arg)
 		})
 	}
 }

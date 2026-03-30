@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Steadybit GmbH
 
+//go:build !windows
+
 package dnsinject
 
 import (

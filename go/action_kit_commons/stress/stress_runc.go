@@ -101,7 +101,6 @@ func NewStressRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar Sidecar
 	}, nil
 }
 
-
 func (s *stressRunc) Exited() (bool, error) {
 	return s.state.Exited()
 }

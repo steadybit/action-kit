@@ -7,21 +7,8 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/rs/zerolog/log"
-)
-
-type Mode string
-type Family string
-
-const (
-	ModeAdd    Mode   = "add"
-	ModeDelete Mode   = "del"
-	FamilyV4   Family = "inet"
-	FamilyV6   Family = "inet6"
 )
 
 var (
@@ -29,35 +16,6 @@ var (
 	NetAnyIpv6 = net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}
 	NetAny     = []net.IPNet{NetAnyIpv4, NetAnyIpv6}
 )
-
-type Opts interface {
-	IpCommands(family Family, mode Mode) ([]string, error)
-	TcCommands(mode Mode) ([]string, error)
-	String() string
-	ToExecutionContext() ExecutionContext
-	DoesConflictWith(opts Opts) bool
-}
-
-type ExecutionContext struct {
-	ExperimentKey         string
-	ExperimentExecutionId int
-	TargetExecutionId     string
-}
-
-// iptablesScriptProvider is an optional interface that Opts can implement
-// to provide iptables/ip6tables shell scripts which will be executed before
-// tc commands. This is useful for marking packets that tc should act upon.
-type iptablesScriptProvider interface {
-	// IptablesScripts should return shell scripts for IPv4 and IPv6.
-	// The scripts will be executed using "sh -s" with root privileges.
-	// Return empty strings if no script is required for the respective family.
-	iptablesScripts(mode Mode) (v4 []string, v6 []string, err error)
-}
-
-type Filter struct {
-	Include []NetWithPortRange
-	Exclude []NetWithPortRange
-}
 
 var (
 	PortRangeAny = PortRange{From: 1, To: 65534}
@@ -183,18 +141,6 @@ type NetWithPortRange struct {
 	Comment   string
 }
 
-func mustParseNetWithPortRange(net, port string) NetWithPortRange {
-	parsedNet, err := ParseCIDR(net)
-	if err != nil {
-		panic(err)
-	}
-	parsedPort, err := ParsePortRange(port)
-	if err != nil {
-		panic(err)
-	}
-	return NetWithPortRange{Net: *parsedNet, PortRange: parsedPort}
-}
-
 func (nwp NetWithPortRange) String() string {
 	var sb strings.Builder
 	sb.WriteString(nwp.Net.String())
@@ -213,7 +159,6 @@ func (nwp NetWithPortRange) Overlap(other NetWithPortRange) bool {
 	return (nwp.PortRange.Overlap(other.PortRange) && nwp.Net.Contains(other.Net.IP)) || (other.PortRange.Overlap(nwp.PortRange) && other.Net.Contains(nwp.Net.IP))
 }
 
-// Contains checks if the given NetWithPortRange is contained in the current NetWithPortRange
 func (nwp NetWithPortRange) Contains(other NetWithPortRange) bool {
 	return nwp.PortRange.Contains(other.PortRange.To) &&
 		nwp.PortRange.Contains(other.PortRange.From) &&
@@ -231,32 +176,6 @@ func NewNetWithPortRanges(nets []net.IPNet, portRanges ...PortRange) []NetWithPo
 		}
 	}
 	return result
-}
-
-func deduplicateNetWithPortRange(nwps []NetWithPortRange) []NetWithPortRange {
-	slices.SortFunc(nwps, NetWithPortRange.Compare)
-
-	var deduplicated []NetWithPortRange
-	for _, nwp := range nwps {
-		found := false
-		for i, o := range deduplicated {
-			if o.Contains(nwp) {
-				found = true
-				log.Trace().Msgf("Deduplicating %s with %s", nwp, o)
-				break
-			} else if nwp.Contains(o) {
-				log.Trace().Msgf("Deduplicating %s with %s", o, nwp)
-				deduplicated[i] = nwp
-				found = true
-				break
-			}
-		}
-		if !found {
-			deduplicated = append(deduplicated, nwp)
-		}
-	}
-
-	return deduplicated
 }
 
 func (nwp NetWithPortRange) Compare(b NetWithPortRange) int {

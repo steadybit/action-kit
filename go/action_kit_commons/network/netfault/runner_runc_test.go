@@ -1,7 +1,7 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/stretchr/testify/mock"
 )
@@ -17,7 +18,7 @@ import (
 func Test_generateAndRunCommands_using_runc_should_serialize(t *testing.T) {
 	blackholeOpts := BlackholeOpts{
 		Filter: Filter{
-			Include: []NetWithPortRange{
+			Include: []network.NetWithPortRange{
 				mustParseNetWithPortRange("0.0.0.0/0", "*"),
 			},
 		},

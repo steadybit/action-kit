@@ -1,7 +1,7 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 )
 
@@ -42,28 +43,28 @@ type CommandRunner interface {
 }
 
 func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, ModeAdd)
+	return generateAndRunCommands(ctx, runner, opts, modeAdd)
 }
 
 func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, ModeDelete)
+	return generateAndRunCommands(ctx, runner, opts, modeDelete)
 }
 
-func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode Mode) error {
-	ipCommandsV4, err := opts.IpCommands(FamilyV4, mode)
+func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode) error {
+	ipCommandsV4, err := opts.ipCommands(familyV4, mode)
 	if err != nil {
 		return err
 	}
 
 	var ipCommandsV6 []string
 	if ipv6Supported() {
-		ipCommandsV6, err = opts.IpCommands(FamilyV6, mode)
+		ipCommandsV6, err = opts.ipCommands(familyV6, mode)
 		if err != nil {
 			return err
 		}
 	}
 
-	tcCommands, err := opts.TcCommands(mode)
+	tcCommands, err := opts.tcCommands(mode)
 	if err != nil {
 		return err
 	}
@@ -84,18 +85,18 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
-	if mode == ModeAdd {
+	if mode == modeAdd {
 		if err := pushActiveTc(netNsID, opts); err != nil {
 			return err
 		}
 	}
 
 	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, runner, FamilyV4, "before")
+		logCurrentIpRules(ctx, runner, familyV4, "before")
 	}
 
 	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, runner, FamilyV6, "before")
+		logCurrentIpRules(ctx, runner, familyV6, "before")
 	}
 
 	if len(tcCommands) > 0 {
@@ -129,13 +130,13 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if len(ipCommandsV4) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV4, "-family", string(FamilyV4)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV4, "-family", string(familyV4)); ipErr != nil {
 			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV4))
 		}
 	}
 
 	if len(ipCommandsV6) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV6, "-family", string(FamilyV6)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV6, "-family", string(familyV6)); ipErr != nil {
 			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV6))
 		}
 	}
@@ -147,25 +148,25 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, runner, FamilyV4, "after")
+		logCurrentIpRules(ctx, runner, familyV4, "after")
 	}
 
 	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, runner, FamilyV6, "after")
+		logCurrentIpRules(ctx, runner, familyV6, "after")
 	}
 
 	if len(tcCommands) > 0 {
 		logCurrentTcRules(ctx, runner, "after")
 	}
 
-	if mode == ModeDelete {
+	if mode == modeDelete {
 		popActiveTc(netNsID, opts)
 	}
 
 	return err
 }
 
-func logCurrentIpRules(ctx context.Context, runner CommandRunner, family Family, when string) {
+func logCurrentIpRules(ctx context.Context, runner CommandRunner, family family, when string) {
 	if !log.Trace().Enabled() {
 		return
 	}
@@ -184,8 +185,8 @@ func pushActiveTc(netNsId string, opts Opts) error {
 	defer activeTCLock.Unlock()
 
 	for _, active := range activeTc[netNsId] {
-		if opts.DoesConflictWith(active) {
-			activeContext := active.ToExecutionContext()
+		if opts.doesConflictWith(active) {
+			activeContext := active.toExecutionContext()
 			err := fmt.Sprintf("running multiple network attacks at the same time on the same network namespace is not supported. Already running attack started by %s (#%d) in targetExecution %s", activeContext.ExperimentKey, activeContext.ExperimentExecutionId, activeContext.TargetExecutionId)
 
 			log.Warn().
@@ -276,16 +277,16 @@ func executeTcCommands(ctx context.Context, runner CommandRunner, cmds []string)
 // 2. For each nwp in the list create a new nwp with the next neighbor if port-ranges are compatible
 // 3. From the new list choose the nwp with the longest prefix length, remove all nwp witch are included in the chosen and add the chosen nwp to the result list
 // 4. Repeat 3. until either the list is shorter than limit or no more compatible nwp are found
-func CondenseNetWithPortRange(nwps []NetWithPortRange, limit int) []NetWithPortRange {
+func CondenseNetWithPortRange(nwps []network.NetWithPortRange, limit int) []network.NetWithPortRange {
 	if len(nwps) <= limit {
 		return nwps
 	}
 
-	result := make([]NetWithPortRange, len(nwps))
+	result := make([]network.NetWithPortRange, len(nwps))
 	copy(result, nwps)
-	slices.SortFunc(nwps, NetWithPortRange.Compare)
+	slices.SortFunc(nwps, network.NetWithPortRange.Compare)
 
-	var candidates []NetWithPortRange
+	var candidates []network.NetWithPortRange
 	for i := 0; i < len(result)-1; i++ {
 		if c := getNextMatchingCandidate(result, i); c != nil {
 			candidates, _ = insertSorted(candidates, *c, comparePrefixLen)
@@ -302,7 +303,7 @@ func CondenseNetWithPortRange(nwps []NetWithPortRange, limit int) []NetWithPortR
 		candidates = candidates[1:]
 
 		lenBefore := len(result)
-		result = slices.DeleteFunc(result, func(nwp NetWithPortRange) bool {
+		result = slices.DeleteFunc(result, func(nwp network.NetWithPortRange) bool {
 			return longestPrefix.Contains(nwp)
 		})
 
@@ -312,7 +313,7 @@ func CondenseNetWithPortRange(nwps []NetWithPortRange, limit int) []NetWithPortR
 		}
 
 		var i int
-		result, i = insertSorted(result, longestPrefix, NetWithPortRange.Compare)
+		result, i = insertSorted(result, longestPrefix, network.NetWithPortRange.Compare)
 
 		//add new candidates resulting from the insterted nwp
 		for j := max(i-1, 0); j <= min(i, len(result)-1); j++ {
@@ -323,7 +324,7 @@ func CondenseNetWithPortRange(nwps []NetWithPortRange, limit int) []NetWithPortR
 	}
 }
 
-func getNextMatchingCandidate(result []NetWithPortRange, i int) *NetWithPortRange {
+func getNextMatchingCandidate(result []network.NetWithPortRange, i int) *network.NetWithPortRange {
 	a := result[i]
 	for j := i + 1; j < len(result); j++ {
 		b := result[j]
@@ -342,7 +343,7 @@ func insertSorted[S ~[]E, E any](x S, target E, cmp func(E, E) int) (S, int) {
 	return slices.Insert(x, i, target), i
 }
 
-func comparePrefixLen(a, b NetWithPortRange) int {
+func comparePrefixLen(a, b network.NetWithPortRange) int {
 	prefixLenA, _ := a.Net.Mask.Size()
 	prefixLenB, _ := b.Net.Mask.Size()
 	return prefixLenB - prefixLenA
