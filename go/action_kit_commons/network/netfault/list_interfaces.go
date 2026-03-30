@@ -2,25 +2,26 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
-type Interface struct {
+type iface struct {
 	Index    uint       `json:"ifindex"`
 	Name     string     `json:"ifname"`
 	LinkType string     `json:"link_type"`
 	Flags    []string   `json:"flags"`
-	AddrInfo []AddrInfo `json:"addr_info"`
+	AddrInfo []addrInfo `json:"addr_info"`
 }
 
-type AddrInfo struct {
+type addrInfo struct {
 	Family    string `json:"family"`
 	Local     string `json:"local"`
 	PrefixLen uint   `json:"prefixlen"`
@@ -29,7 +30,7 @@ type AddrInfo struct {
 	Broadcast string `json:"broadcast"`
 }
 
-type Route struct {
+type route struct {
 	Dst      string   `json:"dst"`
 	Gateway  string   `json:"gateway"`
 	Dev      string   `json:"dev"`
@@ -39,7 +40,7 @@ type Route struct {
 	Scope    string   `json:"scope"`
 }
 
-func (i *Interface) HasFlag(f string) bool {
+func (i *iface) hasFlag(f string) bool {
 	for _, flag := range i.Flags {
 		if flag == f {
 			return true
@@ -48,13 +49,8 @@ func (i *Interface) HasFlag(f string) bool {
 	return false
 }
 
-type ExtraMount struct {
-	Source string `json:"source"`
-	Path   string `json:"path"`
-}
-
 func ListNonLoopbackInterfaceNames(ctx context.Context, r CommandRunner) ([]string, error) {
-	ifcs, err := ListInterfaces(ctx, r)
+	ifcs, err := listInterfaces(ctx, r)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list interfaces")
 		return nil, err
@@ -62,7 +58,7 @@ func ListNonLoopbackInterfaceNames(ctx context.Context, r CommandRunner) ([]stri
 
 	var ifcNames []string
 	for _, ifc := range ifcs {
-		if !ifc.HasFlag("LOOPBACK") {
+		if !ifc.hasFlag("LOOPBACK") {
 			ifcNames = append(ifcNames, ifc.Name)
 		}
 	}
@@ -75,7 +71,7 @@ func HasCiliumIpRoutes(ctx context.Context, r CommandRunner) (bool, error) {
 		return false, err
 	}
 
-	var rules []Route
+	var rules []route
 	if err = json.Unmarshal([]byte(out), &rules); err != nil {
 		return false, fmt.Errorf("failed to unmarshal rules: %w", err)
 	}
@@ -90,22 +86,21 @@ func HasCiliumIpRoutes(ctx context.Context, r CommandRunner) (bool, error) {
 	return false, nil
 }
 
-func ListInterfaces(ctx context.Context, r CommandRunner) ([]Interface, error) {
+func listInterfaces(ctx context.Context, r CommandRunner) ([]iface, error) {
 	out, err := executeIpCommands(ctx, r, []string{"address show up"}, "--json")
 	if err != nil {
 		return nil, err
 	}
 
-	var interfaces []Interface
+	var interfaces []iface
 	if err = json.Unmarshal([]byte(out), &interfaces); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal interfaces: %w", err)
 	}
 
-	//the json output has empty objects for non-up interfaces, we filter those.
-	var validInterfaces []Interface
-	for _, iface := range interfaces {
-		if len(iface.Name) > 0 {
-			validInterfaces = append(validInterfaces, iface)
+	var validInterfaces []iface
+	for _, i := range interfaces {
+		if len(i.Name) > 0 {
+			validInterfaces = append(validInterfaces, i)
 		}
 	}
 

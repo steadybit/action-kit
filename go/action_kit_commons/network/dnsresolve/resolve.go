@@ -1,13 +1,14 @@
 // Copyright 2025 steadybit GmbH. All rights reserved.
 //go:build !windows
 
-package network
+package dnsresolve
 
 import (
 	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"slices"
@@ -17,17 +18,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type HostnameResolver struct {
-	Dig DigRunner
+type Resolver interface {
+	Resolve(ctx context.Context, hostnames ...string) ([]net.IP, error)
 }
-
-var defaultHostnameResolver = &HostnameResolver{Dig: &CommandDigRunner{}}
 
 func Resolve(ctx context.Context, hostnames ...string) ([]net.IP, error) {
-	return defaultHostnameResolver.Resolve(ctx, hostnames...)
+	return NewDig().Resolve(ctx, hostnames...)
 }
 
-func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]net.IP, error) {
+type dig interface {
+	run(ctx context.Context, arg []string, stdin io.Reader) ([]byte, error)
+}
+
+func resolve(ctx context.Context, d dig, hostnames ...string) ([]net.IP, error) {
 	if len(hostnames) == 0 {
 		return nil, nil
 	}
@@ -51,7 +54,7 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 		return nil, fmt.Errorf("could not resolve invalid hostnames: '%s'", strings.Join(invalid, "', '"))
 	}
 
-	outb, err := h.Dig.Run(ctx, []string{"-f-", fmt.Sprintf("+timeout=%d", dnsTimeout()), "+noall", "+nottlid", "+answer"}, strings.NewReader(sb.String()))
+	outb, err := d.run(ctx, []string{"-f-", fmt.Sprintf("+timeout=%d", dnsTimeout()), "+noall", "+nottlid", "+answer"}, strings.NewReader(sb.String()))
 	log.Trace().Bytes("output", outb).Err(err).Msg("dig result")
 
 	var resolved []net.IP

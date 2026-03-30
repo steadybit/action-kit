@@ -53,7 +53,7 @@ func GetNonLoopbackNetworkInterfaces() []string {
 	return ifcNames
 }
 
-func GetNetworkInterfacesByName(names []string) []net.Interface {
+func getNetworkInterfacesByName(names []string) []net.Interface {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil
@@ -76,7 +76,7 @@ func GetNetworkInterfacesByName(names []string) []net.Interface {
 
 func GetNetworkInterfaceIndexesByName(names []string) []int {
 	var indexes []int
-	for _, iface := range GetNetworkInterfacesByName(names) {
+	for _, iface := range getNetworkInterfacesByName(names) {
 		indexes = append(indexes, iface.Index)
 	}
 	return indexes

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
 	"fmt"
@@ -20,11 +20,11 @@ type LimitBandwidthOpts struct {
 	Interfaces []string
 }
 
-func (o *LimitBandwidthOpts) ToExecutionContext() ExecutionContext {
+func (o *LimitBandwidthOpts) toExecutionContext() ExecutionContext {
 	return o.ExecutionContext
 }
 
-func (o *LimitBandwidthOpts) DoesConflictWith(opts Opts) bool {
+func (o *LimitBandwidthOpts) doesConflictWith(opts Opts) bool {
 	other, ok := opts.(*LimitBandwidthOpts)
 
 	if !ok {
@@ -46,11 +46,11 @@ func (o *LimitBandwidthOpts) DoesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *LimitBandwidthOpts) IpCommands(_ Family, _ Mode) ([]string, error) {
+func (o *LimitBandwidthOpts) ipCommands(_ family, _ mode) ([]string, error) {
 	return nil, nil
 }
 
-func (o *LimitBandwidthOpts) TcCommands(mode Mode) ([]string, error) {
+func (o *LimitBandwidthOpts) tcCommands(mode mode) ([]string, error) {
 	var cmds []string
 
 	expression, err := regexp.Compile("^[0-7]bit$")

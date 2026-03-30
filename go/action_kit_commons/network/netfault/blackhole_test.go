@@ -2,13 +2,15 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"testing/iotest"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBlackholeOpts_IpCommands(t *testing.T) {
@@ -26,12 +28,12 @@ func TestBlackholeOpts_IpCommands(t *testing.T) {
 			name: "blackhole",
 			opts: BlackholeOpts{
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
 						mustParseNetWithPortRange("0.0.0.0/0", "*"), //should filter that duplicate
 						mustParseNetWithPortRange("::0/0", "*"),
 					},
-					Exclude: []NetWithPortRange{
+					Exclude: []network.NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
 						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should filter that duplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
@@ -65,9 +67,9 @@ rule del blackhole to ::/0 dport 1-65534
 			opts: BlackholeOpts{
 				IpProto: IpProtoUdp,
 				Filter: Filter{
-					Include: NewNetWithPortRanges(NetAny, PortRange{From: 123, To: 123}),
-					Exclude: []NetWithPortRange{
-						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: PortRange{From: 80, To: 80}},
+					Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: 123, To: 123}),
+					Exclude: []network.NetWithPortRange{
+						{Net: net.IPNet{IP: net.ParseIP("192.168.2.1"), Mask: net.CIDRMask(32, 32)}, PortRange: network.PortRange{From: 80, To: 80}},
 					},
 				},
 			},
@@ -95,33 +97,33 @@ rule del blackhole to ::/0 ipproto udp dport 123
 				ipv6Supported = defaultIpv6Supported
 			}()
 
-			gotAddV4, err := tt.opts.IpCommands(FamilyV4, ModeAdd)
+			gotAddV4, err := tt.opts.ipCommands(familyV4, modeAdd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAddV4), tt.wantAddV4))
+			assert.NoError(t, iotest.TestReader(toReader(gotAddV4), tt.wantAddV4))
 
-			gotDelV4, err := tt.opts.IpCommands(FamilyV4, ModeDelete)
+			gotDelV4, err := tt.opts.ipCommands(familyV4, modeDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDelV4), tt.wantDelV4))
+			assert.NoError(t, iotest.TestReader(toReader(gotDelV4), tt.wantDelV4))
 
-			gotAddV6, err := tt.opts.IpCommands(FamilyV6, ModeAdd)
+			gotAddV6, err := tt.opts.ipCommands(familyV6, modeAdd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotAddV6), tt.wantAddV6))
+			assert.NoError(t, iotest.TestReader(toReader(gotAddV6), tt.wantAddV6))
 
-			gotDelV6, err := tt.opts.IpCommands(FamilyV6, ModeDelete)
+			gotDelV6, err := tt.opts.ipCommands(familyV6, modeDelete)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.NoError(t, iotest.TestReader(ToReader(gotDelV6), tt.wantDelV6))
+			assert.NoError(t, iotest.TestReader(toReader(gotDelV6), tt.wantDelV6))
 		})
 	}
 }

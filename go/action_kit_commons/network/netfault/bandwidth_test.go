@@ -2,42 +2,67 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
-	"github.com/stretchr/testify/assert"
+	"strconv"
 	"testing"
 	"testing/iotest"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCorruptPackagesOpts_TcCommands(t *testing.T) {
+func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 	tests := []struct {
 		name         string
-		opts         CorruptPackagesOpts
+		opts         LimitBandwidthOpts
 		ipv6Disabled bool
 		wantAdd      []byte
 		wantDel      []byte
 		wantErr      bool
 	}{
 		{
-			name: "corrupt",
-			opts: CorruptPackagesOpts{
+			name: "bandwidth less then 8bit not supported",
+			opts: LimitBandwidthOpts{
+				Bandwidth:  "1bit",
+				Interfaces: []string{"eth0"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "bandwidth too many filters",
+			opts: LimitBandwidthOpts{
+				Bandwidth:  "8bit",
+				Interfaces: []string{"eth0"},
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("0.0.0.0/0", "*"),
+					},
+					Exclude: generateNWPs(2000),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "bandwidth",
+			opts: LimitBandwidthOpts{
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
 						mustParseNetWithPortRange("::0/0", "*"),
 					},
-					Exclude: []NetWithPortRange{
+					Exclude: []network.NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
 						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should deduplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
 					},
 				},
-				Corruption: 90,
+				Bandwidth:  "100mbit",
 				Interfaces: []string{"eth0"},
 			},
-			wantAdd: []byte(`qdisc add dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-qdisc add dev eth0 parent 1:3 handle 30: netem corrupt 90%
+			wantAdd: []byte(`qdisc add dev eth0 root handle 1: htb default 30
+class add dev eth0 parent 1: classid 1:3 htb rate 100mbit
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
@@ -75,24 +100,10 @@ filter del dev eth0 protocol ipv6 parent 1: prio 4 u32 match ip6 dst ff02::114/1
 filter del dev eth0 protocol ipv6 parent 1: prio 3 u32 match ip6 src ff02::114/128 match ip6 sport 8000 0xffc0 flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1
 filter del dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
-qdisc del dev eth0 parent 1:3 handle 30: netem corrupt 90%
-qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+class del dev eth0 parent 1: classid 1:3 htb rate 100mbit
+qdisc del dev eth0 root handle 1: htb default 30
 `),
 			wantErr: false,
-		},
-		{
-			name: "corrupt too many rules",
-			opts: CorruptPackagesOpts{
-				Corruption: 90,
-				Interfaces: []string{"eth0"},
-				Filter: Filter{
-					Include: []NetWithPortRange{
-						mustParseNetWithPortRange("0.0.0.0/0", "*"),
-					},
-					Exclude: generateNWPs(2000),
-				},
-			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -104,25 +115,33 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 				ipv6Supported = defaultIpv6Supported
 			}()
 
-			gotAdd, err := tt.opts.TcCommands(ModeAdd)
+			gotAdd, err := tt.opts.tcCommands(modeAdd)
 			if tt.wantErr {
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-					return
 				}
+				return
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
+				assert.NoError(t, iotest.TestReader(toReader(gotAdd), tt.wantAdd))
 			}
 
-			gotDel, err := tt.opts.TcCommands(ModeDelete)
+			gotDel, err := tt.opts.tcCommands(modeDelete)
 			if tt.wantErr {
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
-					return
 				}
+				return
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
+				assert.NoError(t, iotest.TestReader(toReader(gotDel), tt.wantDel))
 			}
 		})
 	}
+}
+
+func generateNWPs(i int) []network.NetWithPortRange {
+	nwps := make([]network.NetWithPortRange, i)
+	for j := 1; j <= i; j++ {
+		nwps[j-1] = mustParseNetWithPortRange("192.168.2.1", strconv.Itoa(j*2))
+	}
+	return nwps
 }

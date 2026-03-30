@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build !windows
 
-package network
+package netfault
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"testing/iotest"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPackageLossOpts_TcCommands(t *testing.T) {
@@ -23,11 +25,11 @@ func TestPackageLossOpts_TcCommands(t *testing.T) {
 			name: "loss",
 			opts: PackageLossOpts{
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
 						mustParseNetWithPortRange("::0/0", "*"),
 					},
-					Exclude: []NetWithPortRange{
+					Exclude: []network.NetWithPortRange{
 						mustParseNetWithPortRange("192.168.2.1/32", "80"),
 						mustParseNetWithPortRange("192.168.2.1/32", "80"), //should deduplicate
 						mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
@@ -86,7 +88,7 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 				Loss:       90,
 				Interfaces: []string{"eth0"},
 				Filter: Filter{
-					Include: []NetWithPortRange{
+					Include: []network.NetWithPortRange{
 						mustParseNetWithPortRange("0.0.0.0/0", "*"),
 					},
 					Exclude: generateNWPs(2000),
@@ -104,24 +106,24 @@ qdisc del dev eth0 root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 				ipv6Supported = defaultIpv6Supported
 			}()
 
-			gotAdd, err := tt.opts.TcCommands(ModeAdd)
+			gotAdd, err := tt.opts.tcCommands(modeAdd)
 			if tt.wantErr {
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotAdd), tt.wantAdd))
+				assert.NoError(t, iotest.TestReader(toReader(gotAdd), tt.wantAdd))
 			}
 
-			gotDel, err := tt.opts.TcCommands(ModeDelete)
+			gotDel, err := tt.opts.tcCommands(modeDelete)
 			if tt.wantErr {
 				if (err != nil) != tt.wantErr {
 					t.Errorf("TcCommands() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
 			} else {
-				assert.NoError(t, iotest.TestReader(ToReader(gotDel), tt.wantDel))
+				assert.NoError(t, iotest.TestReader(toReader(gotDel), tt.wantDel))
 			}
 		})
 	}

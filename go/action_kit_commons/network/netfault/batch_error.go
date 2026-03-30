@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
-package network
+package netfault
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -31,22 +32,22 @@ var (
 	}
 )
 
-type BatchError struct {
+type batchError struct {
 	Msg      string
 	Lineno   int
 	Filename string
 }
 
-type BatchErrors struct {
+type batchErrors struct {
 	Cmd    []string
-	Errors []BatchError
+	Errors []batchError
 }
 
-func (t *BatchError) Error() string {
+func (t *batchError) Error() string {
 	return fmt.Sprintf("%s\nCommand failed %s:%d", t.Msg, t.Filename, t.Lineno)
 }
 
-func (t *BatchErrors) Error() string {
+func (t *batchErrors) Error() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Command failed %s\n", strings.Join(t.Cmd, " ")))
 	for _, err := range t.Errors {
@@ -56,9 +57,9 @@ func (t *BatchErrors) Error() string {
 	return sb.String()
 }
 
-func ParseBatchError(cmd []string, r io.Reader) error {
+func parseBatchError(cmd []string, r io.Reader) error {
 	var msg strings.Builder
-	var errs []BatchError
+	var errs []batchError
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -72,7 +73,7 @@ func ParseBatchError(cmd []string, r io.Reader) error {
 				lineno, _ = strconv.Atoi(l[i+1:])
 			}
 
-			errs = append(errs, BatchError{Msg: msg.String(), Lineno: lineno, Filename: filename})
+			errs = append(errs, batchError{Msg: msg.String(), Lineno: lineno, Filename: filename})
 			msg.Reset()
 		} else {
 			if msg.Len() > 0 {
@@ -85,13 +86,13 @@ func ParseBatchError(cmd []string, r io.Reader) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &BatchErrors{Cmd: cmd, Errors: addTcErrorHints(errs)}
+	return &batchErrors{Cmd: cmd, Errors: addTcErrorHints(errs)}
 }
 
-func addTcErrorHints(errs []BatchError) []BatchError {
+func addTcErrorHints(errs []batchError) []batchError {
 	for _, e := range errs {
 		if contains(tcErrorKernelConfig, strings.ToLower(e.Msg)) {
-			return append([]BatchError{
+			return append([]batchError{
 				{
 					Msg:      "Kernel configuration error. Please check if the required kernel modules are loaded.",
 					Lineno:   0,
@@ -107,22 +108,22 @@ func addTcErrorHints(errs []BatchError) []BatchError {
 	return errs
 }
 
-func FilterBatchErrors(err error, mode Mode, cmds []string) error {
-	batchErrors := new(BatchErrors)
-	if !errors.As(err, &batchErrors) {
+func filterBatchErrors(err error, mode mode, cmds []string) error {
+	be := new(batchErrors)
+	if !errors.As(err, &be) {
 		return err
 	}
 
-	var errs []BatchError
+	var errs []batchError
 	var ignoreErrors []string
 	switch mode {
-	case ModeAdd:
+	case modeAdd:
 		ignoreErrors = ignoreErrorsBatchAdd
-	case ModeDelete:
+	case modeDelete:
 		ignoreErrors = ignoreErrorsBatchDelete
 	}
 
-	for _, e := range batchErrors.Errors {
+	for _, e := range be.Errors {
 		if !contains(ignoreErrors, strings.ToLower(e.Msg)) {
 			errs = append(errs, e)
 		} else {
@@ -137,7 +138,7 @@ func FilterBatchErrors(err error, mode Mode, cmds []string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return &BatchErrors{Cmd: batchErrors.Cmd, Errors: errs}
+	return &batchErrors{Cmd: be.Cmd, Errors: errs}
 }
 
 func contains(ignoreErrors []string, msg string) bool {
