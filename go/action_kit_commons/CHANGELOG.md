@@ -1,12 +1,18 @@
 # Changelog
 
+## 1.6.0
+
+- Add dns-inject wrapper
+- Add tcp_reset network fault
+- Move network faults using tc/ip/iptables to netfault package
+
 ## 1.5.15
 
-- Add filldisk helpers to validate target directory 
+- Add filldisk helpers to validate target directory
 
 ## 1.5.14
 
-- Set OOM score adjustment in disc fill command 
+- Set OOM score adjustment in disc fill command
 
 ## 1.5.13
 
@@ -157,7 +163,7 @@
 
 ## 1.2.2
 
-- fix: Race condition in network attacks reporting attack for namespace still active, when it isn't 
+- fix: Race condition in network attacks reporting attack for namespace still active, when it isn't
 
 ## 1.2.1
 
@@ -240,7 +246,7 @@
 
 ## 1.0.3
 
-- Error message for `tc` and rate settings below `8bit/s` 
+- Error message for `tc` and rate settings below `8bit/s`
 
 ## 1.0.2
 

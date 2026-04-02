@@ -15,8 +15,8 @@ import (
 type TcpResetOpts struct {
 	Filter
 	ExecutionContext
-	Interfaces      []string
-	InsertAtTop     bool
+	Interfaces  []string
+	InsertAtTop bool
 }
 
 func (o *TcpResetOpts) chainName() string {
