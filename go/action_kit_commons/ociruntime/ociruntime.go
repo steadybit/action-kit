@@ -498,6 +498,12 @@ func WithCopyEnviron() SpecEditor {
 	}
 }
 
+func WithEnv(envVars ...string) SpecEditor {
+	return func(spec *specs.Spec) {
+		spec.Process.Env = append(spec.Process.Env, envVars...)
+	}
+}
+
 func WithCapabilities(caps ...string) SpecEditor {
 	return func(spec *specs.Spec) {
 		for _, c := range caps {

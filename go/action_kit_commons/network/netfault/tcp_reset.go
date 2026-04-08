@@ -12,14 +12,39 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
+const mangleMarkValue = "0x5B"
+
 type TcpResetOpts struct {
 	Filter
 	ExecutionContext
-	Interfaces  []string
-	InsertAtTop bool
+	Interfaces    []string
+	Prepend       bool
+	UseMangleChain bool
 }
 
-func (o *TcpResetOpts) chainName() string {
+type iptablesChainName string
+
+const (
+	iptablesChainNameInput      = "INPUT"
+	iptablesChainNameOutput     = "OUTPUT"
+	iptablesChainNameForward    = "FORWARD"
+	iptablesChainNamePrerouting = "PREROUTING"
+)
+
+var (
+	iptablesChainsMangle = []iptablesChainName{iptablesChainNameOutput, iptablesChainNamePrerouting, iptablesChainNameForward}
+	iptablesChainsFilter = []iptablesChainName{iptablesChainNameOutput, iptablesChainNameInput, iptablesChainNameForward}
+)
+
+func (o *TcpResetOpts) rstFilterChainName() string {
+	return fmt.Sprintf("SB_TCP_RST_%s", o.idSuffix())
+}
+
+func (o *TcpResetOpts) rstMangleChainName() string {
+	return fmt.Sprintf("SB_TCP_RST_M_%s", o.idSuffix())
+}
+
+func (o *TcpResetOpts) idSuffix() string {
 	id := o.ExecutionContext.TargetExecutionId
 	if len(id) > 12 {
 		id = id[len(id)-12:]
@@ -27,7 +52,7 @@ func (o *TcpResetOpts) chainName() string {
 	if id == "" {
 		id = "default"
 	}
-	return fmt.Sprintf("SB_TCP_RST_%s", id)
+	return id
 }
 
 func (o *TcpResetOpts) toExecutionContext() ExecutionContext {
@@ -54,126 +79,102 @@ func (o *TcpResetOpts) tcCommands(_ mode) ([]string, error) {
 }
 
 func (o *TcpResetOpts) iptablesScripts(mode mode) (v4 []string, v6 []string, err error) {
-	v4Script, err := o.iptablesScript(mode, familyV4)
-	if err != nil {
-		return nil, nil, err
+	if o.UseMangleChain {
+		return o.mangleMarkScripts(mode)
 	}
-	v6Script, err := o.iptablesScript(mode, familyV6)
-	if err != nil {
-		return nil, nil, err
-	}
-	return v4Script, v6Script, nil
+	return o.filterOnlyScripts(mode)
 }
 
-func (o *TcpResetOpts) iptablesScript(mode mode, fam family) ([]string, error) {
-	filter := optimizeFilter(o.Filter)
+func (o *TcpResetOpts) filterOnlyScripts(mode mode) (v4 []string, v6 []string, err error) {
+	v4, err = o.filterOnlyScript(mode, familyV4)
+	if err != nil {
+		return nil, nil, err
+	}
+	v6, err = o.filterOnlyScript(mode, familyV6)
+	if err != nil {
+		return nil, nil, err
+	}
+	return v4, v6, nil
+}
 
-	if !tcpResetFilterHasFamily(filter.Include, fam) {
+func (o *TcpResetOpts) filterOnlyScript(mode mode, fam family) ([]string, error) {
+	filter := optimizeFilter(o.Filter)
+	if !anyNetHasFamily(filter.Include, fam) {
+		return nil, nil
+	}
+	if mode == modeAdd {
+		chain := o.rstFilterChainName()
+
+		script := []string{
+			"*filter",
+			fmt.Sprintf(":%s - [0:0]", chain),
+		}
+
+		cmd, pos := o.appendOrInsert()
+		script = append(script, o.chainJumpRules(cmd, pos, iptablesChainsFilter, chain)...)
+		script = append(script, excludeRules(chain, filter.Exclude, fam, "ACCEPT")...)
+		script = append(script, includeRejectRules(chain, filter.Include, fam)...)
+		script = append(script, "COMMIT")
+		return script, nil
+	}
+	return o.tableDeleteScript("filter", o.rstFilterChainName(), iptablesChainsFilter), nil
+}
+
+// mangleMarkScripts generates a two-table script: mangle (MARK) + filter (REJECT on mark).
+func (o *TcpResetOpts) mangleMarkScripts(mode mode) (v4 []string, v6 []string, err error) {
+	v4, err = o.mangleMarkScript(mode, familyV4)
+	if err != nil {
+		return nil, nil, err
+	}
+	v6, err = o.mangleMarkScript(mode, familyV6)
+	if err != nil {
+		return nil, nil, err
+	}
+	return v4, v6, nil
+}
+
+func (o *TcpResetOpts) mangleMarkScript(mode mode, fam family) ([]string, error) {
+	filter := optimizeFilter(o.Filter)
+	if !anyNetHasFamily(filter.Include, fam) {
 		return nil, nil
 	}
 
-	ifcs := o.Interfaces
-	if len(ifcs) == 0 {
-		ifcs = []string{""}
-	}
+	filterChain := o.rstFilterChainName()
 
-	chain := o.chainName()
 	if mode == modeAdd {
-		return tcpResetAddScript(chain, filter, ifcs, fam, o.InsertAtTop), nil
+		mangleChain := o.rstMangleChainName()
+		cmd, pos := o.appendOrInsert()
+
+		// mangle table: mark matching packets
+		script := []string{
+			"*mangle",
+			fmt.Sprintf(":%s - [0:0]", mangleChain),
+		}
+		script = append(script, o.chainJumpRules(cmd, pos, iptablesChainsMangle, mangleChain)...)
+		script = append(script, excludeRules(mangleChain, filter.Exclude, fam, "RETURN")...)
+		script = append(script, includeMarkRules(mangleChain, filter.Include, fam)...)
+		script = append(script, "COMMIT")
+
+		// filter table: reject marked packets
+		script = append(script,
+			"*filter",
+			fmt.Sprintf(":%s - [0:0]", filterChain),
+		)
+		script = append(script, o.chainJumpRules(cmd, pos, iptablesChainsFilter, filterChain)...)
+		script = append(script, fmt.Sprintf("-A %s -p tcp -m mark --mark %s -j REJECT --reject-with tcp-reset", filterChain, mangleMarkValue))
+		script = append(script, "COMMIT")
+
+		return script, nil
 	}
-	return tcpResetDeleteScript(chain, ifcs), nil
+	mangleChain := o.rstMangleChainName()
+	script := o.tableDeleteScript("mangle", mangleChain, iptablesChainsMangle)
+	script = append(script, o.tableDeleteScript("filter", filterChain, iptablesChainsFilter)...)
+	return script, nil
 }
 
-func tcpResetFilterHasFamily(nwps []network.NetWithPortRange, fam family) bool {
-	for _, nwp := range nwps {
-		if hasFamily(nwp, fam) {
-			return true
-		}
-	}
-	return false
-}
-
-func hasFamily(nwp network.NetWithPortRange, fam family) bool {
-	f, _ := getFamily(nwp.Net)
-	return f == fam
-}
-
-func tcpResetAddScript(chain string, filter Filter, ifcs []string, f family, insertAtTop bool) []string {
-	script := []string{
-		"*filter",
-		fmt.Sprintf(":%s - [0:0]", chain),
-	}
-
-	jumpCmd := "-A"
-	jumpPos := ""
-	if insertAtTop {
-		jumpCmd = "-I"
-		jumpPos = " 1"
-	}
-
-	for _, ifc := range ifcs {
-		outFlag, inFlag := ifaceFlags(ifc)
-		script = append(script,
-			fmt.Sprintf("%s OUTPUT%s%s -j %s", jumpCmd, jumpPos, outFlag, chain),
-			fmt.Sprintf("%s INPUT%s%s -j %s", jumpCmd, jumpPos, inFlag, chain),
-		)
-		if ifc == "" {
-			script = append(script, fmt.Sprintf("%s FORWARD%s -j %s", jumpCmd, jumpPos, chain))
-		} else {
-			script = append(script,
-				fmt.Sprintf("%s FORWARD%s%s -j %s", jumpCmd, jumpPos, inFlag, chain),
-				fmt.Sprintf("%s FORWARD%s%s -j %s", jumpCmd, jumpPos, outFlag, chain),
-			)
-		}
-	}
-
-	for _, nwp := range filter.Exclude {
-		if !hasFamily(nwp, f) {
-			continue
-		}
-		net := nwp.Net.String()
-		port := tcpResetPortRange(nwp.PortRange)
-		script = append(script,
-			fmt.Sprintf("-A %s -p tcp -d %s --dport %s -j ACCEPT", chain, net, port),
-			fmt.Sprintf("-A %s -p tcp -s %s --sport %s -j ACCEPT", chain, net, port),
-		)
-	}
-
-	for _, nwp := range filter.Include {
-		if !hasFamily(nwp, f) {
-			continue
-		}
-		net := nwp.Net.String()
-		port := tcpResetPortRange(nwp.PortRange)
-		script = append(script,
-			fmt.Sprintf("-A %s -p tcp -d %s --dport %s -j REJECT --reject-with tcp-reset", chain, net, port),
-			fmt.Sprintf("-A %s -p tcp -s %s --sport %s -j REJECT --reject-with tcp-reset", chain, net, port),
-		)
-	}
-
-	script = append(script, "COMMIT")
-	return script
-}
-
-func tcpResetDeleteScript(chain string, ifcs []string) []string {
-	script := []string{"*filter"}
-
-	for _, ifc := range ifcs {
-		outFlag, inFlag := ifaceFlags(ifc)
-		script = append(script,
-			fmt.Sprintf("-D OUTPUT%s -j %s", outFlag, chain),
-			fmt.Sprintf("-D INPUT%s -j %s", inFlag, chain),
-		)
-		if ifc == "" {
-			script = append(script, fmt.Sprintf("-D FORWARD -j %s", chain))
-		} else {
-			script = append(script,
-				fmt.Sprintf("-D FORWARD%s -j %s", inFlag, chain),
-				fmt.Sprintf("-D FORWARD%s -j %s", outFlag, chain),
-			)
-		}
-	}
-
+func (o *TcpResetOpts) tableDeleteScript(table, chain string, chains []iptablesChainName) []string {
+	script := []string{fmt.Sprintf("*%s", table)}
+	script = append(script, o.chainJumpRules("-D", "", chains, chain)...)
 	script = append(script,
 		fmt.Sprintf("-F %s", chain),
 		fmt.Sprintf("-X %s", chain),
@@ -182,11 +183,106 @@ func tcpResetDeleteScript(chain string, ifcs []string) []string {
 	return script
 }
 
-func ifaceFlags(ifc string) (outFlag, inFlag string) {
-	if ifc == "" {
-		return "", ""
+func (o *TcpResetOpts) interfacesOrAll() []string {
+	if len(o.Interfaces) == 0 {
+		return []string{""}
 	}
-	return fmt.Sprintf(" -o %s", ifc), fmt.Sprintf(" -i %s", ifc)
+	return o.Interfaces
+}
+
+func (o *TcpResetOpts) appendOrInsert() (cmd, pos string) {
+	if o.Prepend {
+		return "-I", " 1"
+	}
+	return "-A", ""
+}
+
+func excludeRules(chain string, excludes []network.NetWithPortRange, f family, target string) []string {
+	var rules []string
+	for _, nwp := range excludes {
+		if !netHasFamily(nwp, f) {
+			continue
+		}
+		net := nwp.Net.String()
+		port := tcpResetPortRange(nwp.PortRange)
+		rules = append(rules,
+			fmt.Sprintf("-A %s -p tcp -d %s --dport %s -j %s", chain, net, port, target),
+			fmt.Sprintf("-A %s -p tcp -s %s --sport %s -j %s", chain, net, port, target),
+		)
+	}
+	return rules
+}
+
+func includeRejectRules(chain string, includes []network.NetWithPortRange, f family) []string {
+	var rules []string
+	for _, nwp := range includes {
+		if !netHasFamily(nwp, f) {
+			continue
+		}
+		net := nwp.Net.String()
+		port := tcpResetPortRange(nwp.PortRange)
+		rules = append(rules,
+			fmt.Sprintf("-A %s -p tcp -d %s --dport %s -j REJECT --reject-with tcp-reset", chain, net, port),
+			fmt.Sprintf("-A %s -p tcp -s %s --sport %s -j REJECT --reject-with tcp-reset", chain, net, port),
+		)
+	}
+	return rules
+}
+
+func includeMarkRules(chain string, includes []network.NetWithPortRange, f family) []string {
+	var rules []string
+	for _, nwp := range includes {
+		if !netHasFamily(nwp, f) {
+			continue
+		}
+		net := nwp.Net.String()
+		port := tcpResetPortRange(nwp.PortRange)
+		rules = append(rules,
+			fmt.Sprintf("-A %s -p tcp -d %s --dport %s -j MARK --set-mark %s", chain, net, port, mangleMarkValue),
+			fmt.Sprintf("-A %s -p tcp -s %s --sport %s -j MARK --set-mark %s", chain, net, port, mangleMarkValue),
+		)
+	}
+	return rules
+}
+
+func anyNetHasFamily(nwps []network.NetWithPortRange, fam family) bool {
+	for _, nwp := range nwps {
+		if netHasFamily(nwp, fam) {
+			return true
+		}
+	}
+	return false
+}
+
+func netHasFamily(nwp network.NetWithPortRange, fam family) bool {
+	f, _ := getFamily(nwp.Net)
+	return f == fam
+}
+
+func (o *TcpResetOpts) chainJumpRules(cmd, pos string, chains []iptablesChainName, targetChain string) []string {
+	var rules []string
+	for _, ifc := range o.interfacesOrAll() {
+		var outFlag, inFlag string
+		if ifc != "" {
+			outFlag = fmt.Sprintf(" -o %s", ifc)
+			inFlag = fmt.Sprintf(" -i %s", ifc)
+		}
+
+		for _, chain := range chains {
+			switch chain {
+			case "INPUT", "PREROUTING":
+				rules = append(rules, fmt.Sprintf("%s %s%s%s -j %s", cmd, chain, pos, inFlag, targetChain))
+			case "OUTPUT":
+				rules = append(rules, fmt.Sprintf("%s %s%s%s -j %s", cmd, chain, pos, outFlag, targetChain))
+			case "FORWARD":
+				rules = append(rules, fmt.Sprintf("%s %s%s%s -j %s", cmd, chain, pos, inFlag, targetChain))
+				if inFlag != outFlag {
+					rules = append(rules, fmt.Sprintf("%s %s%s%s -j %s", cmd, chain, pos, outFlag, targetChain))
+				}
+			}
+		}
+	}
+	return rules
 }
 
 func tcpResetPortRange(p network.PortRange) string {
@@ -199,11 +295,16 @@ func tcpResetPortRange(p network.PortRange) string {
 func (o *TcpResetOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("resetting tcp connections")
-	if len(o.Interfaces) > 0 {
-		sb.WriteString(" (interfaces: ")
-		sb.WriteString(strings.Join(o.Interfaces, ", "))
-		sb.WriteString(")")
+	if o.UseMangleChain {
+		sb.WriteString(" (mangle+filter mark")
+	} else {
+		sb.WriteString(" (filter")
 	}
+	if len(o.Interfaces) > 0 {
+		sb.WriteString(", interfaces: ")
+		sb.WriteString(strings.Join(o.Interfaces, ", "))
+	}
+	sb.WriteString(")")
 	writeStringForFilters(&sb, o.Filter)
 	return sb.String()
 }

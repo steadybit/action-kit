@@ -109,6 +109,7 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		if scriptErr != nil {
 			return scriptErr
 		}
+
 		if log.Debug().Enabled() {
 			if len(v4) > 0 {
 				log.Debug().Str("mode", string(mode)).Str("iptables_v4", strings.Join(v4, "\n")).Msg("prepared iptables-restore script (IPv4)")
@@ -119,11 +120,13 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		}
 		if len(v4) > 0 {
 			if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, v4); restoreErr != nil {
+				log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("iptables-restore failed")
 				err = errors.Join(err, restoreErr)
 			}
 		}
 		if ipv6Supported() && len(v6) > 0 {
 			if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, v6); restoreErr != nil {
+				log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("ip6tables-restore failed")
 				err = errors.Join(err, restoreErr)
 			}
 		}
