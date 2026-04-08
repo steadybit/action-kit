@@ -65,6 +65,29 @@ func ListNonLoopbackInterfaceNames(ctx context.Context, r CommandRunner) ([]stri
 	return ifcNames, nil
 }
 
+func HasIstioRedirect(ctx context.Context, r CommandRunner) (bool, error) {
+	out, err := r.run(ctx, []string{"iptables-save", "-t", "nat"}, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to check for istio iptables chains: %w", err)
+	}
+
+	if hasIstioChains(out) {
+		return true, nil
+	}
+
+	legacyOut, legacyErr := r.run(ctx, []string{"iptables-legacy-save", "-t", "nat"}, nil)
+	if legacyErr != nil {
+		log.Debug().Err(legacyErr).Msg("iptables-legacy-save not available, skipping legacy check")
+		return false, nil
+	}
+
+	return hasIstioChains(legacyOut), nil
+}
+
+func hasIstioChains(output string) bool {
+	return strings.Contains(output, ":ISTIO_REDIRECT") || strings.Contains(output, ":ISTIO_OUTPUT")
+}
+
 func HasCiliumIpRoutes(ctx context.Context, r CommandRunner) (bool, error) {
 	out, err := executeIpCommands(ctx, r, []string{"route list"}, "--json")
 	if err != nil {

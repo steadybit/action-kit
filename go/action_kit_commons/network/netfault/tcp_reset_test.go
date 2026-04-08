@@ -14,6 +14,7 @@ import (
 )
 
 const testChain = "SB_TCP_RST_aabbccddeeff"
+const testMangleChain = "SB_TCP_RST_M_aabbccddeeff"
 
 var testExecCtx = ExecutionContext{TargetExecutionId: "00000000-0000-0000-0000-aabbccddeeff"}
 
@@ -242,13 +243,13 @@ func TestTcpResetOpts_iptablesScripts(t *testing.T) {
 			},
 		},
 		{
-			name: "insert at top",
+			name: "prepend",
 			opts: TcpResetOpts{
 				Filter: Filter{
 					Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny),
 				},
 				ExecutionContext: testExecCtx,
-				InsertAtTop:      true,
+				Prepend:          true,
 			},
 			wantAddV4: []string{
 				"*filter",
@@ -272,6 +273,137 @@ func TestTcpResetOpts_iptablesScripts(t *testing.T) {
 				"COMMIT",
 			},
 			wantDelV6: stdDeleteScript,
+		},
+		{
+			name: "mangle mark mode",
+			opts: TcpResetOpts{
+				Filter: Filter{
+					Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: 8080, To: 8080}),
+				},
+				ExecutionContext: testExecCtx,
+				UseMangleChain:    true,
+			},
+			wantAddV4: []string{
+				"*mangle",
+				":" + testMangleChain + " - [0:0]",
+				"-A OUTPUT -j " + testMangleChain,
+				"-A PREROUTING -j " + testMangleChain,
+				"-A FORWARD -j " + testMangleChain,
+				"-A " + testMangleChain + " -p tcp -d 0.0.0.0/0 --dport 8080 -j MARK --set-mark 0x5B",
+				"-A " + testMangleChain + " -p tcp -s 0.0.0.0/0 --sport 8080 -j MARK --set-mark 0x5B",
+				"COMMIT",
+				"*filter",
+				":" + testChain + " - [0:0]",
+				"-A OUTPUT -j " + testChain,
+				"-A INPUT -j " + testChain,
+				"-A FORWARD -j " + testChain,
+				"-A " + testChain + " -p tcp -m mark --mark 0x5B -j REJECT --reject-with tcp-reset",
+				"COMMIT",
+			},
+			wantDelV4: []string{
+				"*mangle",
+				"-D OUTPUT -j " + testMangleChain,
+				"-D PREROUTING -j " + testMangleChain,
+				"-D FORWARD -j " + testMangleChain,
+				"-F " + testMangleChain,
+				"-X " + testMangleChain,
+				"COMMIT",
+				"*filter",
+				"-D OUTPUT -j " + testChain,
+				"-D INPUT -j " + testChain,
+				"-D FORWARD -j " + testChain,
+				"-F " + testChain,
+				"-X " + testChain,
+				"COMMIT",
+			},
+			wantAddV6: []string{
+				"*mangle",
+				":" + testMangleChain + " - [0:0]",
+				"-A OUTPUT -j " + testMangleChain,
+				"-A PREROUTING -j " + testMangleChain,
+				"-A FORWARD -j " + testMangleChain,
+				"-A " + testMangleChain + " -p tcp -d ::/0 --dport 8080 -j MARK --set-mark 0x5B",
+				"-A " + testMangleChain + " -p tcp -s ::/0 --sport 8080 -j MARK --set-mark 0x5B",
+				"COMMIT",
+				"*filter",
+				":" + testChain + " - [0:0]",
+				"-A OUTPUT -j " + testChain,
+				"-A INPUT -j " + testChain,
+				"-A FORWARD -j " + testChain,
+				"-A " + testChain + " -p tcp -m mark --mark 0x5B -j REJECT --reject-with tcp-reset",
+				"COMMIT",
+			},
+			wantDelV6: []string{
+				"*mangle",
+				"-D OUTPUT -j " + testMangleChain,
+				"-D PREROUTING -j " + testMangleChain,
+				"-D FORWARD -j " + testMangleChain,
+				"-F " + testMangleChain,
+				"-X " + testMangleChain,
+				"COMMIT",
+				"*filter",
+				"-D OUTPUT -j " + testChain,
+				"-D INPUT -j " + testChain,
+				"-D FORWARD -j " + testChain,
+				"-F " + testChain,
+				"-X " + testChain,
+				"COMMIT",
+			},
+		},
+		{
+			name: "mangle mark with excludes and interface",
+			opts: TcpResetOpts{
+				Filter: Filter{
+					Include: network.NewNetWithPortRanges([]net.IPNet{network.NetAnyIpv4}, network.PortRange{From: 9080, To: 9080}),
+					Exclude: []network.NetWithPortRange{
+						mustParseNetWithPortRange("10.0.0.1/32", "9080"),
+					},
+				},
+				Interfaces:       []string{"eth0"},
+				ExecutionContext: testExecCtx,
+				UseMangleChain:    true,
+			},
+			wantAddV4: []string{
+				"*mangle",
+				":" + testMangleChain + " - [0:0]",
+				"-A OUTPUT -o eth0 -j " + testMangleChain,
+				"-A PREROUTING -i eth0 -j " + testMangleChain,
+				"-A FORWARD -i eth0 -j " + testMangleChain,
+				"-A FORWARD -o eth0 -j " + testMangleChain,
+				"-A " + testMangleChain + " -p tcp -d 10.0.0.1/32 --dport 9080 -j RETURN",
+				"-A " + testMangleChain + " -p tcp -s 10.0.0.1/32 --sport 9080 -j RETURN",
+				"-A " + testMangleChain + " -p tcp -d 0.0.0.0/0 --dport 9080 -j MARK --set-mark 0x5B",
+				"-A " + testMangleChain + " -p tcp -s 0.0.0.0/0 --sport 9080 -j MARK --set-mark 0x5B",
+				"COMMIT",
+				"*filter",
+				":" + testChain + " - [0:0]",
+				"-A OUTPUT -o eth0 -j " + testChain,
+				"-A INPUT -i eth0 -j " + testChain,
+				"-A FORWARD -i eth0 -j " + testChain,
+				"-A FORWARD -o eth0 -j " + testChain,
+				"-A " + testChain + " -p tcp -m mark --mark 0x5B -j REJECT --reject-with tcp-reset",
+				"COMMIT",
+			},
+			wantDelV4: []string{
+				"*mangle",
+				"-D OUTPUT -o eth0 -j " + testMangleChain,
+				"-D PREROUTING -i eth0 -j " + testMangleChain,
+				"-D FORWARD -i eth0 -j " + testMangleChain,
+				"-D FORWARD -o eth0 -j " + testMangleChain,
+				"-F " + testMangleChain,
+				"-X " + testMangleChain,
+				"COMMIT",
+				"*filter",
+				"-D OUTPUT -o eth0 -j " + testChain,
+				"-D INPUT -i eth0 -j " + testChain,
+				"-D FORWARD -i eth0 -j " + testChain,
+				"-D FORWARD -o eth0 -j " + testChain,
+				"-F " + testChain,
+				"-X " + testChain,
+				"COMMIT",
+			},
+			wantAddV6: nil,
+			wantDelV6: nil,
 		},
 		{
 			name: "ipv4-only include produces nil v6 script",
@@ -314,13 +446,16 @@ func TestTcpResetOpts_iptablesScripts(t *testing.T) {
 
 func TestTcpResetOpts_chainName(t *testing.T) {
 	assert.Equal(t, "SB_TCP_RST_446655440000",
-		(&TcpResetOpts{ExecutionContext: ExecutionContext{TargetExecutionId: "550e8400-e29b-41d4-a716-446655440000"}}).chainName())
+		(&TcpResetOpts{ExecutionContext: ExecutionContext{TargetExecutionId: "550e8400-e29b-41d4-a716-446655440000"}}).rstFilterChainName())
+
+	assert.Equal(t, "SB_TCP_RST_M_446655440000",
+		(&TcpResetOpts{ExecutionContext: ExecutionContext{TargetExecutionId: "550e8400-e29b-41d4-a716-446655440000"}}).rstMangleChainName())
 
 	assert.Equal(t, "SB_TCP_RST_short",
-		(&TcpResetOpts{ExecutionContext: ExecutionContext{TargetExecutionId: "short"}}).chainName())
+		(&TcpResetOpts{ExecutionContext: ExecutionContext{TargetExecutionId: "short"}}).rstFilterChainName())
 
 	assert.Equal(t, "SB_TCP_RST_default",
-		(&TcpResetOpts{}).chainName())
+		(&TcpResetOpts{}).rstFilterChainName())
 }
 
 func TestTcpResetOpts_ipAndTcCommandsReturnNil(t *testing.T) {
@@ -357,21 +492,14 @@ func TestTcpResetOpts_doesConflictWith(t *testing.T) {
 
 func TestTcpResetOpts_String(t *testing.T) {
 	assert.Equal(t,
-		"resetting tcp connections\nto/from:\n 0.0.0.0/0\n ::/0\n",
+		"resetting tcp connections (filter)\nto/from:\n 0.0.0.0/0\n ::/0\n",
 		(&TcpResetOpts{
 			Filter: Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)},
 		}).String(),
 	)
 
 	assert.Equal(t,
-		"resetting tcp connections\nto/from:\n 0.0.0.0/0 8080\n ::/0 8080\n",
-		(&TcpResetOpts{
-			Filter: Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: 8080, To: 8080})},
-		}).String(),
-	)
-
-	assert.Equal(t,
-		"resetting tcp connections (interfaces: eth0, eth1)\nto/from:\n 0.0.0.0/0 8000-8999\n ::/0 8000-8999\n",
+		"resetting tcp connections (filter, interfaces: eth0, eth1)\nto/from:\n 0.0.0.0/0 8000-8999\n ::/0 8000-8999\n",
 		(&TcpResetOpts{
 			Filter:     Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: 8000, To: 8999})},
 			Interfaces: []string{"eth0", "eth1"},
@@ -379,18 +507,10 @@ func TestTcpResetOpts_String(t *testing.T) {
 	)
 
 	assert.Equal(t,
-		"resetting tcp connections\nto/from:\n 0.0.0.0/0\n ::/0\nbut not from/to:\n 192.168.2.1/32 80\n ff02::114/128 8000-8999\n",
+		"resetting tcp connections (mangle+filter mark)\nto/from:\n 0.0.0.0/0\n ::/0\n",
 		(&TcpResetOpts{
-			Filter: Filter{
-				Include: []network.NetWithPortRange{
-					mustParseNetWithPortRange("0.0.0.0/0", "*"),
-					mustParseNetWithPortRange("::0/0", "*"),
-				},
-				Exclude: []network.NetWithPortRange{
-					mustParseNetWithPortRange("192.168.2.1/32", "80"),
-					mustParseNetWithPortRange("ff02::114/128", "8000-8999"),
-				},
-			},
+			UseMangleChain: true,
+			Filter:        Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)},
 		}).String(),
 	)
 }

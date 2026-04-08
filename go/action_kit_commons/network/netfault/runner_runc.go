@@ -106,8 +106,10 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 		ociruntime.WithHostname(id),
 		ociruntime.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
-		ociruntime.WithCapabilities("CAP_NET_ADMIN"),
+		ociruntime.WithCapabilities("CAP_NET_ADMIN", "CAP_NET_RAW"),
 		ociruntime.WithCopyEnviron(),
+		ociruntime.WithEnv("XTABLES_LOCKFILE=/tmp/xtables.lock"),
+		ociruntime.WithMountIfNotPresent(specs.Mount{Destination: "/tmp", Type: "tmpfs", Source: "tmpfs", Options: []string{"nosuid", "nodev", "noexec"}}),
 		ociruntime.WithProcessArgs(processArgs...),
 	); err != nil {
 		return "", err
