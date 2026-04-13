@@ -7,7 +7,7 @@ toolchain go1.25.4
 require (
 	github.com/getkin/kin-openapi v0.134.0
 	github.com/google/uuid v1.6.0
-	github.com/oapi-codegen/runtime v1.3.1
+	github.com/oapi-codegen/runtime v1.4.0
 	github.com/stretchr/testify v1.11.1
 )
 
