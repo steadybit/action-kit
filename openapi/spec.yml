@@ -765,12 +765,14 @@ components:
       properties:
         id:
           type: string
+          maxLength: 255
           description: >-
             A technical ID that is used to uniquely identify this type of
             action. You will typically want to use something like
             `org.example.my-fancy-attack`.
         label:
           type: string
+          maxLength: 255
           description: A human-readable label for the action.
         icon:
           type: string
@@ -781,6 +783,7 @@ components:
           pattern: '^data:.*$'
         version:
           type: string
+          maxLength: 64
           description: >-
             The version of the action. Remember to increase the value everytime
             you update the definitions. The platform will ignore any definition
@@ -788,6 +791,7 @@ components:
             semver strings.
         description:
           type: string
+          maxLength: 2000
           description: >-
             Description for end-users to help them understand what the action is
             doing.
@@ -795,12 +799,14 @@ components:
           $ref: '#/components/schemas/ActionKind'
         technology:
           type: string
+          maxLength: 255
           description: >-
             Used for categorization of the action within user interfaces.
             In most cases, this will be the technology that the extension is about to handle, for example `AWS`,
             `Kubernetes` or `Host` or any custom technology you are writing an extension for.
         category:
           type: string
+          maxLength: 255
           description: >-
             Used for categorization of the action within user interfaces.
             This is optional and mostly used as sub-category if certain actions should be grouped together.
@@ -821,6 +827,7 @@ components:
           $ref: '#/components/schemas/TimeControl'
         parameters:
           type: array
+          maxItems: 64
           description: >-
             Parameters that are used to configure the action. These parameters will be rendered in the ui and will be validated.
           items:
@@ -903,9 +910,11 @@ components:
       properties:
         label:
           type: string
+          maxLength: 255
           description: A human-readable label describing this option.
         value:
           type: string
+          maxLength: 255
           description: The technical value which will be passed to the action as part of the `config` object.
       required:
         - label
@@ -915,6 +924,7 @@ components:
       properties:
         attribute:
           type: string
+          maxLength: 255
           description: Target attribute key from which the possible parameter options are gathered.
       required:
         - attribute
@@ -938,14 +948,17 @@ components:
       properties:
         label:
           type: string
+          maxLength: 255
           description: A human-readable label for the action parameter.
         name:
           type: string
+          maxLength: 255
           description: >-
             The key under which the action parameter is stored. This key can
             then be found within the prepare request's config field.
         description:
           type: string
+          maxLength: 2000
           description: >-
             Description for end-users to help them understand the action
             parameter.
@@ -996,6 +1009,7 @@ components:
             The minimum value for this parameter. Only applicable for parameters of type `integer`, `percentage`, and `duration`. In the case of `duration`, the value is in milliseconds.
         defaultValue:
           type: string
+          maxLength: 255
           description: >-
             A default value for this parameter. This value will be used if the
             user does not specify a value for this parameter.
@@ -1016,12 +1030,15 @@ components:
           uniqueItems: true
         acceptedFileTypes:
           type: array
+          maxItems: 32
           description: "Unique file type specifiers describing what type of files are accepted for parameters of type 'file'."
           items:
             type: string
+            maxLength: 128
           uniqueItems: true
         durationUnits:
           type: array
+          maxItems: 10
           description: "DurationUnits Specifies the units that are accepted for parameters of type 'duration'. Defaults are 'milliseconds', 'seconds', 'minutes'."
           items:
             $ref: '#/components/schemas/DurationUnit'
