@@ -21,6 +21,7 @@ func TestOptsToArgs(t *testing.T) {
 			{IP: net.IPv4(172, 17, 0, 0), Mask: net.CIDRMask(16, 32)},
 		},
 		PortRange:  network.PortRange{From: 53, To: 53},
+		Hostnames:  []string{"example.com", "_dmarc.example.com"},
 		Interfaces: []string{"eth0", "docker0"},
 	}
 
@@ -32,6 +33,8 @@ func TestOptsToArgs(t *testing.T) {
 		"--cidr", "10.0.0.1/32",
 		"--cidr", "172.17.0.0/16",
 		"--port", "53",
+		"--hostname", "example.com",
+		"--hostname", "_dmarc.example.com",
 		"--interface", "eth0",
 		"--interface", "docker0",
 	}, args)

@@ -36,6 +36,7 @@ type Opts struct {
 	ErrorTypes []ErrorType
 	CIDRs      []net.IPNet
 	PortRange  network.PortRange
+	Hostnames  []string
 	Interfaces []string
 }
 
@@ -44,6 +45,7 @@ type Metrics struct {
 	Ipv4             uint64 `json:"ipv4"`
 	Ipv6             uint64 `json:"ipv6"`
 	DnsMatched       uint64 `json:"dns_matched"`
+	HostnameFiltered uint64 `json:"hostname_filtered"`
 	Injected         uint64 `json:"injected"`
 	InjectedNxdomain uint64 `json:"injected_nxdomain"`
 	InjectedServfail uint64 `json:"injected_servfail"`
@@ -80,6 +82,10 @@ func (o *Opts) toArgs() []string {
 	}
 
 	args = append(args, "--port", o.PortRange.String())
+
+	for _, h := range o.Hostnames {
+		args = append(args, "--hostname", h)
+	}
 
 	for _, iface := range o.Interfaces {
 		args = append(args, "--interface", iface)
