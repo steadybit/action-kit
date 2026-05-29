@@ -17,8 +17,8 @@ const mangleMarkValue = "0x5B"
 type TcpResetOpts struct {
 	Filter
 	ExecutionContext
-	Interfaces    []string
-	Prepend       bool
+	Interfaces     []string
+	Prepend        bool
 	UseMangleChain bool
 }
 

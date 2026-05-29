@@ -281,7 +281,7 @@ func TestTcpResetOpts_iptablesScripts(t *testing.T) {
 					Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: 8080, To: 8080}),
 				},
 				ExecutionContext: testExecCtx,
-				UseMangleChain:    true,
+				UseMangleChain:   true,
 			},
 			wantAddV4: []string{
 				"*mangle",
@@ -361,7 +361,7 @@ func TestTcpResetOpts_iptablesScripts(t *testing.T) {
 				},
 				Interfaces:       []string{"eth0"},
 				ExecutionContext: testExecCtx,
-				UseMangleChain:    true,
+				UseMangleChain:   true,
 			},
 			wantAddV4: []string{
 				"*mangle",
@@ -510,7 +510,7 @@ func TestTcpResetOpts_String(t *testing.T) {
 		"resetting tcp connections (mangle+filter mark)\nto/from:\n 0.0.0.0/0\n ::/0\n",
 		(&TcpResetOpts{
 			UseMangleChain: true,
-			Filter:        Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)},
+			Filter:         Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)},
 		}).String(),
 	)
 }
