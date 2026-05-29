@@ -42,8 +42,18 @@ type CommandRunner interface {
 	id() string
 }
 
-func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, modeAdd)
+// Apply installs the attack. The returned warnings describe pre-existing
+// root qdiscs that the kernel will not auto-restore on Revert.
+func Apply(ctx context.Context, runner CommandRunner, opts Opts) ([]string, error) {
+	var interfaces []string
+	if p, ok := opts.(tcCommandProvider); ok {
+		interfaces = p.tcRootQdiscInterfaces()
+	}
+	warnings := preflightWarnings(ctx, runner, interfaces)
+	if err := generateAndRunCommands(ctx, runner, opts, modeAdd); err != nil {
+		return warnings, err
+	}
+	return warnings, nil
 }
 
 func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
@@ -51,22 +61,24 @@ func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
 }
 
 func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode) error {
-	ipCommandsV4, err := opts.ipCommands(familyV4, mode)
-	if err != nil {
-		return err
-	}
+	var ipCommandsV4, ipCommandsV6, tcCommands []string
+	var err error
 
-	var ipCommandsV6 []string
-	if ipv6Supported() {
-		ipCommandsV6, err = opts.ipCommands(familyV6, mode)
-		if err != nil {
+	if p, ok := opts.(ipCommandProvider); ok {
+		if ipCommandsV4, err = p.ipCommands(familyV4, mode); err != nil {
 			return err
+		}
+		if ipv6Supported() {
+			if ipCommandsV6, err = p.ipCommands(familyV6, mode); err != nil {
+				return err
+			}
 		}
 	}
 
-	tcCommands, err := opts.tcCommands(mode)
-	if err != nil {
-		return err
+	if p, ok := opts.(tcCommandProvider); ok {
+		if tcCommands, err = p.tcCommands(mode); err != nil {
+			return err
+		}
 	}
 
 	if log.Debug().Enabled() {

@@ -14,23 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type fakeRunner struct {
-	calls []struct {
-		args []string
-		cmds []string
-	}
-}
-
-func (f *fakeRunner) run(_ context.Context, args []string, cmds []string) (string, error) {
-	f.calls = append(f.calls, struct {
-		args []string
-		cmds []string
-	}{args: args, cmds: cmds})
-	return "", nil
-}
-
-func (f *fakeRunner) id() string { return "testns" }
-
 func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	// Disable ipv6 for the test to avoid ip6tables invocation
 	ipv6Supported = func() bool { return false }
@@ -45,7 +28,7 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	}
 
 	r := &fakeRunner{}
-	err := Apply(context.Background(), r, opts)
+	_, err := Apply(context.Background(), r, opts)
 	assert.NoError(t, err)
 
 	iptablesIdx := -1
@@ -54,7 +37,7 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 		if len(c.args) > 0 && c.args[0] == "iptables-restore" {
 			iptablesIdx = i
 		}
-		if len(c.args) > 0 && c.args[0] == "tc" && len(c.cmds) > 0 && strings.HasPrefix(c.cmds[0], "qdisc add") {
+		if len(c.args) > 0 && c.args[0] == "tc" && len(c.cmds) > 0 && strings.HasPrefix(c.cmds[0], "qdisc replace") {
 			tcBatchIdx = i
 		}
 	}
@@ -64,6 +47,92 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	}
 	if !(iptablesIdx < tcBatchIdx) {
 		t.Fatalf("expected iptables-restore to run before tc batch: iptablesIdx=%d, tcBatchIdx=%d", iptablesIdx, tcBatchIdx)
+	}
+}
+
+func TestApply_ReturnsPreflightWarnings(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	tests := []struct {
+		name         string
+		interfaces   []string
+		tcOutput     string
+		wantWarnings int
+		wantSubstr   string
+	}{
+		{
+			name:         "kernel default (mq) — no warning",
+			interfaces:   []string{"eth0"},
+			tcOutput:     `qdisc mq 8002: dev eth0 root`,
+			wantWarnings: 0,
+		},
+		{
+			name:         "user-installed (htb) — warning",
+			interfaces:   []string{"eth0"},
+			tcOutput:     `qdisc htb 1: dev eth0 root refcnt 2 r2q 10 default 0x30`,
+			wantWarnings: 1,
+			wantSubstr:   `"htb"`,
+		},
+		{
+			name:       "two interfaces, one user-installed",
+			interfaces: []string{"eth0", "eth1"},
+			tcOutput: `qdisc mq 0: dev eth0 root
+qdisc cake 8001: dev eth1 root refcnt 2 bandwidth 1Gbit`,
+			wantWarnings: 1,
+			wantSubstr:   `"cake"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &DelayOpts{
+				Filter:     Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
+				Delay:      100 * time.Millisecond,
+				Interfaces: tt.interfaces,
+			}
+
+			// Unique netNsId per subtest so activeNetfault state does not leak.
+			r := &fakeRunner{netNsId: tt.name, stdout: tt.tcOutput}
+			warnings, err := Apply(context.Background(), r, opts)
+			assert.NoError(t, err)
+			assert.Len(t, warnings, tt.wantWarnings)
+			if tt.wantWarnings > 0 && tt.wantSubstr != "" {
+				assert.Contains(t, warnings[0], tt.wantSubstr)
+			}
+		})
+	}
+}
+
+// TestOptsProviderMatrix locks down which subsystem providers each Opts type
+// implements. Generated commands flow through type assertions in
+// generateAndRunCommands, so accidentally adding tcCommands to BlackholeOpts
+// (or any similar mistake) would silently start hitting a different code
+// path without any other test failing.
+func TestOptsProviderMatrix(t *testing.T) {
+	cases := []struct {
+		name        string
+		opts        Opts
+		hasIp       bool
+		hasTc       bool
+		hasIptables bool
+	}{
+		{"BlackholeOpts", &BlackholeOpts{}, true, false, false},
+		{"DelayOpts", &DelayOpts{}, false, true, true},
+		{"PackageLossOpts", &PackageLossOpts{}, false, true, false},
+		{"CorruptPackagesOpts", &CorruptPackagesOpts{}, false, true, false},
+		{"LimitBandwidthOpts", &LimitBandwidthOpts{}, false, true, false},
+		{"TcpResetOpts", &TcpResetOpts{}, false, false, true},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, isIp := tt.opts.(ipCommandProvider)
+			_, isTc := tt.opts.(tcCommandProvider)
+			_, isIptables := tt.opts.(iptablesScriptProvider)
+			assert.Equal(t, tt.hasIp, isIp, "ipCommandProvider")
+			assert.Equal(t, tt.hasTc, isTc, "tcCommandProvider")
+			assert.Equal(t, tt.hasIptables, isIptables, "iptablesScriptProvider")
+		})
 	}
 }
 

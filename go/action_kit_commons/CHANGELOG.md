@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.8.0
+
+- netfault: use `tc qdisc replace` (instead of `add`) for the root qdisc in
+  delay/loss/corruption/bandwidth attacks so they no longer fail on hosts
+  with a pre-existing root qdisc (e.g. `mq` on GKE COS / EKS / AKS).
+- netfault: add preflight check that warns when an interface has a
+  user-installed root qdisc (anything other than `mq`, `noqueue`,
+  `pfifo_fast`, `fq_codel`, `fq`); the kernel default will be restored
+  after revert in that case.
+- **Breaking:** `netfault.Apply` now returns `([]string, error)` — the
+  string slice contains preflight warnings to surface to the user.
+- **Breaking:** The `Opts` interface no longer requires `ipCommands` or
+  `tcCommands`. Subsystem behavior is now opt-in via two new optional
+  interfaces: `tcCommandProvider` (`tcCommands` + `tcRootQdiscInterfaces`)
+  and `ipCommandProvider` (`ipCommands`), mirroring the existing
+  `iptablesScriptProvider`. External `Opts` implementations that returned
+  `nil, nil` from these methods can simply remove them; external callers
+  that consumed those methods need a type assertion first.
+
 ## 1.6.1
 
 - Add UseMangleChain to TcpResetOpts to enable tcp reset on istio

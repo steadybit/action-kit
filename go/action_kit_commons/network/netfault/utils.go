@@ -22,6 +22,15 @@ func reorderForMode(cmds []string, mode mode) {
 	}
 }
 
+// rootQdiscVerb returns `replace` for apply (so we don't fail when the kernel
+// has already attached a root qdisc) and `del` for revert.
+func rootQdiscVerb(m mode) string {
+	if m == modeAdd {
+		return "replace"
+	}
+	return string(m)
+}
+
 func toReader(strs []string) io.Reader {
 	return strings.NewReader(fmt.Sprintf("%s\n", strings.Join(strs, "\n")))
 }

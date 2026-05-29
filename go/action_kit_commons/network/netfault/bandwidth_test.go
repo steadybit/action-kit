@@ -61,7 +61,7 @@ func TestLimitBandwidthOpts_TcCommands(t *testing.T) {
 				Bandwidth:  "100mbit",
 				Interfaces: []string{"eth0"},
 			},
-			wantAdd: []byte(`qdisc add dev eth0 root handle 1: htb default 30
+			wantAdd: []byte(`qdisc replace dev eth0 root handle 1: htb default 30
 class add dev eth0 parent 1: classid 1:3 htb rate 100mbit
 filter add dev eth0 protocol ip parent 1: prio 1 u32 match ip src 192.168.2.1/32 match ip sport 80 0xffff flowid 1:1
 filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip dst 192.168.2.1/32 match ip dport 80 0xffff flowid 1:1

@@ -458,26 +458,6 @@ func TestTcpResetOpts_chainName(t *testing.T) {
 		(&TcpResetOpts{}).rstFilterChainName())
 }
 
-func TestTcpResetOpts_ipAndTcCommandsReturnNil(t *testing.T) {
-	opts := &TcpResetOpts{
-		Filter: Filter{
-			Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny),
-		},
-	}
-
-	ipCmds, err := opts.ipCommands(familyV4, modeAdd)
-	require.NoError(t, err)
-	assert.Nil(t, ipCmds)
-
-	ipCmds, err = opts.ipCommands(familyV6, modeAdd)
-	require.NoError(t, err)
-	assert.Nil(t, ipCmds)
-
-	tcCmds, err := opts.tcCommands(modeAdd)
-	require.NoError(t, err)
-	assert.Nil(t, tcCmds)
-}
-
 func TestTcpResetOpts_doesConflictWith(t *testing.T) {
 	filter := Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)}
 

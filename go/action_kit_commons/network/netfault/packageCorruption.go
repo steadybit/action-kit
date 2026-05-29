@@ -45,8 +45,8 @@ func (o *CorruptPackagesOpts) doesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *CorruptPackagesOpts) ipCommands(_ family, _ mode) ([]string, error) {
-	return nil, nil
+func (o *CorruptPackagesOpts) tcRootQdiscInterfaces() []string {
+	return o.Interfaces
 }
 
 func (o *CorruptPackagesOpts) tcCommands(mode mode) ([]string, error) {
@@ -54,7 +54,7 @@ func (o *CorruptPackagesOpts) tcCommands(mode mode) ([]string, error) {
 
 	filter := optimizeFilter(o.Filter)
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", rootQdiscVerb(mode), ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem corrupt %d%%", mode, ifc, handleInclude, o.Corruption))
 
 		filterCmds, err := tcCommandsForFilter(mode, filter, ifc)
