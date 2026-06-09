@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRootQdiscKinds(t *testing.T) {
@@ -125,93 +126,104 @@ func (f *fakeRunner) id() string {
 	return f.netNsId
 }
 
-func TestPreflightWarnings(t *testing.T) {
+func TestPreflightCheck(t *testing.T) {
 	tests := []struct {
 		name       string
 		interfaces []string
 		tcOutput   string
 		runErr     error
-		wantCount  int
-		wantSubstr string
+		wantErr    bool
+		wantIfc    string
+		wantKind   string
 	}{
 		{
-			name:       "no interfaces",
+			name:       "no interfaces — ok",
 			interfaces: nil,
-			wantCount:  0,
 		},
 		{
-			name:       "mq (GKE COS) — no warning",
+			name:       "mq (GKE COS) — ok",
 			interfaces: []string{"eth0"},
 			tcOutput:   `qdisc mq 8002: dev eth0 root`,
-			wantCount:  0,
 		},
 		{
-			name:       "fq_codel — no warning",
-			interfaces: []string{"eth0"},
-			tcOutput:   `qdisc fq_codel 0: dev eth0 root refcnt 2 limit 10240p flows 1024`,
-			wantCount:  0,
-		},
-		{
-			name:       "pfifo_fast — no warning",
-			interfaces: []string{"eth0"},
-			tcOutput:   `qdisc pfifo_fast 0: dev eth0 root refcnt 2 bands 3`,
-			wantCount:  0,
-		},
-		{
-			name:       "noqueue — no warning",
+			name:       "noqueue — ok",
 			interfaces: []string{"veth0"},
 			tcOutput:   `qdisc noqueue 0: dev veth0 root refcnt 2`,
-			wantCount:  0,
 		},
 		{
-			name:       "fq — no warning",
+			name:       "fq_codel — ok",
 			interfaces: []string{"eth0"},
-			tcOutput:   `qdisc fq 8001: dev eth0 root refcnt 2 limit 10000p`,
-			wantCount:  0,
+			tcOutput:   `qdisc fq_codel 0: dev eth0 root refcnt 2 limit 10240p`,
 		},
 		{
-			name:       "htb — warning",
-			interfaces: []string{"eth0"},
-			tcOutput:   `qdisc htb 1: dev eth0 root refcnt 2 r2q 10 default 0x30`,
-			wantCount:  1,
-			wantSubstr: `"htb"`,
-		},
-		{
-			name:       "cake — warning",
-			interfaces: []string{"eth0"},
-			tcOutput:   `qdisc cake 8001: dev eth0 root refcnt 2 bandwidth 1Gbit`,
-			wantCount:  1,
-			wantSubstr: `"cake"`,
-		},
-		{
-			name:       "multi-interface: only the user-installed one warns",
-			interfaces: []string{"eth0", "eth1"},
-			tcOutput: `qdisc mq 8002: dev eth0 root
-qdisc htb 1: dev eth1 root`,
-			wantCount:  1,
-			wantSubstr: `"eth1"`,
-		},
-		{
-			name:       "tc failure — no warning, error swallowed",
-			interfaces: []string{"eth0"},
-			runErr:     errors.New("tc not found"),
-			wantCount:  0,
-		},
-		{
-			name:       "interface has no root qdisc — no warning",
+			name:       "interface has no root qdisc — ok",
 			interfaces: []string{"eth0"},
 			tcOutput:   "",
-			wantCount:  0,
+		},
+		{
+			name:       "tc failure — skipped, no error",
+			interfaces: []string{"eth0"},
+			runErr:     errors.New("tc not found"),
+		},
+		{
+			name:       "user-installed htb — refused",
+			interfaces: []string{"eth0"},
+			tcOutput:   `qdisc htb 1: dev eth0 root refcnt 2 default 0x30`,
+			wantErr:    true,
+			wantIfc:    "eth0",
+			wantKind:   "htb",
+		},
+		{
+			name:       "user-installed cake — refused",
+			interfaces: []string{"eth0"},
+			tcOutput:   `qdisc cake 8001: dev eth0 root bandwidth 1Gbit`,
+			wantErr:    true,
+			wantIfc:    "eth0",
+			wantKind:   "cake",
+		},
+		{
+			name:       "multi-interface: only the user-installed one is refused",
+			interfaces: []string{"eth0", "eth1"},
+			tcOutput:   "qdisc mq 8002: dev eth0 root\nqdisc htb 1: dev eth1 root",
+			wantErr:    true,
+			wantIfc:    "eth1",
+			wantKind:   "htb",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &fakeRunner{stdout: tt.tcOutput, err: tt.runErr}
-			got := preflightWarnings(context.Background(), r, tt.interfaces)
-			assert.Len(t, got, tt.wantCount)
-			if tt.wantCount > 0 && tt.wantSubstr != "" {
-				assert.Contains(t, got[0], tt.wantSubstr)
+			// Unique netNsId per subtest so activeNetfault state from other
+			// tests does not leak in and short-circuit the check.
+			r := &fakeRunner{netNsId: tt.name, stdout: tt.tcOutput, err: tt.runErr}
+			err := PreflightCheck(context.Background(), r, &DelayOpts{Interfaces: tt.interfaces})
+			if !tt.wantErr {
+				assert.NoError(t, err)
+				return
 			}
+			var e *ErrUserRootQdisc
+			require.ErrorAs(t, err, &e)
+			assert.Equal(t, tt.wantIfc, e.Interface)
+			assert.Equal(t, tt.wantKind, e.Kind)
 		})
 	}
+}
+
+// A root qdisc belonging to an already-running steadybit attack on the same
+// netns must not trip the preflight — the apply-time conflict detection owns
+// that decision. We simulate an active attack by seeding activeNetfault.
+func TestPreflightCheck_SkippedWhenAttackActive(t *testing.T) {
+	const ns = "ns-active"
+	activeNetfaultLock.Lock()
+	activeNetfault[ns] = []Opts{&DelayOpts{Interfaces: []string{"docker0"}}}
+	activeNetfaultLock.Unlock()
+	defer func() {
+		activeNetfaultLock.Lock()
+		delete(activeNetfault, ns)
+		activeNetfaultLock.Unlock()
+	}()
+
+	r := &fakeRunner{netNsId: ns, stdout: `qdisc htb 1: dev eth0 root`}
+	err := PreflightCheck(context.Background(), r, &DelayOpts{Interfaces: []string{"eth0"}})
+	assert.NoError(t, err, "preflight must defer to conflict detection when an attack is already active")
+	assert.Empty(t, r.calls, "preflight should not even inspect when an attack is already active")
 }

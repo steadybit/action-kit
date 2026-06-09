@@ -28,7 +28,7 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	}
 
 	r := &fakeRunner{}
-	_, err := Apply(context.Background(), r, opts)
+	err := Apply(context.Background(), r, opts)
 	assert.NoError(t, err)
 
 	iptablesIdx := -1
@@ -47,60 +47,6 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	}
 	if !(iptablesIdx < tcBatchIdx) {
 		t.Fatalf("expected iptables-restore to run before tc batch: iptablesIdx=%d, tcBatchIdx=%d", iptablesIdx, tcBatchIdx)
-	}
-}
-
-func TestApply_ReturnsPreflightWarnings(t *testing.T) {
-	ipv6Supported = func() bool { return false }
-	defer func() { ipv6Supported = defaultIpv6Supported }()
-
-	tests := []struct {
-		name         string
-		interfaces   []string
-		tcOutput     string
-		wantWarnings int
-		wantSubstr   string
-	}{
-		{
-			name:         "kernel default (mq) — no warning",
-			interfaces:   []string{"eth0"},
-			tcOutput:     `qdisc mq 8002: dev eth0 root`,
-			wantWarnings: 0,
-		},
-		{
-			name:         "user-installed (htb) — warning",
-			interfaces:   []string{"eth0"},
-			tcOutput:     `qdisc htb 1: dev eth0 root refcnt 2 r2q 10 default 0x30`,
-			wantWarnings: 1,
-			wantSubstr:   `"htb"`,
-		},
-		{
-			name:       "two interfaces, one user-installed",
-			interfaces: []string{"eth0", "eth1"},
-			tcOutput: `qdisc mq 0: dev eth0 root
-qdisc cake 8001: dev eth1 root refcnt 2 bandwidth 1Gbit`,
-			wantWarnings: 1,
-			wantSubstr:   `"cake"`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := &DelayOpts{
-				Filter:     Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
-				Delay:      100 * time.Millisecond,
-				Interfaces: tt.interfaces,
-			}
-
-			// Unique netNsId per subtest so activeNetfault state does not leak.
-			r := &fakeRunner{netNsId: tt.name, stdout: tt.tcOutput}
-			warnings, err := Apply(context.Background(), r, opts)
-			assert.NoError(t, err)
-			assert.Len(t, warnings, tt.wantWarnings)
-			if tt.wantWarnings > 0 && tt.wantSubstr != "" {
-				assert.Contains(t, warnings[0], tt.wantSubstr)
-			}
-		})
 	}
 }
 

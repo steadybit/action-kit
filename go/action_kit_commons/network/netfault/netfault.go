@@ -42,18 +42,68 @@ type CommandRunner interface {
 	id() string
 }
 
-// Apply installs the attack. The returned warnings describe pre-existing
-// root qdiscs that the kernel will not auto-restore on Revert.
-func Apply(ctx context.Context, runner CommandRunner, opts Opts) ([]string, error) {
-	var interfaces []string
-	if p, ok := opts.(tcCommandProvider); ok {
-		interfaces = p.tcRootQdiscInterfaces()
+// Apply installs the attack.
+func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
+	return generateAndRunCommands(ctx, runner, opts, modeAdd)
+}
+
+// ErrUserRootQdisc reports that a target interface already carries a
+// user- or CNI-installed root qdisc that the attack would have to destroy.
+type ErrUserRootQdisc struct {
+	Interface string
+	Kind      string
+}
+
+func (e *ErrUserRootQdisc) Error() string {
+	return fmt.Sprintf("interface %q already has a non-default root qdisc %q; the network attack would have to replace it and cannot restore it afterwards. Remove the existing qdisc or exclude this interface from the attack.", e.Interface, e.Kind)
+}
+
+// PreflightCheck inspects the root qdiscs of the interfaces the attack installs
+// its own root qdisc on and returns an *ErrUserRootQdisc when any carries a
+// non-default (user/CNI-installed) qdisc. It is meant to be called from the
+// attack's Prepare step so the experiment fails fast and cleanly without
+// touching the host.
+//
+// Kernel-default root qdiscs (mq/noqueue/fq_codel/fq/pfifo_fast) are accepted:
+// `tc qdisc replace` grafts over them at Start and the kernel restores them on
+// revert. If a steadybit attack is already active on the same network
+// namespace the existing root qdisc is ours, so the check is skipped and the
+// apply-time conflict detection decides whether the attacks may coexist.
+func PreflightCheck(ctx context.Context, runner CommandRunner, opts Opts) error {
+	p, ok := opts.(tcCommandProvider)
+	if !ok {
+		return nil
 	}
-	warnings := preflightWarnings(ctx, runner, interfaces)
-	if err := generateAndRunCommands(ctx, runner, opts, modeAdd); err != nil {
-		return warnings, err
+	interfaces := p.tcRootQdiscInterfaces()
+	if len(interfaces) == 0 {
+		return nil
 	}
-	return warnings, nil
+	if hasActiveNetfault(runner.id()) {
+		return nil
+	}
+
+	kinds, err := inspectRootQdiscs(ctx, runner)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to inspect root qdiscs; skipping preflight check")
+		return nil
+	}
+	for _, ifc := range interfaces {
+		kind := kinds[ifc]
+		if kind == "" {
+			continue
+		}
+		if _, safe := safeRootQdiscKinds[kind]; safe {
+			continue
+		}
+		return &ErrUserRootQdisc{Interface: ifc, Kind: kind}
+	}
+	return nil
+}
+
+func hasActiveNetfault(netNsId string) bool {
+	activeNetfaultLock.Lock()
+	defer activeNetfaultLock.Unlock()
+	return len(activeNetfault[netNsId]) > 0
 }
 
 func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {

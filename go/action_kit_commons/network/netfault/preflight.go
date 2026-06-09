@@ -8,47 +8,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Kinds the Linux kernel re-attaches automatically after `tc qdisc del root`.
 // Anything else was user-installed (or installed by a CNI bandwidth plugin)
-// and will be replaced by the kernel default on revert.
+// and cannot be restored after the attack, so the preflight refuses it.
 var safeRootQdiscKinds = map[string]struct{}{
 	"mq":         {},
 	"noqueue":    {},
 	"pfifo_fast": {},
 	"fq_codel":   {},
 	"fq":         {},
-}
-
-func preflightWarnings(ctx context.Context, runner CommandRunner, interfaces []string) []string {
-	if len(interfaces) == 0 {
-		return nil
-	}
-
-	kinds, err := inspectRootQdiscs(ctx, runner)
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to inspect root qdiscs; skipping preflight check")
-		return nil
-	}
-
-	var warnings []string
-	for _, ifc := range interfaces {
-		kind := kinds[ifc]
-		if kind == "" {
-			continue
-		}
-		if _, safe := safeRootQdiscKinds[kind]; safe {
-			continue
-		}
-		warnings = append(warnings, fmt.Sprintf(
-			"Pre-existing qdisc %q on interface %q will be replaced during the attack. After the attack ends the kernel will restore its default qdisc, which may differ from the original configuration.",
-			kind, ifc,
-		))
-	}
-	return warnings
 }
 
 // inspectRootQdiscs returns a map from interface name to root qdisc kind for
