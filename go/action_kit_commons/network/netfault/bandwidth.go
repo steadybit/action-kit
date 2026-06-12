@@ -46,8 +46,8 @@ func (o *LimitBandwidthOpts) doesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *LimitBandwidthOpts) ipCommands(_ family, _ mode) ([]string, error) {
-	return nil, nil
+func (o *LimitBandwidthOpts) tcRootQdiscInterfaces() []string {
+	return o.Interfaces
 }
 
 func (o *LimitBandwidthOpts) tcCommands(mode mode) ([]string, error) {
@@ -63,7 +63,7 @@ func (o *LimitBandwidthOpts) tcCommands(mode mode) ([]string, error) {
 
 	filter := optimizeFilter(o.Filter)
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: htb default 30", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: htb default 30", rootQdiscVerb(mode), ifc))
 		cmds = append(cmds, fmt.Sprintf("class %s dev %s parent 1: classid %s htb rate %s", mode, ifc, handleInclude, o.Bandwidth))
 
 		filterCmds, err := tcCommandsForFilter(mode, filter, ifc)

@@ -59,8 +59,8 @@ func (o *DelayOpts) doesConflictWith(opts Opts) bool {
 	return false
 }
 
-func (o *DelayOpts) ipCommands(_ family, _ mode) ([]string, error) {
-	return nil, nil
+func (o *DelayOpts) tcRootQdiscInterfaces() []string {
+	return o.Interfaces
 }
 
 const steadybitDelayFwMark uint32 = 0x1
@@ -174,7 +174,7 @@ func (o *DelayOpts) tcCommands(mode mode) ([]string, error) {
 
 	filter := optimizeFilter(o.Filter)
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", rootQdiscVerb(mode), ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem delay %dms %dms", mode, ifc, handleInclude, o.Delay.Milliseconds(), o.Jitter.Milliseconds()))
 
 		if o.TcpPshOnly {

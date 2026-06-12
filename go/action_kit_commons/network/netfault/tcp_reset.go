@@ -70,14 +70,6 @@ func (o *TcpResetOpts) doesConflictWith(opts Opts) bool {
 	return !reflect.DeepEqual(o.Interfaces, other.Interfaces)
 }
 
-func (o *TcpResetOpts) ipCommands(_ family, _ mode) ([]string, error) {
-	return nil, nil
-}
-
-func (o *TcpResetOpts) tcCommands(_ mode) ([]string, error) {
-	return nil, nil
-}
-
 func (o *TcpResetOpts) iptablesScripts(mode mode) (v4 []string, v6 []string, err error) {
 	if o.UseMangleChain {
 		return o.mangleMarkScripts(mode)

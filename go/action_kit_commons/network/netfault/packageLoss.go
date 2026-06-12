@@ -44,8 +44,8 @@ func (o *PackageLossOpts) doesConflictWith(opts Opts) bool {
 
 	return false
 }
-func (o *PackageLossOpts) ipCommands(_ family, _ mode) ([]string, error) {
-	return nil, nil
+func (o *PackageLossOpts) tcRootQdiscInterfaces() []string {
+	return o.Interfaces
 }
 
 func (o *PackageLossOpts) tcCommands(mode mode) ([]string, error) {
@@ -53,7 +53,7 @@ func (o *PackageLossOpts) tcCommands(mode mode) ([]string, error) {
 
 	filter := optimizeFilter(o.Filter)
 	for _, ifc := range o.Interfaces {
-		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", mode, ifc))
+		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s root handle 1: prio priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", rootQdiscVerb(mode), ifc))
 		cmds = append(cmds, fmt.Sprintf("qdisc %s dev %s parent %s handle 30: netem loss random %d%%", mode, ifc, handleInclude, o.Loss))
 
 		filterCmds, err := tcCommandsForFilter(mode, filter, ifc)
