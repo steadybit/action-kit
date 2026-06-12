@@ -21,6 +21,36 @@ var safeRootQdiscKinds = map[string]struct{}{
 	"fq":         {},
 }
 
+// strictSafeRootQdiscKinds is the opt-in fallback safe-set: only an interface
+// with no real root qdisc (`noqueue`, e.g. a fresh veth) is considered safe to
+// replace. Every other pre-existing root — including the kernel default `mq`
+// on managed-cloud nodes — is refused at preflight. Enabled via
+// SetStrictRootQdisc for operators who don't want network attacks to replace
+// any kernel-managed root qdisc.
+var strictSafeRootQdiscKinds = map[string]struct{}{
+	"noqueue": {},
+}
+
+// strictRootQdisc selects strictSafeRootQdiscKinds when true (default false).
+var strictRootQdisc bool
+
+// SetStrictRootQdisc toggles the strict preflight safe-set. When enabled, the
+// preflight refuses any interface whose root qdisc is not `noqueue`. Off by
+// default; intended as a per-deployment opt-out for customers who prefer the
+// attack to never touch a pre-existing root qdisc.
+func SetStrictRootQdisc(enabled bool) { strictRootQdisc = enabled }
+
+// isSafeRootQdiscKind reports whether a pre-existing root qdisc of the given
+// kind may be replaced by the attack under the active configuration.
+func isSafeRootQdiscKind(kind string) bool {
+	safe := safeRootQdiscKinds
+	if strictRootQdisc {
+		safe = strictSafeRootQdiscKinds
+	}
+	_, ok := safe[kind]
+	return ok
+}
+
 // inspectRootQdiscs returns a map from interface name to root qdisc kind for
 // every interface in the runner's network namespace. Uses the human-readable
 // `tc qdisc show` output (not -json) so the check works on older iproute2.

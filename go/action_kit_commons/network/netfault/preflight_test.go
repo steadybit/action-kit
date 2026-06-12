@@ -227,3 +227,35 @@ func TestPreflightCheck_SkippedWhenAttackActive(t *testing.T) {
 	assert.NoError(t, err, "preflight must defer to conflict detection when an attack is already active")
 	assert.Empty(t, r.calls, "preflight should not even inspect when an attack is already active")
 }
+
+// With SetStrictRootQdisc(true) the only safe root is `noqueue`; every other
+// pre-existing root — including the kernel default `mq` — is refused.
+func TestPreflightCheck_StrictMode(t *testing.T) {
+	SetStrictRootQdisc(true)
+	defer SetStrictRootQdisc(false)
+
+	cases := []struct {
+		name     string
+		tcOutput string
+		wantErr  bool
+		wantKind string
+	}{
+		{name: "noqueue allowed", tcOutput: `qdisc noqueue 0: dev eth0 root refcnt 2`, wantErr: false},
+		{name: "mq refused", tcOutput: `qdisc mq 8002: dev eth0 root`, wantErr: true, wantKind: "mq"},
+		{name: "fq_codel refused", tcOutput: `qdisc fq_codel 0: dev eth0 root`, wantErr: true, wantKind: "fq_codel"},
+		{name: "htb refused", tcOutput: `qdisc htb 1: dev eth0 root`, wantErr: true, wantKind: "htb"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &fakeRunner{netNsId: "strict-" + tc.name, stdout: tc.tcOutput}
+			err := PreflightCheck(context.Background(), r, &DelayOpts{Interfaces: []string{"eth0"}})
+			if !tc.wantErr {
+				assert.NoError(t, err)
+				return
+			}
+			var e *ErrUserRootQdisc
+			require.ErrorAs(t, err, &e)
+			assert.Equal(t, tc.wantKind, e.Kind)
+		})
+	}
+}

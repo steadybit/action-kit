@@ -48,14 +48,17 @@ func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
 }
 
 // ErrUserRootQdisc reports that a target interface already carries a
-// user- or CNI-installed root qdisc that the attack would have to destroy.
+// pre-existing root qdisc that the attack will not replace under the active
+// configuration (a user/CNI qdisc such as `htb`/`cake` by default, or — when
+// SetStrictRootQdisc is enabled — anything other than `noqueue`, including the
+// kernel default `mq`).
 type ErrUserRootQdisc struct {
 	Interface string
 	Kind      string
 }
 
 func (e *ErrUserRootQdisc) Error() string {
-	return fmt.Sprintf("interface %q already has a non-default root qdisc %q; the network attack would have to replace it and cannot restore it afterwards. Remove the existing qdisc or exclude this interface from the attack.", e.Interface, e.Kind)
+	return fmt.Sprintf("interface %q already has a root qdisc %q that the network attack will not replace under the current configuration. Remove the existing qdisc or exclude this interface from the attack.", e.Interface, e.Kind)
 }
 
 // PreflightCheck inspects the root qdiscs of the interfaces the attack installs
@@ -92,7 +95,7 @@ func PreflightCheck(ctx context.Context, runner CommandRunner, opts Opts) error 
 		if kind == "" {
 			continue
 		}
-		if _, safe := safeRootQdiscKinds[kind]; safe {
+		if isSafeRootQdiscKind(kind) {
 			continue
 		}
 		return &ErrUserRootQdisc{Interface: ifc, Kind: kind}
