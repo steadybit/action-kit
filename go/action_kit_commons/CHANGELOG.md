@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.8.0
+## 1.7.0
 
 - netfault: use `tc qdisc replace` (instead of `add`) for the root qdisc in
   delay/loss/corruption/bandwidth attacks so they no longer fail on hosts
