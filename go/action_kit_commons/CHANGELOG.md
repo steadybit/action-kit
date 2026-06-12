@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.0
+## 1.8.0
 
 - netfault: use `tc qdisc replace` (instead of `add`) for the root qdisc in
   delay/loss/corruption/bandwidth attacks so they no longer fail on hosts
@@ -18,6 +18,13 @@
   `iptablesScriptProvider`. External `Opts` implementations that returned
   `nil, nil` from these methods can simply remove them; external callers
   that consumed those methods need a type assertion first.
+
+## 1.7.0
+
+- Adds Hostnames []string to Opts, forwarded as repeated --hostname args to the
+  dns-inject binary (>= v0.2.0). The new HostnameFiltered counter is parsed from
+  the metrics JSON so callers can show how many DNS queries were skipped because
+  their qname did not match the configured hostnames.
 
 ## 1.6.1
 
