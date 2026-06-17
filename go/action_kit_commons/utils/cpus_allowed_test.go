@@ -22,6 +22,9 @@ func Test_readCpusAllowedCount(t *testing.T) {
 		{name: "parse error", status: "Cpus_allowed: invalid", want: -1, wantErr: assert.Error},
 		{name: "four cpus", status: "Cpus_allowed:   f\n", want: 4, wantErr: assert.NoError},
 		{name: "two cpus", status: "Cpus_allowed:   6", want: 2, wantErr: assert.NoError},
+		{name: "32 cpus", status: "Cpus_allowed:\tffffffff\n", want: 32, wantErr: assert.NoError},
+		{name: "128 cpus", status: "Cpus_allowed:\tffffffff,ffffffff,ffffffff,ffffffff\n", want: 128, wantErr: assert.NoError},
+		{name: "48 cpus", status: "Cpus_allowed:\t0000ffff,ffffffff\n", want: 48, wantErr: assert.NoError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
