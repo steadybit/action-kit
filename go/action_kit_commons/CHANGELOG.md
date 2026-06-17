@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1
+
+- stress: fix `ReadCpusAllowedCount` to count CPUs across all words of the
+  `Cpus_allowed` mask. On hosts with more than 32 CPUs the kernel prints the
+  mask as comma-separated 32-bit hex words, so the previous single-word parse
+  capped the detected CPU count at 32 (causing stress-cpu with "all cores" to
+  use only 32 workers).
+
 ## 1.8.0
 
 - netfault: use `tc qdisc replace` (instead of `add`) for the root qdisc in
