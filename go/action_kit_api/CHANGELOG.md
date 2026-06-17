@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.6
+
+- Describe the platform's custom webhook request in the OpenAPI spec (`webhooks` section) and provide the corresponding `Webhook*` payload types
+
 ## 2.10.5
 
 - Add target selector query to further narrow down action targets.

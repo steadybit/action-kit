@@ -9,6 +9,40 @@ consumes:
   - application/json
 produces:
   - application/json
+webhooks:
+  steadybit-webhook:
+    post:
+      summary: Steadybit Custom Webhook
+      description: >-
+        The Steadybit platform can be configured (via `Settings -> Integrations -> Webhooks`) to send
+        an HTTP POST request to a custom endpoint whenever certain platform events occur, e.g.,
+        experiment executions changing state or the kill switch being engaged/disengaged.
+
+        The platform expects any `2xx` status code as acknowledgement. The response body is ignored.
+        Requests time out after five seconds (configurable on the platform side) and are not retried.
+
+        If a shared secret is configured for the webhook, the request carries an `X-SB-Signature`
+        header that endpoints can use to verify the request's authenticity. Additionally, any custom
+        headers configured for the webhook are added to the request.
+      parameters:
+        - name: X-SB-Signature
+          in: header
+          required: false
+          description: >-
+            Only present if a shared secret is configured for the webhook. Contains the
+            hex-encoded HMAC-SHA256 signature of the raw request body, computed with the
+            configured secret, in the format `hmac-sha256 <hex-digest>`. Endpoints should
+            recompute the signature and compare it to this header to verify authenticity.
+          schema:
+            type: string
+            pattern: '^hmac-sha256 [0-9a-f]{64}$'
+            example: 'hmac-sha256 2a49760097ae923625f492c55bfcfaea04c51cb033c3bcfea9499f6875e8651c'
+      requestBody:
+        $ref: '#/components/requestBodies/WebhookRequestBody'
+      responses:
+        '2XX':
+          description: >-
+            Any 2xx status code acknowledges receipt of the event. The response body is ignored.
 components:
   schemas:
     ActionList:
@@ -1293,6 +1327,363 @@ components:
               description: >-
                 At what frequency should the state endpoint be called? Takes
                 durations in the format of `100ms` or `10s`.
+    WebhookEventType:
+      title: Webhook Event Type
+      type: string
+      description: >-
+        The platform event that caused the webhook to be triggered. Future platform versions may
+        introduce additional event types, so endpoints should tolerate unknown values.
+      enum:
+        - experiment.execution.requested
+        - experiment.execution.created
+        - experiment.execution.preflight
+        - experiment.execution.completed
+        - experiment.execution.failed
+        - experiment.execution.errored
+        - experiment.execution.canceled
+        - experiment.execution.step-started
+        - experiment.execution.step-completed
+        - experiment.execution.step-failed
+        - experiment.execution.step-errored
+        - experiment.execution.step-canceled
+        - experiment.execution.step-skipped
+        - killswitch.engaged
+        - killswitch.disengaged
+      x-enum-varnames:
+        - WebhookEventExperimentExecutionRequested
+        - WebhookEventExperimentExecutionCreated
+        - WebhookEventExperimentExecutionPreflight
+        - WebhookEventExperimentExecutionCompleted
+        - WebhookEventExperimentExecutionFailed
+        - WebhookEventExperimentExecutionErrored
+        - WebhookEventExperimentExecutionCanceled
+        - WebhookEventExperimentExecutionStepStarted
+        - WebhookEventExperimentExecutionStepCompleted
+        - WebhookEventExperimentExecutionStepFailed
+        - WebhookEventExperimentExecutionStepErrored
+        - WebhookEventExperimentExecutionStepCanceled
+        - WebhookEventExperimentExecutionStepSkipped
+        - WebhookEventKillswitchEngaged
+        - WebhookEventKillswitchDisengaged
+    WebhookPayload:
+      title: Webhook Payload
+      description: >-
+        The request body sent to custom webhook endpoints. Besides `event` and `time`, exactly one
+        of the event-specific properties is present: `execution` for `experiment.execution.*`
+        events, `killswitch` for `killswitch.*` events. Properties without a value are omitted
+        from the serialized JSON.
+      type: object
+      properties:
+        event:
+          $ref: '#/components/schemas/WebhookEventType'
+        time:
+          type: string
+          format: date-time
+          description: The timestamp at which the event was fired.
+        killswitch:
+          $ref: '#/components/schemas/WebhookKillswitch'
+        execution:
+          $ref: '#/components/schemas/WebhookExperimentExecution'
+        executionStepId:
+          type: string
+          format: string
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+          description: >-
+            In case the webhook was triggered by an `experiment.execution.step-*` event, this
+            contains the id of the step execution having triggered the webhook. Matches the `id`
+            of one of the steps within `execution.steps`.
+      required:
+        - event
+        - time
+    WebhookUserSummary:
+      title: Webhook User Summary
+      description: Summary about a platform user referenced in a webhook payload.
+      type: object
+      properties:
+        username:
+          type: string
+          description: Username of the user, internal identifier of Steadybit.
+        name:
+          type: string
+          description: Display name of the user.
+        email:
+          type: string
+          description: Email address of the user.
+        pictureUrl:
+          type: string
+          description: URL of the user's profile picture.
+      required:
+        - username
+    WebhookKillswitch:
+      title: Webhook Killswitch
+      description: >-
+        In case the webhook was triggered by a kill switch-related event, this contains more
+        information about the engaged / disengaged kill switch.
+      type: object
+      properties:
+        engagedBy:
+          type: string
+          description: Username of the user who has engaged the kill switch.
+        engagedByDetails:
+          $ref: '#/components/schemas/WebhookUserSummary'
+        engaged:
+          type: string
+          format: date-time
+          description: Timestamp when the kill switch was engaged.
+        disengagedBy:
+          type: string
+          description: Username of the user who has disengaged the kill switch.
+        disengagedByDetails:
+          $ref: '#/components/schemas/WebhookUserSummary'
+        disengaged:
+          type: string
+          format: date-time
+          description: Timestamp when the kill switch was disengaged.
+    WebhookExperimentExecution:
+      title: Webhook Experiment Execution
+      description: The execution of a single experiment.
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique experiment execution id that identifies this specific experiment execution.
+        experimentKey:
+          type: string
+          description: Unique experiment key that identifies the experiment. Combination of team key and an increasing number, e.g. `ADM-2`.
+        teamKey:
+          type: string
+          description: The key of the team owning the experiment.
+        environment:
+          type: string
+          description: The unique identifier (UUID) of the environment in which the experiment is executed, e.g. `32009f6e-ff90-47a5-8daa-80f4bb7ae591`.
+        name:
+          type: string
+          description: Name of the experiment to easily identify it.
+        hypothesis:
+          type: string
+          description: The hypothesis that is validated by the experiment.
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the experiment execution was created.
+        createdBy:
+          $ref: '#/components/schemas/WebhookUserSummary'
+        createdVia:
+          type: string
+          description: The creation trigger that caused this experiment execution to be started.
+          enum:
+            - API
+            - CLI
+            - UI
+            - SCHEDULE
+          x-enum-varnames:
+            - WebhookExecutionCreatedViaApi
+            - WebhookExecutionCreatedViaCli
+            - WebhookExecutionCreatedViaUi
+            - WebhookExecutionCreatedViaSchedule
+        experimentVersion:
+          type: integer
+          description: Experiment design version which can be used to identify changes between experiment runs.
+        ended:
+          type: string
+          format: date-time
+          description: Timestamp when the experiment execution ended.
+        state:
+          type: string
+          description: Current state of the experiment execution, e.g. `CREATED`, `RUNNING`, `FAILED`, `ERRORED`, `COMPLETED`, `CANCELED`.
+        steps:
+          type: array
+          description: The steps that are executed in parallel or sequence in the experiment.
+          items:
+            $ref: '#/components/schemas/WebhookExperimentExecutionStep'
+        overrides:
+          allOf:
+            - $ref: '#/components/schemas/WebhookExecutionOverrides'
+          deprecated: true
+          x-deprecated-reason: >-
+            Execution overrides are an input to the experiment execution and only contain the
+            values overridden for this specific run — variables defined on the other levels
+            (environment, service, experiment, schedule) are not included. They are therefore
+            of limited use to webhook consumers. This property may be removed in a future
+            platform version.
+        reason:
+          type: string
+          description: Reason in case the experiment execution failed or errored.
+    WebhookExperimentExecutionStep:
+      title: Webhook Experiment Execution Step
+      description: >-
+        A step that is executed as part of an experiment. There is no explicit type discriminator
+        within the serialized JSON. Action steps carry `actionId`, `actionKind`, `radius`,
+        `targetExecutions` and `totalTargetCount`. Service validation steps carry `serviceId` and
+        `validations`. Wait steps carry only the common properties. Properties without a value are
+        omitted from the serialized JSON.
+      type: object
+      properties:
+        id:
+          type: string
+          format: string
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+          description: Unique identifier of this step execution.
+        predecessorId:
+          type: string
+          format: string
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+          description: >-
+            Unique identifier of the step execution that precedes this step, omitted if it is the
+            first step of a lane.
+        state:
+          type: string
+          description: Current state of this step in the experiment, e.g. `RUNNING`, `FAILED`, `ERRORED`, `COMPLETED`.
+        started:
+          type: string
+          format: date-time
+          description: Timestamp when this experiment step was started.
+        ended:
+          type: string
+          format: date-time
+          description: Timestamp when this experiment step ended.
+        reason:
+          type: string
+          description: Reason in case this experiment step execution failed or errored.
+        ignoreFailure:
+          type: boolean
+          description: Whether the experiment should fail/error immediately in case this step fails/errors.
+        parameters:
+          type: object
+          additionalProperties: true
+          description: >-
+            Step-specific parameters of the experiment step configuration, e.g. `{"duration": "10s"}`.
+        customLabel:
+          type: string
+          description: Custom label assigned during experiment design to express the intention of this step.
+        actionId:
+          type: string
+          description: Only present for action steps. Unique identifier of the action that is executed in this step, e.g. `com.steadybit.extension_container.stress_cpu`.
+        actionKind:
+          type: string
+          description: Only present for action steps. Kind of the executed action.
+          enum:
+            - ATTACK
+            - CHECK
+            - LOAD_TEST
+            - OTHER
+            - BASIC
+          x-enum-varnames:
+            - WebhookActionKindAttack
+            - WebhookActionKindCheck
+            - WebhookActionKindLoadTest
+            - WebhookActionKindOther
+            - WebhookActionKindBasic
+        radius:
+          $ref: '#/components/schemas/WebhookBlastRadius'
+        targetExecutions:
+          type: array
+          description: >-
+            Only present for action steps. List of targets that are expected to be affected by this
+            action. This list may change in case targets aren't available at the specific time of
+            execution.
+          items:
+            $ref: '#/components/schemas/WebhookTarget'
+        totalTargetCount:
+          type: integer
+          format: int64
+          description: Only present for action steps. Number of targets that are affected in total.
+        serviceId:
+          type: string
+          format: string
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+          description: Only present for service validation steps. Unique identifier of the service.
+        validations:
+          type: array
+          description: Only present for service validation steps. List of actions performed as part of this service validation step.
+          items:
+            $ref: '#/components/schemas/WebhookExperimentExecutionStep'
+    WebhookBlastRadius:
+      title: Webhook Blast Radius
+      description: >-
+        Only present for action steps. Blast radius that is applied to define the set of targets as
+        well as an optional random subset.
+      type: object
+      properties:
+        targetType:
+          type: string
+          description: Target type that is affected by the action, e.g. `com.steadybit.extension_container.container`.
+        percentage:
+          type: integer
+          description: In case a percentage subset of the specified targets should be affected.
+        maximum:
+          type: integer
+          description: In case a fixed number as subset of the specified targets should be affected.
+        predicate:
+          type: object
+          additionalProperties: true
+          description: >-
+            Query defining the overall superset of targets being affected. For example:
+            `{"operator": "AND", "predicates": [{"key": "container.host/name", "operator": "EQUALS", "values": ["docker-desktop"]}]}`
+    WebhookTarget:
+      title: Webhook Target
+      description: A target that is expected to be affected by an action.
+      type: object
+      properties:
+        type:
+          type: string
+          description: Type of the target, e.g. `com.steadybit.extension_container.container`.
+        name:
+          type: string
+          description: Identifier of the target.
+        attributes:
+          type: array
+          description: >-
+            The discovered attributes of this target, restricted to the attributes configured for
+            the webhook. A key may be associated multiple times with a single target.
+          items:
+            $ref: '#/components/schemas/WebhookTargetAttribute'
+    WebhookTargetAttribute:
+      title: Webhook Target Attribute
+      description: An attribute (key-value pair) that is associated with a target.
+      type: object
+      properties:
+        key:
+          type: string
+          description: The key of the attribute, may be associated multiple times with the same target.
+        value:
+          type: string
+          description: The value of the attribute.
+      required:
+        - key
+        - value
+    WebhookExecutionOverrides:
+      title: Webhook Execution Overrides
+      description: >-
+        Overrides that were passed as input to a single experiment execution and are not saved
+        into the experiment design. They only contain the values overridden for this specific
+        run — variables defined on the other levels (environment, service, experiment, schedule)
+        are not included. Deprecated, as they are therefore of limited use to webhook consumers;
+        may be removed in a future platform version.
+      deprecated: true
+      type: object
+      properties:
+        environment:
+          type: string
+          description: >-
+            The environment in which the experiment is executed instead of the environment
+            specified in the experiment design.
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Variables that are only used for this specific experiment execution. Constant values
+            are passed literally; dynamic (select expression) values are rendered as a
+            human-readable summary, e.g. `select 3 of host.name on com.steadybit.extension_host.host`.
   requestBodies:
     QueryMetricsRequestBody:
       title: Query Metrics Request
@@ -1416,6 +1807,15 @@ components:
             required:
               - executionId
               - state
+    WebhookRequestBody:
+      title: Webhook Request
+      description: >-
+        The HTTP request payload sent to custom webhook endpoints whenever a subscribed platform
+        event occurs.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/WebhookPayload'
   responses:
     ActionListResponse:
       title: Action List Response
