@@ -95,21 +95,53 @@ func isKernelAutoManaged(kind string) bool {
 	return false
 }
 
+// tcHRoot is the parent handle the kernel uses to indicate a root qdisc.
+const tcHRoot uint32 = 0xfffffff1
+
 // orderQdiscsForRestore returns the snapshot's qdiscs sorted parent-first.
 // Roots get sorted before any child whose Parent equals one of the
 // snapshotted handles.
 func orderQdiscsForRestore(qs []tc.Object) []tc.Object {
-	const tcHRoot uint32 = 0xfffffff1
 	out := make([]tc.Object, 0, len(qs))
 	for _, q := range qs {
-		if q.Parent == tcHRoot || q.Parent == 0 {
+		if isRootQdisc(q) {
 			out = append(out, q)
 		}
 	}
 	for _, q := range qs {
-		if q.Parent != tcHRoot && q.Parent != 0 {
+		if !isRootQdisc(q) {
 			out = append(out, q)
 		}
 	}
 	return out
+}
+
+// isRootQdisc reports whether the qdisc was attached at the device root. Both
+// `Parent == TC_H_ROOT` and `Parent == 0` are observed in `tc qdisc show`
+// output depending on kernel/iproute2 version; we treat both as root.
+func isRootQdisc(q tc.Object) bool {
+	return q.Parent == tcHRoot || q.Parent == 0
+}
+
+// restoreAction describes what restoreSnapshot will do for a given qdisc.
+// Extracted as a pure function so the decision is unit-testable without an
+// actual RTNETLINK socket.
+type restoreAction int
+
+const (
+	// restoreSkipKernelAuto: the kernel re-attaches this kind automatically
+	// after `tc qdisc del root`. We skip it to avoid racing the kernel.
+	restoreSkipKernelAuto restoreAction = iota
+	// restoreReplace: call Qdisc().Replace() with the saved Object so the
+	// operation is idempotent against any leftover state.
+	restoreReplace
+)
+
+// planRestoreAction returns the action restoreSnapshot will take for a single
+// snapshotted qdisc. Pure function — no side effects, no netlink calls.
+func planRestoreAction(q tc.Object) restoreAction {
+	if isKernelAutoManaged(q.Kind) {
+		return restoreSkipKernelAuto
+	}
+	return restoreReplace
 }

@@ -109,7 +109,7 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 	for name, ifSnap := range snap.Interfaces {
 		ordered := orderQdiscsForRestore(ifSnap.Qdiscs)
 		for _, q := range ordered {
-			if isKernelAutoManaged(q.Kind) {
+			if planRestoreAction(q) == restoreSkipKernelAuto {
 				log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
 				continue
 			}
