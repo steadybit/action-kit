@@ -40,6 +40,10 @@ func (e *ErrTooManyTcCommands) Error() string {
 type CommandRunner interface {
 	run(ctx context.Context, processArgs []string, cmds []string) (string, error)
 	id() string
+	// netNsPath returns the filesystem path to the network namespace this
+	// runner operates on (e.g. /proc/<pid>/ns/net or /var/run/netns/<name>).
+	// Used by the snapshot layer to open the netns via RTNETLINK.
+	netNsPath() string
 }
 
 // Apply installs the attack.
@@ -154,6 +158,20 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		if err := pushActiveNetfault(netNsID, opts); err != nil {
 			return err
 		}
+		// Snapshot the root qdisc tree before installing the attack so we can
+		// restore it on revert. Only the first attack per netns takes the
+		// snapshot; subsequent non-conflicting attacks reuse it. Failures are
+		// logged but do not block the attack from running — the customer's
+		// experiment must still execute even if snapshot is unavailable.
+		if snapshotEnabled && !hasSnapshot(netNsID) {
+			if p, ok := opts.(tcCommandProvider); ok {
+				if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
+					if serr := captureSnapshot(runner, netNsID, ifs); serr != nil {
+						log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
+					}
+				}
+			}
+		}
 	}
 
 	if len(ipCommandsV4) > 0 {
@@ -229,9 +247,54 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 
 	if mode == modeDelete {
 		popActiveNetfault(netNsID, opts)
+		// After the last attack on this netns is reverted, restore the saved
+		// qdisc tree (if any). The snapshot only exists when snapshotEnabled
+		// was true at apply time. Restore failures are logged and joined with
+		// the existing err so the experiment result surfaces them, but do not
+		// block the experiment from completing.
+		if snapshotEnabled && !hasActiveNetfault(netNsID) {
+			if snap, ok := loadSnapshot(netNsID); ok {
+				if rerr := applyRestore(runner, snap); rerr != nil {
+					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; host may be left in a degraded state")
+					err = errors.Join(err, rerr)
+				} else {
+					log.Info().Str("netNs", netNsID).Int("interfaces", len(snap.Interfaces)).Msg("restored qdisc tree to pre-attack state")
+				}
+				deleteSnapshot(netNsID)
+			}
+		}
 	}
 
 	return err
+}
+
+// captureSnapshot opens the runner's netns and stores the qdisc snapshot.
+// Wrapped in its own function so the netns-fd open/close is one place.
+func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) error {
+	path := runner.netNsPath()
+	f, err := openNetNs(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	snap, err := takeSnapshot(int(f.Fd()), netNsID, interfaces)
+	if err != nil {
+		return err
+	}
+	storeSnapshot(snap)
+	log.Info().Str("netNs", netNsID).Int("interfaces", len(snap.Interfaces)).Msg("captured qdisc snapshot")
+	return nil
+}
+
+// applyRestore opens the runner's netns and replays the saved snapshot.
+func applyRestore(runner CommandRunner, snap qdiscSnapshot) error {
+	path := runner.netNsPath()
+	f, err := openNetNs(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return restoreSnapshot(int(f.Fd()), snap)
 }
 
 func logCurrentIpRules(ctx context.Context, runner CommandRunner, family family, when string) {

@@ -126,6 +126,10 @@ func (f *fakeRunner) id() string {
 	return f.netNsId
 }
 
+func (f *fakeRunner) netNsPath() string {
+	return ""
+}
+
 func TestPreflightCheck(t *testing.T) {
 	tests := []struct {
 		name       string

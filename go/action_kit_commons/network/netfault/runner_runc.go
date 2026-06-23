@@ -60,6 +60,19 @@ func (r *runcRunner) id() string {
 	return ""
 }
 
+// netNsPath returns the path to the target process's network namespace
+// (e.g. /proc/<pid>/ns/net or /var/run/netns/<name>). Empty string if the
+// target has no network namespace registered. Used by the snapshot layer to
+// open the target netns via RTNETLINK without entering it via runc.
+func (r *runcRunner) netNsPath() string {
+	for _, ns := range r.sidecar.TargetProcess.Namespaces {
+		if ns.Type == specs.NetworkNamespace {
+			return ns.Path
+		}
+	}
+	return ""
+}
+
 func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, processArgs []string, cmds []string) (string, error) {
 	netns := ""
 	for _, n := range r.sidecar.TargetProcess.Namespaces {

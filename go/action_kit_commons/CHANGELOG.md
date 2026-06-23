@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- netfault: opt-in qdisc snapshot/restore. When `SetSnapshotRestore(true)` is
+  called (env var `STEADYBIT_EXTENSION_NETWORK_SNAPSHOT_RESTORE=true` in
+  extensions), `Apply` captures the root qdisc tree (qdiscs + filters) of every
+  interface the attack touches via RTNETLINK (`github.com/florianl/go-tc`), and
+  `Revert` replays it after the attack's `tc del`. This preserves cloud-tuned
+  root qdiscs (e.g. GKE's `mq + fq` with buckets=32768 horizon=2s) that
+  otherwise revert to kernel defaults after `tc qdisc del root` and leave the
+  host network degraded until reboot. Off by default; Linux only.
+
 ## 1.8.0
 
 - netfault: use `tc qdisc replace` (instead of `add`) for the root qdisc in
