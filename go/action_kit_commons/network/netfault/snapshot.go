@@ -174,3 +174,64 @@ func isRootQdisc(q tc.Object) bool {
 func shouldSkipQdiscOnRestore(q tc.Object) bool {
 	return isKernelAutoManaged(q.Kind)
 }
+
+// stripRuntimeStats zeros the kernel-counter fields on a tc.Object so it can
+// be safely passed to Qdisc().Replace() / Filter().Replace(). go-tc's Get
+// populates Stats/XStats/Stats2 from the kernel, but its validateQdiscObject
+// (qdisc.go:174) rejects any non-DELETE request whose object carries them
+// with bare ErrNotImplemented — stats marshalling isn't implemented for the
+// write direction. Mutates the object in place.
+func stripRuntimeStats(obj *tc.Object) {
+	obj.Stats = nil
+	obj.XStats = nil
+	obj.Stats2 = nil
+}
+
+// reAnchorAutoManagedParents rewrites the Parent.major of every child qdisc
+// in ifSnap that referenced a saved kernel-auto-managed root, replacing it
+// with the major of whatever auto-managed root the kernel has re-attached
+// (post `tc qdisc del root`). Without this re-anchoring, restoring a child
+// whose saved Parent points at the OLD mq handle fails with ENOENT because
+// the kernel-attached mq has a different (usually 0:) handle.
+//
+// The rewrite is conservative: it only touches children whose Parent.major
+// matches the major of a saved root that (a) is itself kernel-auto-managed
+// and (b) has been replaced by a kernel-auto-managed root of the same kind
+// in the live tree. Everything else passes through unchanged.
+func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) interfaceSnapshot {
+	rewrite := map[uint32]uint32{}
+	for _, saved := range ifSnap.Qdiscs {
+		if !isRootQdisc(saved) || !isKernelAutoManaged(saved.Kind) {
+			continue
+		}
+		savedMajor := handleMajor(saved.Handle)
+		for _, cur := range currentQdiscs {
+			if cur.Ifindex != ifSnap.Ifindex {
+				continue
+			}
+			if !isRootQdisc(cur) || cur.Kind != saved.Kind {
+				continue
+			}
+			liveMajor := handleMajor(cur.Handle)
+			if liveMajor != savedMajor {
+				rewrite[savedMajor] = liveMajor
+			}
+			break
+		}
+	}
+	if len(rewrite) == 0 {
+		return ifSnap
+	}
+	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex}
+	out.Qdiscs = make([]tc.Object, 0, len(ifSnap.Qdiscs))
+	for _, q := range ifSnap.Qdiscs {
+		if !isRootQdisc(q) {
+			if newMajor, ok := rewrite[handleMajor(q.Parent)]; ok {
+				q.Parent = newMajor | (q.Parent & 0x0000ffff)
+			}
+		}
+		out.Qdiscs = append(out.Qdiscs, q)
+	}
+	out.Filters = ifSnap.Filters
+	return out
+}

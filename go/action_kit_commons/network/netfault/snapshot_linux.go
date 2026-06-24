@@ -130,15 +130,8 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 				log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
 				continue
 			}
-			// go-tc's Qdisc().Get() populates Stats/XStats/Stats2 from the
-			// kernel, but Qdisc().Replace() refuses any object with those set
-			// (qdisc.go:174 returns bare ErrNotImplemented because stats
-			// marshalling isn't implemented for the write direction). Strip
-			// them on the local copy before replaying.
 			obj := q
-			obj.Stats = nil
-			obj.XStats = nil
-			obj.Stats2 = nil
+			stripRuntimeStats(&obj)
 			if rerr := conn.Qdisc().Replace(&obj); rerr != nil {
 				log.Warn().Err(rerr).Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("restore qdisc failed")
 				combined = errors.Join(combined, fmt.Errorf("restore qdisc %s on %s: %w", q.Kind, name, rerr))
@@ -148,11 +141,8 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 		}
 
 		for _, f := range ifSnap.Filters {
-			// Same stats-stripping reason as the qdisc loop above.
 			obj := f
-			obj.Stats = nil
-			obj.XStats = nil
-			obj.Stats2 = nil
+			stripRuntimeStats(&obj)
 			// Replace (not Add): if a leftover filter from incomplete attack
 			// cleanup is still attached at the same parent/handle, Add fails
 			// with "File exists" and the host stays in a mixed state. Replace
@@ -205,58 +195,6 @@ func interfaceIndexes(netNsFd int) (map[string]uint32, error) {
 		out[ifc.Name] = uint32(ifc.Index)
 	}
 	return out, nil
-}
-
-// reAnchorAutoManagedParents rewrites the Parent.major of every child qdisc
-// in ifSnap that referenced a saved kernel-auto-managed root, replacing it
-// with the major of whatever auto-managed root the kernel has re-attached
-// (post `tc qdisc del root`). Without this re-anchoring, restoring a child
-// whose saved Parent points at the OLD mq handle fails with ENOENT because
-// the kernel-attached mq has a different (usually 0:) handle.
-//
-// The rewrite is conservative: it only touches children whose Parent.major
-// matches the major of a saved root that (a) is itself kernel-auto-managed
-// and (b) has been replaced by a kernel-auto-managed root of the same kind
-// in the live tree. Everything else passes through unchanged.
-func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) interfaceSnapshot {
-	// Find saved kernel-auto-managed roots on this interface and map their
-	// major-handles to the live major-handle of the same kind.
-	rewrite := map[uint32]uint32{}
-	for _, saved := range ifSnap.Qdiscs {
-		if !isRootQdisc(saved) || !isKernelAutoManaged(saved.Kind) {
-			continue
-		}
-		savedMajor := handleMajor(saved.Handle)
-		for _, cur := range currentQdiscs {
-			if cur.Ifindex != ifSnap.Ifindex {
-				continue
-			}
-			if !isRootQdisc(cur) || cur.Kind != saved.Kind {
-				continue
-			}
-			liveMajor := handleMajor(cur.Handle)
-			if liveMajor != savedMajor {
-				rewrite[savedMajor] = liveMajor
-			}
-			break
-		}
-	}
-	if len(rewrite) == 0 {
-		return ifSnap
-	}
-	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex}
-	out.Qdiscs = make([]tc.Object, 0, len(ifSnap.Qdiscs))
-	for _, q := range ifSnap.Qdiscs {
-		// Don't touch roots themselves.
-		if !isRootQdisc(q) {
-			if newMajor, ok := rewrite[handleMajor(q.Parent)]; ok {
-				q.Parent = newMajor | (q.Parent & 0x0000ffff)
-			}
-		}
-		out.Qdiscs = append(out.Qdiscs, q)
-	}
-	out.Filters = ifSnap.Filters
-	return out
 }
 
 // getFiltersForInterface enumerates all filters attached to the root qdisc of
