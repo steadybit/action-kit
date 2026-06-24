@@ -26,6 +26,14 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: classify `noqueue` and `pfifo_fast` as
+  kernel-auto-managed. Discovered during real GKE Standard testing: the
+  kernel re-attaches `pfifo_fast` automatically as the default child of `mq`
+  on non-multi-queue NICs, and go-tc's `Qdisc().Replace()` rejects
+  pfifo_fast with `functionality not yet implemented`. Both kinds are
+  stateless or carry only kernel-restored defaults, so skipping them on
+  restore is correct and avoids spurious warnings on the most common GKE /
+  EKS / AKS node shapes.
 - netfault snapshot/restore: debug-friendly logging.
   - `Apply` now logs the captured snapshot at INFO with a multi-line
     `tc qdisc show`-style rendering, so operators can verify exactly what

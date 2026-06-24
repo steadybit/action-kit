@@ -20,12 +20,13 @@ func TestIsKernelAutoManaged(t *testing.T) {
 		{"mq", true},
 		{"clsact", true},
 		{"ingress", true},
+		{"noqueue", true},
+		{"pfifo_fast", true},
 		{"fq", false},
 		{"fq_codel", false},
 		{"htb", false},
 		{"netem", false},
 		{"prio", false},
-		{"pfifo_fast", false},
 		{"", false},
 	}
 	for _, tt := range tests {

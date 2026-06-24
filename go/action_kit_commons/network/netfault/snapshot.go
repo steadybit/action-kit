@@ -73,13 +73,21 @@ func deleteSnapshot(netNsID string) {
 }
 
 // isKernelAutoManaged returns true for qdisc kinds the kernel automatically
-// attaches to an interface when no other root qdisc is present. After
-// `tc qdisc del root` removes the attack's qdisc, the kernel re-creates one of
-// these for the device. We don't restore these ourselves (we'd race the
-// kernel); we restore their tuned children instead.
+// re-attaches when no other qdisc is present, or for stateless kinds that
+// carry no tunable parameters worth restoring. After `tc qdisc del root`
+// removes the attack's qdisc, the kernel re-creates one of these for the
+// device. We don't restore these ourselves (we'd race the kernel and, for
+// some kinds like `pfifo_fast`, go-tc rejects them with ErrNotImplemented);
+// we restore their tuned children instead.
+//
+// Specifically:
+//   - mq, clsact, ingress: kernel auto-attaches as multi-queue / hook qdiscs.
+//   - noqueue: default on loopback and veth interfaces; no parameters.
+//   - pfifo_fast: kernel default leaf for non-multi-queue NICs; only carries
+//     a priomap that the kernel always restores from /sys defaults.
 func isKernelAutoManaged(kind string) bool {
 	switch kind {
-	case "mq", "clsact", "ingress":
+	case "mq", "clsact", "ingress", "noqueue", "pfifo_fast":
 		return true
 	}
 	return false

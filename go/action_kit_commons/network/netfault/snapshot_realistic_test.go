@@ -84,10 +84,10 @@ func TestRestorePlan_GkeCosMultiInterface(t *testing.T) {
 	plan := planForInterface(got.Interfaces["eth0"].Qdiscs)
 	assert.Equal(t, planCounts{skip: 1, replace: 16}, plan, "eth0: skip mq, replace 16 fq children")
 
-	// lo: noqueue is NOT in isKernelAutoManaged so it would be replaced.
-	// But noqueue is a stateless kind — Replace is harmless.
+	// lo: noqueue is in isKernelAutoManaged — stateless, kernel re-attaches
+	// it automatically, and go-tc doesn't implement Replace for it.
 	plan = planForInterface(got.Interfaces["lo"].Qdiscs)
-	assert.Equal(t, planCounts{skip: 0, replace: 1}, plan, "lo: noqueue gets replaced (harmless no-op effectively)")
+	assert.Equal(t, planCounts{skip: 1, replace: 0}, plan, "lo: noqueue is kernel-auto-managed, skipped on restore")
 }
 
 // TestRestorePlan_AksDefault covers a typical AKS / Ubuntu node where
@@ -102,13 +102,15 @@ func TestRestorePlan_AksDefault(t *testing.T) {
 }
 
 // TestRestorePlan_EksDefault covers EKS Amazon Linux 2 with pfifo_fast.
-// pfifo_fast is a kernel default kind but doesn't appear in
-// isKernelAutoManaged today (we conservatively replace it). Test documents
-// that decision.
+// pfifo_fast is stateless (only carries a kernel-restored priomap), so it
+// is kernel-auto-managed: skip on restore. Confirmed in production by a real
+// GKE Standard test where Qdisc().Replace() returned
+// "pfifo_fast: functionality not yet implemented" — the kernel re-attaches
+// it automatically on `tc qdisc del root`, so we don't need (or want) to.
 func TestRestorePlan_EksDefault(t *testing.T) {
 	const eth0 uint32 = 2
 	plan := planForInterface(fixtureEksDefaultEth0(eth0))
-	assert.Equal(t, planCounts{skip: 0, replace: 1}, plan)
+	assert.Equal(t, planCounts{skip: 1, replace: 0}, plan)
 }
 
 // TestRestorePlan_BareMetalHtb covers a host with a user-installed htb
