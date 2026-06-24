@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
 
 	"github.com/florianl/go-tc"
@@ -119,6 +120,39 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 		return fmt.Errorf("read current qdiscs for re-anchoring: %w", err)
 	}
 
+	// Before re-anchoring children, claim the saved auto-managed root
+	// handles so children's Parent references resolve. The kernel
+	// auto-attaches mq after `tc qdisc del root` but the kernel doesn't
+	// expose its real handle to userspace (tc qdisc show prints "0:" and
+	// go-tc's Get() returns 0); any attempt to attach a child with
+	// Parent=<saved-handle>:N fails with ENOENT. The fix is to issue
+	// `tc qdisc replace dev <ifc> root handle <saved>: <kind>`, which
+	// makes the kernel re-attach the meta-qdisc under the explicit handle
+	// the children expect. go-tc's Qdisc().Replace() doesn't support these
+	// parameterless kinds (its validateQdiscObject switch returns
+	// ErrNotImplemented for mq), so we shell out to /usr/sbin/tc inside
+	// the target netns via setns.
+	for name, ifSnap := range snap.Interfaces {
+		for _, q := range ifSnap.Qdiscs {
+			if !isRootQdisc(q) || !isKernelAutoManaged(q.Kind) || q.Handle == 0 {
+				continue
+			}
+			handleStr := fmt.Sprintf("%x:", q.Handle>>16)
+			if err := execTcInNetNs(netNsFd, "qdisc", "replace", "dev", name, "root", "handle", handleStr, q.Kind); err != nil {
+				log.Warn().Err(err).Str("interface", name).Str("kind", q.Kind).Str("handle", handleStr).Msg("failed to claim auto-managed root handle; children may fail to restore")
+				continue
+			}
+			log.Debug().Str("interface", name).Str("kind", q.Kind).Str("handle", handleStr).Msg("claimed auto-managed root handle for child re-anchoring")
+		}
+	}
+
+	// Re-read the live tree after claiming root handles so re-anchor sees
+	// the updated state.
+	currentQdiscs, err = conn.Qdisc().Get()
+	if err != nil {
+		return fmt.Errorf("re-read current qdiscs after root reclaim: %w", err)
+	}
+
 	var combined error
 	for name, ifSnap := range snap.Interfaces {
 		// Find the new auto-managed root's handle for this interface and
@@ -195,6 +229,43 @@ func interfaceIndexes(netNsFd int) (map[string]uint32, error) {
 		out[ifc.Name] = uint32(ifc.Index)
 	}
 	return out, nil
+}
+
+// execTcInNetNs runs `/usr/sbin/tc <args...>` inside the network namespace
+// identified by netNsFd. Used as a fallback for qdisc kinds that go-tc's
+// validateQdiscObject doesn't support (notably mq, which has no parameters
+// but isn't in go-tc's switch). The pattern mirrors interfaceIndexes:
+// LockOSThread + setns + run + setns-back + UnlockOSThread.
+func execTcInNetNs(netNsFd int, args ...string) error {
+	runtime.LockOSThread()
+	unlock := true
+	defer func() {
+		if unlock {
+			runtime.UnlockOSThread()
+		}
+	}()
+
+	origNs, err := os.Open("/proc/thread-self/ns/net")
+	if err != nil {
+		return fmt.Errorf("open current thread netns: %w", err)
+	}
+	defer func() { _ = origNs.Close() }()
+
+	if err := unix.Setns(netNsFd, unix.CLONE_NEWNET); err != nil {
+		return fmt.Errorf("setns target: %w", err)
+	}
+
+	cmd := exec.Command("/usr/sbin/tc", args...)
+	out, runErr := cmd.CombinedOutput()
+
+	if rerr := unix.Setns(int(origNs.Fd()), unix.CLONE_NEWNET); rerr != nil {
+		unlock = false
+		return fmt.Errorf("restore netns: %w (tc error: %v, output: %s)", rerr, runErr, string(out))
+	}
+	if runErr != nil {
+		return fmt.Errorf("tc %v failed: %w, output: %s", args, runErr, string(out))
+	}
+	return nil
 }
 
 // getFiltersForInterface enumerates all filters attached to the root qdisc of

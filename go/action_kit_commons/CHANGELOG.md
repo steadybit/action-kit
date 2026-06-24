@@ -26,16 +26,24 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: claim the saved auto-managed root handle via
+  `tc` before restoring children. The kernel re-attaches `mq` (or
+  `clsact`/`ingress`) after `tc qdisc del root` with a hidden handle that
+  isn't exposed via netlink (`tc qdisc show` prints "0:", go-tc's Get()
+  reports 0), so any attempt to add a child with the saved Parent fails
+  with ENOENT. go-tc's Replace() doesn't support these parameterless kinds
+  (validateQdiscObject returns ErrNotImplemented for mq), so we shell out
+  to `/usr/sbin/tc qdisc replace dev <ifc> root handle <saved> mq` inside
+  the target netns via setns. After this claim, the saved children's
+  Parent.major matches the live root and Replace() succeeds. Confirmed
+  live on a GKE Standard test node tuned to mq 8026: + 2x fq buckets=32768
+  horizon=2s.
 - netfault snapshot/restore: re-anchor children onto the live auto-managed
-  root. After `tc qdisc del root`, the kernel re-attaches `mq` (or
-  `clsact`/`ingress`) with a fresh, usually-zero handle — so children
-  whose saved Parent field references the OLD mq handle fail
-  `Qdisc().Replace()` with ENOENT (`netlink receive: no such file or
-  directory`). Before replaying children, we now re-snapshot the live
-  tree, find the new auto-managed root of the same kind, and rewrite
-  each child's `Parent.major` to point at it. Confirmed live: a
-  manually-tuned GKE-style `mq 8026: + fq 802b:/8029: buckets=32768
-  horizon=2s` failed to restore until this re-anchor step was added.
+  root as a defensive fallback. When the explicit-handle claim above
+  succeeds, this becomes a no-op. When it fails (e.g. tc binary absent),
+  re-anchor still attempts to rewrite Parent.major using whatever live
+  handle the kernel exposed (typically 0), maximising the chance of a
+  successful restore on unusual platforms.
 - netfault snapshot/restore: strip Stats/XStats/Stats2 from each `tc.Object`
   before calling `Qdisc().Replace()` / `Filter().Replace()`. go-tc's
   `Qdisc().Get()` populates those fields from kernel counters, but its
