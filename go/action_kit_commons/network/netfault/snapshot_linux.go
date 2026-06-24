@@ -110,32 +110,35 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 		}
 	}()
 
-	// Snapshot the current qdisc tree so we can re-anchor saved children
-	// onto whatever kernel-auto-managed root has been re-attached. After
-	// `tc qdisc del root` the kernel picks a fresh handle for the new mq /
-	// clsact / ingress (commonly handle 0:), so children carrying the
-	// saved root's old handle as their Parent field would fail Replace
-	// with ENOENT.
+	claimAutoManagedRootHandles(netNsFd, snap)
+
+	// Re-read the live tree after claiming root handles so re-anchor sees
+	// the updated state.
 	currentQdiscs, err := conn.Qdisc().Get()
 	if err != nil {
-		return fmt.Errorf("read current qdiscs for re-anchoring: %w", err)
+		return fmt.Errorf("re-read current qdiscs after root reclaim: %w", err)
 	}
 
-	// Before re-anchoring children, claim the saved auto-managed root
-	// handles so children's Parent references resolve. The kernel
-	// auto-attaches mq after `tc qdisc del root` but the kernel doesn't
-	// expose its real handle to userspace (tc qdisc show prints "0:" and
-	// go-tc's Get() returns 0); any attempt to attach a child with
-	// Parent=<saved-handle>:N fails with ENOENT. The fix is to issue
-	// `tc qdisc replace dev <ifc> root handle <saved>: <kind>`, which
-	// makes the kernel re-attach the meta-qdisc under the explicit handle
-	// the children expect. go-tc's Qdisc().Replace() doesn't support these
-	// parameterless kinds (its validateQdiscObject switch returns
-	// ErrNotImplemented for mq), so we shell out to /usr/sbin/tc inside
-	// the target netns via setns.
+	var combined error
+	for name, ifSnap := range snap.Interfaces {
+		anchored := reAnchorAutoManagedParents(ifSnap, currentQdiscs)
+		combined = errors.Join(combined, restoreInterfaceQdiscs(conn, name, anchored))
+		combined = errors.Join(combined, restoreInterfaceFilters(conn, name, anchored))
+	}
+	return combined
+}
+
+// claimAutoManagedRootHandles walks each saved auto-managed root with an
+// explicit handle and reassigns the kernel's anonymous live root to that
+// handle. After `tc qdisc del root` the kernel re-attaches mq / clsact /
+// ingress under a hidden handle (tc qdisc show prints "0:", go-tc's Get()
+// returns 0); any attempt to attach a saved child with the old handle then
+// fails with ENOENT. We use a raw RTNETLINK message (claimAutoManagedRoot)
+// because go-tc's validateQdiscObject lacks an "mq" case.
+func claimAutoManagedRootHandles(netNsFd int, snap qdiscSnapshot) {
 	for name, ifSnap := range snap.Interfaces {
 		for _, q := range ifSnap.Qdiscs {
-			if !isRootQdisc(q) || !isKernelAutoManaged(q.Kind) || q.Handle == 0 {
+			if !shouldClaimRoot(q) {
 				continue
 			}
 			if err := claimAutoManagedRoot(netNsFd, ifSnap.Ifindex, q.Handle, q.Kind); err != nil {
@@ -145,47 +148,46 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 			log.Debug().Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("claimed auto-managed root handle for child re-anchoring")
 		}
 	}
+}
 
-	// Re-read the live tree after claiming root handles so re-anchor sees
-	// the updated state.
-	currentQdiscs, err = conn.Qdisc().Get()
-	if err != nil {
-		return fmt.Errorf("re-read current qdiscs after root reclaim: %w", err)
-	}
+func shouldClaimRoot(q tc.Object) bool {
+	return isRootQdisc(q) && isKernelAutoManaged(q.Kind) && q.Handle != 0
+}
 
+// restoreInterfaceQdiscs replays the saved qdiscs for one interface in
+// parent-first order. Kernel-auto-managed kinds are skipped; the rest are
+// Replace()d after their kernel-counter fields are zeroed.
+func restoreInterfaceQdiscs(conn *tc.Tc, name string, ifSnap interfaceSnapshot) error {
 	var combined error
-	for name, ifSnap := range snap.Interfaces {
-		// Find the new auto-managed root's handle for this interface and
-		// rewrite each child's Parent.major if it matched a saved auto-root.
-		ifSnap = reAnchorAutoManagedParents(ifSnap, currentQdiscs)
-		ordered := orderQdiscsForRestore(ifSnap.Qdiscs)
-		for _, q := range ordered {
-			if shouldSkipQdiscOnRestore(q) {
-				log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
-				continue
-			}
-			obj := q
-			stripRuntimeStats(&obj)
-			if rerr := conn.Qdisc().Replace(&obj); rerr != nil {
-				log.Warn().Err(rerr).Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("restore qdisc failed")
-				combined = errors.Join(combined, fmt.Errorf("restore qdisc %s on %s: %w", q.Kind, name, rerr))
-				continue
-			}
-			log.Debug().Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Uint32("parent", q.Parent).Msg("restored qdisc")
+	for _, q := range orderQdiscsForRestore(ifSnap.Qdiscs) {
+		if shouldSkipQdiscOnRestore(q) {
+			log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
+			continue
 		}
+		obj := q
+		stripRuntimeStats(&obj)
+		if rerr := conn.Qdisc().Replace(&obj); rerr != nil {
+			log.Warn().Err(rerr).Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("restore qdisc failed")
+			combined = errors.Join(combined, fmt.Errorf("restore qdisc %s on %s: %w", q.Kind, name, rerr))
+			continue
+		}
+		log.Debug().Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Uint32("parent", q.Parent).Msg("restored qdisc")
+	}
+	return combined
+}
 
-		for _, f := range ifSnap.Filters {
-			obj := f
-			stripRuntimeStats(&obj)
-			// Replace (not Add): if a leftover filter from incomplete attack
-			// cleanup is still attached at the same parent/handle, Add fails
-			// with "File exists" and the host stays in a mixed state. Replace
-			// is idempotent and matches the qdisc restore path above.
-			if ferr := conn.Filter().Replace(&obj); ferr != nil {
-				log.Warn().Err(ferr).Str("interface", name).Str("kind", f.Kind).Msg("restore filter failed")
-				combined = errors.Join(combined, fmt.Errorf("restore filter %s on %s: %w", f.Kind, name, ferr))
-				continue
-			}
+// restoreInterfaceFilters replays the saved filters for one interface via
+// Replace() (not Add) so leftover filters from incomplete attack cleanup
+// are overwritten rather than rejected with "File exists".
+func restoreInterfaceFilters(conn *tc.Tc, name string, ifSnap interfaceSnapshot) error {
+	var combined error
+	for _, f := range ifSnap.Filters {
+		obj := f
+		stripRuntimeStats(&obj)
+		if ferr := conn.Filter().Replace(&obj); ferr != nil {
+			log.Warn().Err(ferr).Str("interface", name).Str("kind", f.Kind).Msg("restore filter failed")
+			combined = errors.Join(combined, fmt.Errorf("restore filter %s on %s: %w", f.Kind, name, ferr))
+			continue
 		}
 	}
 	return combined

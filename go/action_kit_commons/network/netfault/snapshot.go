@@ -126,35 +126,11 @@ func orderQdiscsForRestore(qs []tc.Object) []tc.Object {
 	if len(qs) == 0 {
 		return nil
 	}
-	// Map every qdisc's handle-major to its index in qs so we can resolve
-	// parent references in O(1). Qdisc handles in the kernel always have
-	// minor=0; children reference their parent via (major<<16)|class-minor,
-	// so we key by the major portion only.
-	handleIndex := make(map[uint32]int, len(qs))
-	for i, q := range qs {
-		if q.Handle != 0 {
-			handleIndex[handleMajor(q.Handle)] = i
-		}
-	}
+	handleIndex := indexQdiscsByHandleMajor(qs)
 	out := make([]tc.Object, 0, len(qs))
 	emitted := make([]bool, len(qs))
-	// Walk repeatedly over the input until no more progress is possible.
-	// Each pass emits every qdisc whose parent is already emitted (or is an
-	// ancestor outside the snapshot — a root). Worst-case O(depth * N) which
-	// is fine for the small N we deal with.
-	for progress := true; progress; {
-		progress = false
-		for i, q := range qs {
-			if emitted[i] {
-				continue
-			}
-			parentIdx, parentInSnapshot := handleIndex[handleMajor(q.Parent)]
-			if isRootQdisc(q) || !parentInSnapshot || emitted[parentIdx] {
-				out = append(out, q)
-				emitted[i] = true
-				progress = true
-			}
-		}
+	for fixedPoint := false; !fixedPoint; {
+		fixedPoint = !emitQdiscsWithKnownParents(qs, handleIndex, emitted, &out)
 	}
 	// Cycle or self-reference: append anything left in input order so the
 	// caller at least sees the data and Replace can decide.
@@ -164,6 +140,40 @@ func orderQdiscsForRestore(qs []tc.Object) []tc.Object {
 		}
 	}
 	return out
+}
+
+// indexQdiscsByHandleMajor maps every qdisc's handle-major to its index in
+// qs so a child's Parent reference can resolve to its parent in O(1).
+// Qdisc handles in the kernel always have minor=0; children reference their
+// parent via (major<<16)|class-minor.
+func indexQdiscsByHandleMajor(qs []tc.Object) map[uint32]int {
+	idx := make(map[uint32]int, len(qs))
+	for i, q := range qs {
+		if q.Handle != 0 {
+			idx[handleMajor(q.Handle)] = i
+		}
+	}
+	return idx
+}
+
+// emitQdiscsWithKnownParents appends every not-yet-emitted qdisc whose
+// parent is a root, lives outside the snapshot, or has already been emitted.
+// Returns true if it emitted at least one qdisc this pass — the caller loops
+// until a pass emits nothing (fixed point).
+func emitQdiscsWithKnownParents(qs []tc.Object, handleIndex map[uint32]int, emitted []bool, out *[]tc.Object) bool {
+	progress := false
+	for i, q := range qs {
+		if emitted[i] {
+			continue
+		}
+		parentIdx, parentInSnapshot := handleIndex[handleMajor(q.Parent)]
+		if isRootQdisc(q) || !parentInSnapshot || emitted[parentIdx] {
+			*out = append(*out, q)
+			emitted[i] = true
+			progress = true
+		}
+	}
+	return progress
 }
 
 // isRootQdisc reports whether the qdisc was attached at the device root. Both
@@ -207,30 +217,50 @@ func stripRuntimeStats(obj *tc.Object) {
 // and (b) has been replaced by a kernel-auto-managed root of the same kind
 // in the live tree. Everything else passes through unchanged.
 func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) interfaceSnapshot {
+	rewrite := buildAutoManagedRewriteMap(ifSnap, currentQdiscs)
+	if len(rewrite) == 0 {
+		return ifSnap
+	}
+	return applyParentRewrites(ifSnap, rewrite)
+}
+
+// buildAutoManagedRewriteMap finds saved kernel-auto-managed roots whose
+// live counterpart on the same interface has a different major handle and
+// returns a saved-major → live-major map. Other saved roots and
+// non-auto-managed kinds contribute nothing.
+func buildAutoManagedRewriteMap(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) map[uint32]uint32 {
 	rewrite := map[uint32]uint32{}
 	for _, saved := range ifSnap.Qdiscs {
 		if !isRootQdisc(saved) || !isKernelAutoManaged(saved.Kind) {
 			continue
 		}
 		savedMajor := handleMajor(saved.Handle)
-		for _, cur := range currentQdiscs {
-			if cur.Ifindex != ifSnap.Ifindex {
-				continue
-			}
-			if !isRootQdisc(cur) || cur.Kind != saved.Kind {
-				continue
-			}
-			liveMajor := handleMajor(cur.Handle)
-			if liveMajor != savedMajor {
-				rewrite[savedMajor] = liveMajor
-			}
-			break
+		if liveMajor, ok := findLiveRootMajor(currentQdiscs, ifSnap.Ifindex, saved.Kind); ok && liveMajor != savedMajor {
+			rewrite[savedMajor] = liveMajor
 		}
 	}
-	if len(rewrite) == 0 {
-		return ifSnap
+	return rewrite
+}
+
+// findLiveRootMajor returns the major handle of the first root qdisc on the
+// given interface in the current tree that matches the kind. ok=false if
+// none is found.
+func findLiveRootMajor(currentQdiscs []tc.Object, ifindex uint32, kind string) (uint32, bool) {
+	for _, cur := range currentQdiscs {
+		if cur.Ifindex == ifindex && isRootQdisc(cur) && cur.Kind == kind {
+			return handleMajor(cur.Handle), true
+		}
 	}
-	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex}
+	return 0, false
+}
+
+// applyParentRewrites returns a new interfaceSnapshot whose non-root child
+// qdiscs have their Parent.major replaced via the rewrite map (minor is
+// preserved). The roots themselves are left untouched — the kernel
+// re-attaches them under their own (potentially still-different) live
+// handles.
+func applyParentRewrites(ifSnap interfaceSnapshot, rewrite map[uint32]uint32) interfaceSnapshot {
+	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex, Filters: ifSnap.Filters}
 	out.Qdiscs = make([]tc.Object, 0, len(ifSnap.Qdiscs))
 	for _, q := range ifSnap.Qdiscs {
 		if !isRootQdisc(q) {
@@ -240,6 +270,5 @@ func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Obj
 		}
 		out.Qdiscs = append(out.Qdiscs, q)
 	}
-	out.Filters = ifSnap.Filters
 	return out
 }
