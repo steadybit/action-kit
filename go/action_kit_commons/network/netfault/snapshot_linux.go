@@ -116,7 +116,15 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 				log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
 				continue
 			}
+			// go-tc's Qdisc().Get() populates Stats/XStats/Stats2 from the
+			// kernel, but Qdisc().Replace() refuses any object with those set
+			// (qdisc.go:174 returns bare ErrNotImplemented because stats
+			// marshalling isn't implemented for the write direction). Strip
+			// them on the local copy before replaying.
 			obj := q
+			obj.Stats = nil
+			obj.XStats = nil
+			obj.Stats2 = nil
 			if rerr := conn.Qdisc().Replace(&obj); rerr != nil {
 				log.Warn().Err(rerr).Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("restore qdisc failed")
 				combined = errors.Join(combined, fmt.Errorf("restore qdisc %s on %s: %w", q.Kind, name, rerr))
@@ -126,7 +134,11 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 		}
 
 		for _, f := range ifSnap.Filters {
+			// Same stats-stripping reason as the qdisc loop above.
 			obj := f
+			obj.Stats = nil
+			obj.XStats = nil
+			obj.Stats2 = nil
 			// Replace (not Add): if a leftover filter from incomplete attack
 			// cleanup is still attached at the same parent/handle, Add fails
 			// with "File exists" and the host stays in a mixed state. Replace

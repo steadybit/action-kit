@@ -26,6 +26,16 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: strip Stats/XStats/Stats2 from each `tc.Object`
+  before calling `Qdisc().Replace()` / `Filter().Replace()`. go-tc's
+  `Qdisc().Get()` populates those fields from kernel counters, but its
+  validateQdiscObject (qdisc.go:174) rejects any non-DELETE request whose
+  object has them set, with bare `ErrNotImplemented`. Without this strip,
+  every tuned `fq`/`htb`/etc child on a GKE COS-style host fails to
+  restore — confirmed live: the customer's `mq + 2x fq buckets=32768
+  horizon=2s` was reset to `mq + pfifo_fast` despite the snapshot capture
+  succeeding, because Replace returned "functionality not yet implemented"
+  for each fq.
 - netfault snapshot/restore: classify `noqueue` and `pfifo_fast` as
   kernel-auto-managed. Discovered during real GKE Standard testing: the
   kernel re-attaches `pfifo_fast` automatically as the default child of `mq`
