@@ -26,6 +26,15 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: debug-friendly logging.
+  - `Apply` now logs the captured snapshot at INFO with a multi-line
+    `tc qdisc show`-style rendering, so operators can verify exactly what
+    state was preserved without leaving the agent log.
+  - `Revert` now re-snapshots the netns after a successful restore and
+    compares against the captured state. INFO logs the rendered post-restore
+    state when it matches; WARN logs both states plus a diff when it doesn't.
+    Stats fields and the kernel-auto-managed kinds (`mq`, `clsact`,
+    `ingress`) are excluded from the comparison.
 
 ## 1.8.0
 
