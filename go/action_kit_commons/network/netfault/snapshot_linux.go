@@ -5,15 +5,16 @@
 package netfault
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 
 	"github.com/florianl/go-tc"
 	"github.com/florianl/go-tc/core"
+	"github.com/mdlayher/netlink"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
 )
@@ -137,12 +138,11 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 			if !isRootQdisc(q) || !isKernelAutoManaged(q.Kind) || q.Handle == 0 {
 				continue
 			}
-			handleStr := fmt.Sprintf("%x:", q.Handle>>16)
-			if err := execTcInNetNs(netNsFd, "qdisc", "replace", "dev", name, "root", "handle", handleStr, q.Kind); err != nil {
-				log.Warn().Err(err).Str("interface", name).Str("kind", q.Kind).Str("handle", handleStr).Msg("failed to claim auto-managed root handle; children may fail to restore")
+			if err := claimAutoManagedRoot(netNsFd, ifSnap.Ifindex, q.Handle, q.Kind); err != nil {
+				log.Warn().Err(err).Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("failed to claim auto-managed root handle; children may fail to restore")
 				continue
 			}
-			log.Debug().Str("interface", name).Str("kind", q.Kind).Str("handle", handleStr).Msg("claimed auto-managed root handle for child re-anchoring")
+			log.Debug().Str("interface", name).Str("kind", q.Kind).Uint32("handle", q.Handle).Msg("claimed auto-managed root handle for child re-anchoring")
 		}
 	}
 
@@ -231,42 +231,58 @@ func interfaceIndexes(netNsFd int) (map[string]uint32, error) {
 	return out, nil
 }
 
-// execTcInNetNs runs `/usr/sbin/tc <args...>` inside the network namespace
-// identified by netNsFd. Used as a fallback for qdisc kinds that go-tc's
-// validateQdiscObject doesn't support (notably mq, which has no parameters
-// but isn't in go-tc's switch). The pattern mirrors interfaceIndexes:
-// LockOSThread + setns + run + setns-back + UnlockOSThread.
-func execTcInNetNs(netNsFd int, args ...string) error {
-	runtime.LockOSThread()
-	unlock := true
-	defer func() {
-		if unlock {
-			runtime.UnlockOSThread()
-		}
-	}()
-
-	origNs, err := os.Open("/proc/thread-self/ns/net")
+// claimAutoManagedRoot sends a raw RTM_NEWQDISC netlink message that
+// reassigns the device's root qdisc to the given (handle, kind). Used to
+// claim a saved handle for kernel-auto-managed kinds (mq, clsact, ingress)
+// so that saved children's Parent.major references resolve.
+//
+// We can't go through go-tc here because validateQdiscObject's switch
+// doesn't include mq (it has cases for clsact and ingress as parameterless
+// kinds but no mq case, so Replace returns ErrNotImplemented). We can't
+// shell out to /usr/sbin/tc either because the extension process runs as
+// non-root: exec drops capabilities since tc has no file caps, so the
+// child gets EPERM from the kernel. Going through the netlink socket
+// directly works because the calling process retains CAP_NET_ADMIN in its
+// Effective set when sending the RTNETLINK message.
+func claimAutoManagedRoot(netNsFd int, ifindex uint32, handle uint32, kind string) error {
+	conn, err := netlink.Dial(unix.NETLINK_ROUTE, &netlink.Config{NetNS: netNsFd})
 	if err != nil {
-		return fmt.Errorf("open current thread netns: %w", err)
+		return fmt.Errorf("dial netlink for raw claim: %w", err)
 	}
-	defer func() { _ = origNs.Close() }()
+	defer func() { _ = conn.Close() }()
 
-	if err := unix.Setns(netNsFd, unix.CLONE_NEWNET); err != nil {
-		return fmt.Errorf("setns target: %w", err)
+	// Build tcmsg (20 bytes, native endianness for the integer fields):
+	//   family:1 _:1 _:2 ifindex:4 handle:4 parent:4 info:4
+	tcmsg := make([]byte, 20)
+	nativeEndian.PutUint32(tcmsg[4:8], ifindex)
+	nativeEndian.PutUint32(tcmsg[8:12], handle)
+	nativeEndian.PutUint32(tcmsg[12:16], tcHRoot) // TC_H_ROOT = 0xffffffff
+
+	// One TCA_KIND attribute (type=1) with the null-terminated kind string.
+	ae := netlink.NewAttributeEncoder()
+	ae.String(1, kind)
+	attrs, err := ae.Encode()
+	if err != nil {
+		return fmt.Errorf("encode netlink attribute: %w", err)
 	}
 
-	cmd := exec.Command("/usr/sbin/tc", args...)
-	out, runErr := cmd.CombinedOutput()
-
-	if rerr := unix.Setns(int(origNs.Fd()), unix.CLONE_NEWNET); rerr != nil {
-		unlock = false
-		return fmt.Errorf("restore netns: %w (tc error: %v, output: %s)", rerr, runErr, string(out))
+	msg := netlink.Message{
+		Header: netlink.Header{
+			Type:  netlink.HeaderType(unix.RTM_NEWQDISC),
+			Flags: netlink.Request | netlink.Create | netlink.Replace | netlink.Acknowledge,
+		},
+		Data: append(tcmsg, attrs...),
 	}
-	if runErr != nil {
-		return fmt.Errorf("tc %v failed: %w, output: %s", args, runErr, string(out))
+
+	if _, err := conn.Execute(msg); err != nil {
+		return fmt.Errorf("netlink claim qdisc kind=%s handle=%#x: %w", kind, handle, err)
 	}
 	return nil
 }
+
+// nativeEndian is the byte order RTNETLINK expects on the host; it matches
+// the architecture's CPU endianness. Go 1.21+ exposes this directly.
+var nativeEndian = binary.NativeEndian
 
 // getFiltersForInterface enumerates all filters attached to the root qdisc of
 // the given interface. The current netfault attacks install all their filters

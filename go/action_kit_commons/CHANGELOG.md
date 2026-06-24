@@ -36,7 +36,7 @@
   invalidated all the prior root-handling fixes; with the constant
   corrected, the full chain now lights up.
 - netfault snapshot/restore: claim the saved auto-managed root handle via
-  `tc` before restoring children. The kernel re-attaches `mq` (or
+  raw RTNETLINK before restoring children. The kernel re-attaches `mq` (or
   `clsact`/`ingress`) after `tc qdisc del root` with a hidden handle that
   isn't exposed via netlink (`tc qdisc show` prints "0:", go-tc's Get()
   reports 0), so any attempt to add a child with the saved Parent fails
