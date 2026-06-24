@@ -129,6 +129,10 @@ func (m mockRunner) id() string {
 	return "mock"
 }
 
+func (m mockRunner) netNsPath() string {
+	return ""
+}
+
 type mockResponse struct {
 	stdout string
 	err    error
@@ -149,4 +153,8 @@ func (m *mockRunnerMulti) run(_ context.Context, processArgs []string, _ []strin
 
 func (m *mockRunnerMulti) id() string {
 	return "mock-multi"
+}
+
+func (m *mockRunnerMulti) netNsPath() string {
+	return ""
 }

@@ -1,5 +1,86 @@
 # Changelog
 
+## Unreleased
+
+- netfault: opt-in qdisc snapshot/restore. When `SetSnapshotRestore(true)` is
+  called (env var `STEADYBIT_EXTENSION_NETWORK_SNAPSHOT_RESTORE=true` in
+  extensions), `Apply` captures the root qdisc tree (qdiscs + filters) of every
+  interface the attack touches via RTNETLINK (`github.com/florianl/go-tc`), and
+  `Revert` replays it after the attack's `tc del`. This preserves cloud-tuned
+  root qdiscs (e.g. GKE's `mq + fq` with buckets=32768 horizon=2s) that
+  otherwise revert to kernel defaults after `tc qdisc del root` and leave the
+  host network degraded until reboot. Off by default; Linux only.
+- netfault snapshot/restore: lifecycle correctness fixes.
+  - Filter restore now uses `Filter().Replace()` instead of `Add()` so leftover
+    filters from incomplete attack cleanup are overwritten, not rejected with
+    "File exists".
+  - Snapshots are dropped if the originating `Apply` errors. A later `Revert`
+    no longer replays an out-of-date snapshot against a partially-installed
+    attack.
+  - Snapshots are retained on `Revert` failure so a manual retry can complete
+    the restore; only deleted after a successful restore.
+  - Filter-read failures now fail the whole snapshot rather than silently
+    storing an incomplete one (which would lead to orphaned filter state on
+    restore).
+  - `orderQdiscsForRestore` is now a topological sort over the parent->child
+    relation (keyed by handle-major) instead of a two-pass partition. Handles
+    N-level qdisc trees correctly; previous implementation could emit a
+    grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: fix `tcHRoot` constant from `0xfffffff1` to
+  `0xffffffff`. The former is `TC_H_INGRESS` per Linux uapi pkt_sched.h;
+  the actual `TC_H_ROOT` is all-ones. With the wrong value, `isRootQdisc()`
+  returned false for every real root reported by go-tc Get(), so the
+  restore loop never recognised mq as a root, never invoked the claim
+  step, and never re-anchored child parent references — children kept the
+  saved mq handle as Parent and Replace() failed with ENOENT. This
+  invalidated all the prior root-handling fixes; with the constant
+  corrected, the full chain now lights up.
+- netfault snapshot/restore: claim the saved auto-managed root handle via
+  raw RTNETLINK before restoring children. The kernel re-attaches `mq` (or
+  `clsact`/`ingress`) after `tc qdisc del root` with a hidden handle that
+  isn't exposed via netlink (`tc qdisc show` prints "0:", go-tc's Get()
+  reports 0), so any attempt to add a child with the saved Parent fails
+  with ENOENT. go-tc's Replace() doesn't support these parameterless kinds
+  (validateQdiscObject returns ErrNotImplemented for mq), so we shell out
+  to `/usr/sbin/tc qdisc replace dev <ifc> root handle <saved> mq` inside
+  the target netns via setns. After this claim, the saved children's
+  Parent.major matches the live root and Replace() succeeds. Confirmed
+  live on a GKE Standard test node tuned to mq 8026: + 2x fq buckets=32768
+  horizon=2s.
+- netfault snapshot/restore: re-anchor children onto the live auto-managed
+  root as a defensive fallback. When the explicit-handle claim above
+  succeeds, this becomes a no-op. When it fails (e.g. tc binary absent),
+  re-anchor still attempts to rewrite Parent.major using whatever live
+  handle the kernel exposed (typically 0), maximising the chance of a
+  successful restore on unusual platforms.
+- netfault snapshot/restore: strip Stats/XStats/Stats2 from each `tc.Object`
+  before calling `Qdisc().Replace()` / `Filter().Replace()`. go-tc's
+  `Qdisc().Get()` populates those fields from kernel counters, but its
+  validateQdiscObject (qdisc.go:174) rejects any non-DELETE request whose
+  object has them set, with bare `ErrNotImplemented`. Without this strip,
+  every tuned `fq`/`htb`/etc child on a GKE COS-style host fails to
+  restore — confirmed live: the customer's `mq + 2x fq buckets=32768
+  horizon=2s` was reset to `mq + pfifo_fast` despite the snapshot capture
+  succeeding, because Replace returned "functionality not yet implemented"
+  for each fq.
+- netfault snapshot/restore: classify `noqueue` and `pfifo_fast` as
+  kernel-auto-managed. Discovered during real GKE Standard testing: the
+  kernel re-attaches `pfifo_fast` automatically as the default child of `mq`
+  on non-multi-queue NICs, and go-tc's `Qdisc().Replace()` rejects
+  pfifo_fast with `functionality not yet implemented`. Both kinds are
+  stateless or carry only kernel-restored defaults, so skipping them on
+  restore is correct and avoids spurious warnings on the most common GKE /
+  EKS / AKS node shapes.
+- netfault snapshot/restore: debug-friendly logging.
+  - `Apply` now logs the captured snapshot at INFO with a multi-line
+    `tc qdisc show`-style rendering, so operators can verify exactly what
+    state was preserved without leaving the agent log.
+  - `Revert` now re-snapshots the netns after a successful restore and
+    compares against the captured state. INFO logs the rendered post-restore
+    state when it matches; WARN logs both states plus a diff when it doesn't.
+    Stats fields and the kernel-auto-managed kinds (`mq`, `clsact`,
+    `ingress`) are excluded from the comparison.
+
 ## 1.8.1
 
 - stress: fix `ReadCpusAllowedCount` to count CPUs across all words of the

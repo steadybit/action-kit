@@ -41,3 +41,10 @@ func (p processRunner) run(ctx context.Context, args []string, cmds []string) (s
 func (p processRunner) id() string {
 	return "host"
 }
+
+// netNsPath returns the calling process's own network namespace path. The
+// processRunner runs commands directly in the extension process's netns, so
+// snapshot/restore operates on the same netns.
+func (p processRunner) netNsPath() string {
+	return "/proc/self/ns/net"
+}
