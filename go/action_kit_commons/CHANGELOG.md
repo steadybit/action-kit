@@ -26,6 +26,16 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: re-anchor children onto the live auto-managed
+  root. After `tc qdisc del root`, the kernel re-attaches `mq` (or
+  `clsact`/`ingress`) with a fresh, usually-zero handle — so children
+  whose saved Parent field references the OLD mq handle fail
+  `Qdisc().Replace()` with ENOENT (`netlink receive: no such file or
+  directory`). Before replaying children, we now re-snapshot the live
+  tree, find the new auto-managed root of the same kind, and rewrite
+  each child's `Parent.major` to point at it. Confirmed live: a
+  manually-tuned GKE-style `mq 8026: + fq 802b:/8029: buckets=32768
+  horizon=2s` failed to restore until this re-anchor step was added.
 - netfault snapshot/restore: strip Stats/XStats/Stats2 from each `tc.Object`
   before calling `Qdisc().Replace()` / `Filter().Replace()`. go-tc's
   `Qdisc().Get()` populates those fields from kernel counters, but its

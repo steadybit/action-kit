@@ -108,8 +108,22 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 		}
 	}()
 
+	// Snapshot the current qdisc tree so we can re-anchor saved children
+	// onto whatever kernel-auto-managed root has been re-attached. After
+	// `tc qdisc del root` the kernel picks a fresh handle for the new mq /
+	// clsact / ingress (commonly handle 0:), so children carrying the
+	// saved root's old handle as their Parent field would fail Replace
+	// with ENOENT.
+	currentQdiscs, err := conn.Qdisc().Get()
+	if err != nil {
+		return fmt.Errorf("read current qdiscs for re-anchoring: %w", err)
+	}
+
 	var combined error
 	for name, ifSnap := range snap.Interfaces {
+		// Find the new auto-managed root's handle for this interface and
+		// rewrite each child's Parent.major if it matched a saved auto-root.
+		ifSnap = reAnchorAutoManagedParents(ifSnap, currentQdiscs)
 		ordered := orderQdiscsForRestore(ifSnap.Qdiscs)
 		for _, q := range ordered {
 			if shouldSkipQdiscOnRestore(q) {
@@ -191,6 +205,58 @@ func interfaceIndexes(netNsFd int) (map[string]uint32, error) {
 		out[ifc.Name] = uint32(ifc.Index)
 	}
 	return out, nil
+}
+
+// reAnchorAutoManagedParents rewrites the Parent.major of every child qdisc
+// in ifSnap that referenced a saved kernel-auto-managed root, replacing it
+// with the major of whatever auto-managed root the kernel has re-attached
+// (post `tc qdisc del root`). Without this re-anchoring, restoring a child
+// whose saved Parent points at the OLD mq handle fails with ENOENT because
+// the kernel-attached mq has a different (usually 0:) handle.
+//
+// The rewrite is conservative: it only touches children whose Parent.major
+// matches the major of a saved root that (a) is itself kernel-auto-managed
+// and (b) has been replaced by a kernel-auto-managed root of the same kind
+// in the live tree. Everything else passes through unchanged.
+func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) interfaceSnapshot {
+	// Find saved kernel-auto-managed roots on this interface and map their
+	// major-handles to the live major-handle of the same kind.
+	rewrite := map[uint32]uint32{}
+	for _, saved := range ifSnap.Qdiscs {
+		if !isRootQdisc(saved) || !isKernelAutoManaged(saved.Kind) {
+			continue
+		}
+		savedMajor := handleMajor(saved.Handle)
+		for _, cur := range currentQdiscs {
+			if cur.Ifindex != ifSnap.Ifindex {
+				continue
+			}
+			if !isRootQdisc(cur) || cur.Kind != saved.Kind {
+				continue
+			}
+			liveMajor := handleMajor(cur.Handle)
+			if liveMajor != savedMajor {
+				rewrite[savedMajor] = liveMajor
+			}
+			break
+		}
+	}
+	if len(rewrite) == 0 {
+		return ifSnap
+	}
+	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex}
+	out.Qdiscs = make([]tc.Object, 0, len(ifSnap.Qdiscs))
+	for _, q := range ifSnap.Qdiscs {
+		// Don't touch roots themselves.
+		if !isRootQdisc(q) {
+			if newMajor, ok := rewrite[handleMajor(q.Parent)]; ok {
+				q.Parent = newMajor | (q.Parent & 0x0000ffff)
+			}
+		}
+		out.Qdiscs = append(out.Qdiscs, q)
+	}
+	out.Filters = ifSnap.Filters
+	return out
 }
 
 // getFiltersForInterface enumerates all filters attached to the root qdisc of
