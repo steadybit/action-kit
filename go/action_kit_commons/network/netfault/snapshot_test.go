@@ -37,7 +37,11 @@ func TestIsKernelAutoManaged(t *testing.T) {
 }
 
 func TestOrderQdiscsForRestore_RootsBeforeChildren(t *testing.T) {
-	const tcHRoot uint32 = 0xfffffff1
+	// Use the package-level tcHRoot (= 0xffffffff per Linux uapi
+	// pkt_sched.h) rather than redefining it locally — an earlier version
+	// of this test redefined it as 0xfffffff1 (which is TC_H_INGRESS, not
+	// TC_H_ROOT) and silently masked a bug where isRootQdisc never
+	// recognised real roots returned by go-tc Get().
 
 	root := tc.Object{
 		Msg:       tc.Msg{Ifindex: 2, Handle: 0x80260000, Parent: tcHRoot},

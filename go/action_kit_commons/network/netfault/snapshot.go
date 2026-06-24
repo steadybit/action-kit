@@ -94,7 +94,15 @@ func isKernelAutoManaged(kind string) bool {
 }
 
 // tcHRoot is the parent handle the kernel uses to indicate a root qdisc.
-const tcHRoot uint32 = 0xfffffff1
+// From the kernel's uapi/linux/pkt_sched.h:
+//
+//	#define TC_H_ROOT     (0xFFFFFFFFU)
+//	#define TC_H_INGRESS  (0xFFFFFFF1U)
+//
+// Don't confuse the two — using 0xfffffff1 here would mean every root qdisc
+// reported by go-tc would fail isRootQdisc and silently skip both the
+// re-anchor and the claim steps in restoreSnapshot.
+const tcHRoot uint32 = 0xffffffff
 
 // handleMajor returns the major portion of a netlink qdisc handle. Netlink
 // encodes a handle as (major << 16) | minor. A qdisc's own handle has minor=0

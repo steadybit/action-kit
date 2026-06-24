@@ -26,6 +26,15 @@
     relation (keyed by handle-major) instead of a two-pass partition. Handles
     N-level qdisc trees correctly; previous implementation could emit a
     grandchild before its parent in a 3-level tree.
+- netfault snapshot/restore: fix `tcHRoot` constant from `0xfffffff1` to
+  `0xffffffff`. The former is `TC_H_INGRESS` per Linux uapi pkt_sched.h;
+  the actual `TC_H_ROOT` is all-ones. With the wrong value, `isRootQdisc()`
+  returned false for every real root reported by go-tc Get(), so the
+  restore loop never recognised mq as a root, never invoked the claim
+  step, and never re-anchored child parent references — children kept the
+  saved mq handle as Parent and Replace() failed with ENOENT. This
+  invalidated all the prior root-handling fixes; with the constant
+  corrected, the full chain now lights up.
 - netfault snapshot/restore: claim the saved auto-managed root handle via
   `tc` before restoring children. The kernel re-attaches `mq` (or
   `clsact`/`ingress`) after `tc qdisc del root` with a hidden handle that
