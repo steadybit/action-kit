@@ -36,10 +36,9 @@ func TestRestorePlan_GkeCosCustomerCase(t *testing.T) {
 	var skipped, replaced int
 	var replacedKinds = map[string]int{}
 	for _, q := range ordered {
-		switch planRestoreAction(q) {
-		case restoreSkipKernelAuto:
+		if shouldSkipQdiscOnRestore(q) {
 			skipped++
-		case restoreReplace:
+		} else {
 			replaced++
 			replacedKinds[q.Kind]++
 		}
@@ -181,6 +180,43 @@ func TestRestorePlan_OrderingParentFirst(t *testing.T) {
 	}
 }
 
+// TestRestorePlan_OrderingThreeLevelNesting covers the latent bug the
+// previous two-pass partition could not handle: a 3-level qdisc tree where
+// a grandchild's parent is itself a non-root child. The earlier algorithm
+// would emit the grandchild before its parent (both are non-roots, so they
+// were partitioned together and preserved input order). The topological
+// sort emits each child only after its parent's handle has been emitted.
+func TestRestorePlan_OrderingThreeLevelNesting(t *testing.T) {
+	const eth0 uint32 = 2
+	// Root htb (handle 1:0) -> child htb (handle 10:0, parent 1:1) ->
+	// grandchild sfq (handle 100:0, parent 10:1). Input is intentionally
+	// scrambled so any algorithm that just preserves input order would
+	// emit grandchild before child.
+	qdiscs := []tc.Object{
+		{Msg: tc.Msg{Ifindex: eth0, Handle: handle(100, 0), Parent: handle(10, 1)}, Attribute: tc.Attribute{Kind: "sfq"}},
+		{Msg: tc.Msg{Ifindex: eth0, Handle: handle(1, 0), Parent: tcHRoot}, Attribute: tc.Attribute{Kind: "htb"}},
+		{Msg: tc.Msg{Ifindex: eth0, Handle: handle(10, 0), Parent: handle(1, 1)}, Attribute: tc.Attribute{Kind: "htb"}},
+	}
+	ordered := orderQdiscsForRestore(qdiscs)
+
+	require.Len(t, ordered, 3, "no entries dropped")
+	// Index each qdisc by major in the output, then assert each child
+	// appears after its parent's major.
+	pos := map[uint32]int{}
+	for i, q := range ordered {
+		pos[q.Handle&0xffff0000] = i
+	}
+	for i, q := range ordered {
+		if isRootQdisc(q) {
+			continue
+		}
+		parentPos, ok := pos[q.Parent&0xffff0000]
+		require.True(t, ok)
+		assert.Less(t, parentPos, i, "child %s at index %d must come after its parent at %d", q.Kind, i, parentPos)
+	}
+	assert.Equal(t, "htb", ordered[0].Kind, "root htb must come first")
+}
+
 // TestRestorePlan_EmptySnapshot covers veth/CNI interfaces with no
 // pre-existing root qdisc (a fresh netns). The snapshot captures nothing
 // and restore is a no-op. Important: storeSnapshot should NOT later think
@@ -211,16 +247,17 @@ func TestRestorePlan_MqWithoutChildren(t *testing.T) {
 }
 
 // TestRestorePlan_StoreLifecycleAcrossMultipleAttacks simulates the
-// hasSnapshot guard: the first attack on a netns takes a snapshot; a
+// snapshot-store guard: the first attack on a netns takes a snapshot; a
 // second concurrent attack on the same netns reuses the existing snapshot
-// without overwriting it. Lifecycle ends when the last attack reverts and
-// we call deleteSnapshot.
+// (loadSnapshot returns ok=true) without overwriting it. Lifecycle ends
+// when the last attack reverts and we call deleteSnapshot.
 func TestRestorePlan_StoreLifecycleAcrossMultipleAttacks(t *testing.T) {
 	const netNs = "multi-attack"
 	t.Cleanup(func() { deleteSnapshot(netNs) })
 
 	// First attack takes snapshot.
-	assert.False(t, hasSnapshot(netNs))
+	_, exists := loadSnapshot(netNs)
+	assert.False(t, exists)
 	storeSnapshot(qdiscSnapshot{
 		NetNsID:    netNs,
 		Interfaces: map[string]interfaceSnapshot{"eth0": {Name: "eth0", Qdiscs: fixtureGkeCosEth0Tuned(2)}},
@@ -228,16 +265,18 @@ func TestRestorePlan_StoreLifecycleAcrossMultipleAttacks(t *testing.T) {
 	first, _ := loadSnapshot(netNs)
 	firstQdiscCount := len(first.Interfaces["eth0"].Qdiscs)
 
-	// Second concurrent attack arrives — hasSnapshot says skip taking a new
-	// one.
-	assert.True(t, hasSnapshot(netNs), "second attack should see existing snapshot and skip taking another")
+	// Second concurrent attack arrives — loadSnapshot says one already
+	// exists, so the caller should skip taking another.
+	_, exists = loadSnapshot(netNs)
+	assert.True(t, exists, "second attack should see existing snapshot and skip taking another")
 
 	// Last attack reverts: load + restore + delete.
 	loaded, ok := loadSnapshot(netNs)
 	require.True(t, ok)
 	assert.Equal(t, firstQdiscCount, len(loaded.Interfaces["eth0"].Qdiscs), "snapshot must be unchanged from first attack's capture")
 	deleteSnapshot(netNs)
-	assert.False(t, hasSnapshot(netNs))
+	_, exists = loadSnapshot(netNs)
+	assert.False(t, exists)
 }
 
 // planCounts aggregates planner decisions for an interface so tests can
@@ -250,10 +289,9 @@ type planCounts struct {
 func planForInterface(qs []tc.Object) planCounts {
 	var p planCounts
 	for _, q := range orderQdiscsForRestore(qs) {
-		switch planRestoreAction(q) {
-		case restoreSkipKernelAuto:
+		if shouldSkipQdiscOnRestore(q) {
 			p.skip++
-		case restoreReplace:
+		} else {
 			p.replace++
 		}
 	}

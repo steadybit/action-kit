@@ -154,20 +154,30 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
+	// snapshotTakenHere records whether this invocation took the qdisc
+	// snapshot (vs reusing one a previous attack had already stored). Used to
+	// roll back the snapshot if the attack's tc commands fail — otherwise the
+	// snapshot would persist describing a state that was never fully installed,
+	// and a later revert would replay it against a partial attack.
+	var snapshotTakenHere bool
 	if mode == modeAdd {
 		if err := pushActiveNetfault(netNsID, opts); err != nil {
 			return err
 		}
 		// Snapshot the root qdisc tree before installing the attack so we can
 		// restore it on revert. Only the first attack per netns takes the
-		// snapshot; subsequent non-conflicting attacks reuse it. Failures are
-		// logged but do not block the attack from running — the customer's
-		// experiment must still execute even if snapshot is unavailable.
-		if snapshotEnabled && !hasSnapshot(netNsID) {
-			if p, ok := opts.(tcCommandProvider); ok {
-				if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
-					if serr := captureSnapshot(runner, netNsID, ifs); serr != nil {
-						log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
+		// snapshot (loadSnapshot returns ok=true once one is stored).
+		// Failures are logged but do not block the attack — the experiment
+		// must still execute even if snapshot is unavailable.
+		if snapshotEnabled {
+			if _, exists := loadSnapshot(netNsID); !exists {
+				if p, ok := opts.(tcCommandProvider); ok {
+					if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
+						if serr := captureSnapshot(runner, netNsID, ifs); serr != nil {
+							log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
+						} else {
+							snapshotTakenHere = true
+						}
 					}
 				}
 			}
@@ -245,22 +255,32 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		logCurrentTcRules(ctx, runner, "after")
 	}
 
+	// If apply failed after taking a snapshot, drop it: the snapshot describes
+	// a state the attack never fully replaced, so a later revert would replay
+	// the original tree against a partially-installed attack. Better to leave
+	// the host with the kernel's default-restore path than with a stale
+	// snapshot we can't trust.
+	if mode == modeAdd && err != nil && snapshotTakenHere {
+		deleteSnapshot(netNsID)
+		log.Warn().Str("netNs", netNsID).Msg("dropped qdisc snapshot because apply errored; revert will fall back to kernel-default restore")
+	}
+
 	if mode == modeDelete {
 		popActiveNetfault(netNsID, opts)
 		// After the last attack on this netns is reverted, restore the saved
 		// qdisc tree (if any). The snapshot only exists when snapshotEnabled
-		// was true at apply time. Restore failures are logged and joined with
-		// the existing err so the experiment result surfaces them, but do not
-		// block the experiment from completing.
+		// was true at apply time and the apply succeeded. On restore failure
+		// keep the snapshot so a manual retry (e.g. operator re-runs revert)
+		// has another chance; only delete on success.
 		if snapshotEnabled && !hasActiveNetfault(netNsID) {
 			if snap, ok := loadSnapshot(netNsID); ok {
 				if rerr := applyRestore(runner, snap); rerr != nil {
-					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; host may be left in a degraded state")
+					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; snapshot retained for retry")
 					err = errors.Join(err, rerr)
 				} else {
 					log.Info().Str("netNs", netNsID).Int("interfaces", len(snap.Interfaces)).Msg("restored qdisc tree to pre-attack state")
+					deleteSnapshot(netNsID)
 				}
-				deleteSnapshot(netNsID)
 			}
 		}
 	}

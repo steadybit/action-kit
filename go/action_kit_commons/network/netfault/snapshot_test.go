@@ -9,6 +9,7 @@ import (
 
 	"github.com/florianl/go-tc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsKernelAutoManaged(t *testing.T) {
@@ -57,27 +58,35 @@ func TestOrderQdiscsForRestore_RootsBeforeChildren(t *testing.T) {
 	in := []tc.Object{child1, root, child2, rootParentZero}
 	out := orderQdiscsForRestore(in)
 
-	assert.Len(t, out, 4, "no entries dropped")
+	require.Len(t, out, 4, "no entries dropped")
 
-	// All roots (Parent == TC_H_ROOT or 0) must appear before any non-root.
-	firstNonRoot := -1
+	// Strong assertion: every child must come AFTER its parent in the
+	// output. The previous form ("scan for first non-root, assert
+	// everything before it was a root") accepted a no-op implementation
+	// that returned input unchanged — if child1 was at index 0,
+	// firstNonRoot=0 and the loop body never ran. Here we look up each
+	// non-root's parent in the output and assert it appears earlier.
+	posByHandleMajor := map[uint32]int{}
 	for i, q := range out {
-		if q.Parent != tcHRoot && q.Parent != 0 {
-			firstNonRoot = i
-			break
+		if q.Handle != 0 {
+			posByHandleMajor[q.Handle&0xffff0000] = i
 		}
 	}
-	assert.GreaterOrEqual(t, firstNonRoot, 0, "expected at least one non-root in output")
-	for i := 0; i < firstNonRoot; i++ {
-		isRoot := out[i].Parent == tcHRoot || out[i].Parent == 0
-		assert.True(t, isRoot, "qdisc at position %d before first non-root should be a root", i)
+	for i, q := range out {
+		if isRootQdisc(q) {
+			continue
+		}
+		parentPos, ok := posByHandleMajor[q.Parent&0xffff0000]
+		require.True(t, ok, "child at %d references parent major not present in output", i)
+		assert.Less(t, parentPos, i, "child %s at %d must come after its parent (parent at %d)", q.Kind, i, parentPos)
 	}
 }
 
 func TestSnapshotStore_Roundtrip(t *testing.T) {
 	t.Cleanup(func() { deleteSnapshot("test-roundtrip") })
 
-	assert.False(t, hasSnapshot("test-roundtrip"))
+	_, ok := loadSnapshot("test-roundtrip")
+	assert.False(t, ok, "store starts empty for this id")
 
 	snap := qdiscSnapshot{
 		NetNsID: "test-roundtrip",
@@ -87,8 +96,6 @@ func TestSnapshotStore_Roundtrip(t *testing.T) {
 	}
 	storeSnapshot(snap)
 
-	assert.True(t, hasSnapshot("test-roundtrip"))
-
 	got, ok := loadSnapshot("test-roundtrip")
 	assert.True(t, ok)
 	assert.Equal(t, "test-roundtrip", got.NetNsID)
@@ -96,7 +103,6 @@ func TestSnapshotStore_Roundtrip(t *testing.T) {
 	assert.Equal(t, uint32(2), got.Interfaces["eth0"].Ifindex)
 
 	deleteSnapshot("test-roundtrip")
-	assert.False(t, hasSnapshot("test-roundtrip"))
 	_, ok = loadSnapshot("test-roundtrip")
 	assert.False(t, ok)
 }

@@ -72,10 +72,13 @@ func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (qdiscSnapsh
 
 		filters, ferr := getFiltersForInterface(conn, idx)
 		if ferr != nil {
-			log.Warn().Err(ferr).Str("interface", name).Msg("read filters; continuing without filter snapshot")
-		} else {
-			ifSnap.Filters = filters
+			// Fail the whole snapshot rather than silently storing an
+			// incomplete one — a partial snapshot leads to orphaned filter
+			// state on restore, which is worse than no snapshot at all
+			// (revert then degrades gracefully to the existing tc-del path).
+			return qdiscSnapshot{NetNsID: netNsID}, fmt.Errorf("read filters on %s: %w", name, ferr)
 		}
+		ifSnap.Filters = filters
 
 		snap.Interfaces[name] = ifSnap
 	}
@@ -109,7 +112,7 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 	for name, ifSnap := range snap.Interfaces {
 		ordered := orderQdiscsForRestore(ifSnap.Qdiscs)
 		for _, q := range ordered {
-			if planRestoreAction(q) == restoreSkipKernelAuto {
+			if shouldSkipQdiscOnRestore(q) {
 				log.Debug().Str("interface", name).Str("kind", q.Kind).Msg("skipping kernel-auto-managed root qdisc (kernel re-attaches)")
 				continue
 			}
@@ -124,7 +127,11 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 
 		for _, f := range ifSnap.Filters {
 			obj := f
-			if ferr := conn.Filter().Add(&obj); ferr != nil {
+			// Replace (not Add): if a leftover filter from incomplete attack
+			// cleanup is still attached at the same parent/handle, Add fails
+			// with "File exists" and the host stays in a mixed state. Replace
+			// is idempotent and matches the qdisc restore path above.
+			if ferr := conn.Filter().Replace(&obj); ferr != nil {
 				log.Warn().Err(ferr).Str("interface", name).Str("kind", f.Kind).Msg("restore filter failed")
 				combined = errors.Join(combined, fmt.Errorf("restore filter %s on %s: %w", f.Kind, name, ferr))
 				continue

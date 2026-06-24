@@ -72,16 +72,6 @@ func deleteSnapshot(netNsID string) {
 	delete(snapshotStore, netNsID)
 }
 
-// hasSnapshot reports whether a snapshot exists for the given netns id without
-// mutating the store. Used to skip taking a second snapshot when a
-// non-conflicting attack joins an active one.
-func hasSnapshot(netNsID string) bool {
-	snapshotStoreLock.Lock()
-	defer snapshotStoreLock.Unlock()
-	_, ok := snapshotStore[netNsID]
-	return ok
-}
-
 // isKernelAutoManaged returns true for qdisc kinds the kernel automatically
 // attaches to an interface when no other root qdisc is present. After
 // `tc qdisc del root` removes the attack's qdisc, the kernel re-creates one of
@@ -98,18 +88,62 @@ func isKernelAutoManaged(kind string) bool {
 // tcHRoot is the parent handle the kernel uses to indicate a root qdisc.
 const tcHRoot uint32 = 0xfffffff1
 
-// orderQdiscsForRestore returns the snapshot's qdiscs sorted parent-first.
-// Roots get sorted before any child whose Parent equals one of the
-// snapshotted handles.
+// handleMajor returns the major portion of a netlink qdisc handle. Netlink
+// encodes a handle as (major << 16) | minor. A qdisc's own handle has minor=0
+// (e.g. 0x80260000 for major 0x8026). A child's `Parent` field points at one
+// of the parent qdisc's classes — same major, non-zero minor (e.g.
+// 0x8026000c). To resolve a parent reference back to the owning qdisc we
+// compare on major only.
+func handleMajor(h uint32) uint32 { return h & 0xffff0000 }
+
+// orderQdiscsForRestore returns the snapshot's qdiscs sorted parent-first via
+// topological sort over the parent->child relation. A qdisc is emitted only
+// after every other qdisc in the input that owns its parent's major has
+// already been emitted. Qdiscs whose Parent is not produced by any other
+// snapshotted qdisc (the roots — Parent == TC_H_ROOT, Parent == 0, or Parent
+// resolves to a handle outside the snapshot) are emitted first.
+//
+// This correctly handles N-level trees: Root -> Child -> GrandChild produces
+// [Root, Child, GrandChild] regardless of the input order, so Replace() of a
+// descendant never runs before its ancestor exists.
 func orderQdiscsForRestore(qs []tc.Object) []tc.Object {
-	out := make([]tc.Object, 0, len(qs))
-	for _, q := range qs {
-		if isRootQdisc(q) {
-			out = append(out, q)
+	if len(qs) == 0 {
+		return nil
+	}
+	// Map every qdisc's handle-major to its index in qs so we can resolve
+	// parent references in O(1). Qdisc handles in the kernel always have
+	// minor=0; children reference their parent via (major<<16)|class-minor,
+	// so we key by the major portion only.
+	handleIndex := make(map[uint32]int, len(qs))
+	for i, q := range qs {
+		if q.Handle != 0 {
+			handleIndex[handleMajor(q.Handle)] = i
 		}
 	}
-	for _, q := range qs {
-		if !isRootQdisc(q) {
+	out := make([]tc.Object, 0, len(qs))
+	emitted := make([]bool, len(qs))
+	// Walk repeatedly over the input until no more progress is possible.
+	// Each pass emits every qdisc whose parent is already emitted (or is an
+	// ancestor outside the snapshot — a root). Worst-case O(depth * N) which
+	// is fine for the small N we deal with.
+	for progress := true; progress; {
+		progress = false
+		for i, q := range qs {
+			if emitted[i] {
+				continue
+			}
+			parentIdx, parentInSnapshot := handleIndex[handleMajor(q.Parent)]
+			if isRootQdisc(q) || !parentInSnapshot || emitted[parentIdx] {
+				out = append(out, q)
+				emitted[i] = true
+				progress = true
+			}
+		}
+	}
+	// Cycle or self-reference: append anything left in input order so the
+	// caller at least sees the data and Replace can decide.
+	for i, q := range qs {
+		if !emitted[i] {
 			out = append(out, q)
 		}
 	}
@@ -123,25 +157,12 @@ func isRootQdisc(q tc.Object) bool {
 	return q.Parent == tcHRoot || q.Parent == 0
 }
 
-// restoreAction describes what restoreSnapshot will do for a given qdisc.
-// Extracted as a pure function so the decision is unit-testable without an
-// actual RTNETLINK socket.
-type restoreAction int
-
-const (
-	// restoreSkipKernelAuto: the kernel re-attaches this kind automatically
-	// after `tc qdisc del root`. We skip it to avoid racing the kernel.
-	restoreSkipKernelAuto restoreAction = iota
-	// restoreReplace: call Qdisc().Replace() with the saved Object so the
-	// operation is idempotent against any leftover state.
-	restoreReplace
-)
-
-// planRestoreAction returns the action restoreSnapshot will take for a single
-// snapshotted qdisc. Pure function — no side effects, no netlink calls.
-func planRestoreAction(q tc.Object) restoreAction {
-	if isKernelAutoManaged(q.Kind) {
-		return restoreSkipKernelAuto
-	}
-	return restoreReplace
+// shouldSkipQdiscOnRestore reports whether restoreSnapshot will skip this
+// qdisc rather than calling Replace. We skip kernel-auto-managed kinds (mq,
+// clsact, ingress) because the kernel re-attaches them automatically after
+// `tc qdisc del root`; restoring them ourselves would race the kernel.
+// Pure function — no side effects, no netlink calls — so the decision is
+// unit-testable without an actual RTNETLINK socket.
+func shouldSkipQdiscOnRestore(q tc.Object) bool {
+	return isKernelAutoManaged(q.Kind)
 }

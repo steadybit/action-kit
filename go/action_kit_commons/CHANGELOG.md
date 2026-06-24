@@ -10,6 +10,22 @@
   root qdiscs (e.g. GKE's `mq + fq` with buckets=32768 horizon=2s) that
   otherwise revert to kernel defaults after `tc qdisc del root` and leave the
   host network degraded until reboot. Off by default; Linux only.
+- netfault snapshot/restore: lifecycle correctness fixes.
+  - Filter restore now uses `Filter().Replace()` instead of `Add()` so leftover
+    filters from incomplete attack cleanup are overwritten, not rejected with
+    "File exists".
+  - Snapshots are dropped if the originating `Apply` errors. A later `Revert`
+    no longer replays an out-of-date snapshot against a partially-installed
+    attack.
+  - Snapshots are retained on `Revert` failure so a manual retry can complete
+    the restore; only deleted after a successful restore.
+  - Filter-read failures now fail the whole snapshot rather than silently
+    storing an incomplete one (which would lead to orphaned filter state on
+    restore).
+  - `orderQdiscsForRestore` is now a topological sort over the parent->child
+    relation (keyed by handle-major) instead of a two-pass partition. Handles
+    N-level qdisc trees correctly; previous implementation could emit a
+    grandchild before its parent in a 3-level tree.
 
 ## 1.8.0
 

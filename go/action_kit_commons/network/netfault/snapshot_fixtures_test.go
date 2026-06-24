@@ -13,9 +13,9 @@ import "github.com/florianl/go-tc"
 // (major << 16) | minor, matching netlink wire format.
 //
 // These fixtures drive the tests in snapshot_realistic_test.go; the test
-// file uses them to assert that orderQdiscsForRestore + planRestoreAction
-// behave correctly for each environment without needing an actual RTNETLINK
-// socket.
+// file uses them to assert that orderQdiscsForRestore +
+// shouldSkipQdiscOnRestore behave correctly for each environment without
+// needing an actual RTNETLINK socket.
 
 // handle encodes a major:minor pair in netlink wire format.
 func handle(major, minor uint16) uint32 {
@@ -46,21 +46,25 @@ func fixtureGkeCosEth0Tuned(ifindex uint32) []tc.Object {
 	// minor of the mq major.
 	childHandles := []uint16{0x802b, 0x8029, 0x802d, 0x802f, 0x8031, 0x8035, 0x8033, 0x8028, 0x802a, 0x802c, 0x8030, 0x802e, 0x8032, 0x8034, 0x8036, 0x8027}
 	// Fq parameters: kernel stores buckets as log2 (15 == 32768 buckets),
-	// horizon in microseconds, refill_delay in milliseconds, etc.
-	tunedFq := &tc.Fq{
-		BucketsLog:      uint32Ptr(15),         // 2^15 == 32768 buckets
-		Horizon:         uint32Ptr(2_000_000),  // 2s == 2_000_000 us
-		Quantum:         uint32Ptr(2948),
-		InitQuantum:     uint32Ptr(14740),
-		FlowRefillDelay: uint32Ptr(40_000_000), // 40ms in nanoseconds
-		PLimit:          uint32Ptr(10000),
-		FlowPLimit:      uint32Ptr(100),
+	// horizon in microseconds, refill_delay in milliseconds, etc. We allocate
+	// a fresh *tc.Fq per child so any test that later mutates one fixture
+	// entry doesn't bleed into the other 15 (shared-pointer aliasing bug).
+	newTunedFq := func() *tc.Fq {
+		return &tc.Fq{
+			BucketsLog:      uint32Ptr(15),         // 2^15 == 32768 buckets
+			Horizon:         uint32Ptr(2_000_000),  // 2s == 2_000_000 us
+			Quantum:         uint32Ptr(2948),
+			InitQuantum:     uint32Ptr(14740),
+			FlowRefillDelay: uint32Ptr(40_000_000), // 40ms in nanoseconds
+			PLimit:          uint32Ptr(10000),
+			FlowPLimit:      uint32Ptr(100),
+		}
 	}
 	for i, h := range childHandles {
 		parentMinor := uint16(i + 1)
 		out = append(out, tc.Object{
 			Msg:       tc.Msg{Ifindex: ifindex, Handle: handle(h, 0), Parent: handle(mqMajor, parentMinor)},
-			Attribute: tc.Attribute{Kind: "fq", Fq: tunedFq},
+			Attribute: tc.Attribute{Kind: "fq", Fq: newTunedFq()},
 		})
 	}
 	return out
