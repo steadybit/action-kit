@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.0
 
 - **Breaking:** `netfault.SetSnapshotRestore` is removed. The snapshot/restore path now runs whenever strict mode is OFF (i.e. `SetStrictRootQdisc(false)`), and is implicitly disabled when strict mode is ON because preflight already refuses non-`noqueue` roots. Callers should drop their `SetSnapshotRestore(...)` call; the behaviour is now driven entirely by `SetStrictRootQdisc`.
 
