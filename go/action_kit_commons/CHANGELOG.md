@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** `netfault.SetSnapshotRestore` is removed. The snapshot/restore path now runs whenever strict mode is OFF (i.e. `SetStrictRootQdisc(false)`), and is implicitly disabled when strict mode is ON because preflight already refuses non-`noqueue` roots. Callers should drop their `SetSnapshotRestore(...)` call; the behaviour is now driven entirely by `SetStrictRootQdisc`.
+
 ## 1.8.2
 
 - netfault: opt-in qdisc snapshot/restore. With `SetSnapshotRestore(true)` (env var `STEADYBIT_EXTENSION_NETWORK_SNAPSHOT_RESTORE=true`), Apply captures the root qdisc tree (qdiscs + filters, incl. tuned `fq` params) of every target interface via RTNETLINK and Revert replays it after the attack's `tc del`. Preserves cloud-tuned roots (e.g. GKE's `mq + fq` with `buckets=32768 horizon=2s`) that previously reset to kernel defaults and degraded the host until reboot. Off by default; Linux only.
