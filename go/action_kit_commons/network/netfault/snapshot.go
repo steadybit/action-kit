@@ -10,24 +10,17 @@ import (
 	"github.com/florianl/go-tc"
 )
 
-// snapshotEnabled is the package-level feature flag for the qdisc snapshot/
-// restore behaviour. Off by default so the change is opt-in for the first
-// release.
-var snapshotEnabled bool
-
-// SetSnapshotRestore toggles the qdisc snapshot+restore behaviour. When
-// enabled, Apply captures the root qdisc tree for every interface the attack
-// touches and Revert replays it after the attack's tc del. This preserves
-// cloud-tuned root qdiscs (e.g. GKE's `mq + fq` with buckets=32768 horizon=2s)
-// that would otherwise revert to kernel defaults after `tc qdisc del root`.
+// Snapshot/restore is no longer a separate toggle: it runs whenever strict
+// mode is OFF, i.e. when the operator has chosen to let network attacks
+// install on non-`noqueue` roots. With strict on, the preflight refuses the
+// attack before snapshot would matter. With strict off, snapshot is what
+// keeps the cloud-tuned root from getting reset to kernel defaults on
+// revert. There's no third state worth supporting (strict=off +
+// snapshot=off was the clobber-no-restore behaviour we retired), so we
+// drive both off the single `strictRootQdisc` knob.
 //
-// Disabled by default. Operators can enable it via the extension config (e.g.
-// STEADYBIT_EXTENSION_NETWORK_SNAPSHOT_RESTORE=true in extension-container).
-//
-// Snapshot/restore uses RTNETLINK (github.com/florianl/go-tc) and only takes
-// effect on Linux. On non-Linux builds the feature flag is accepted but the
-// snapshot is a no-op.
-func SetSnapshotRestore(enabled bool) { snapshotEnabled = enabled }
+// Snapshot/restore uses RTNETLINK (github.com/florianl/go-tc) and only
+// takes effect on Linux. On non-Linux builds the path is a no-op.
 
 // interfaceSnapshot holds the qdisc and filter state for one interface within
 // a single network namespace.

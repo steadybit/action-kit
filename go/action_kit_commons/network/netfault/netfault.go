@@ -165,11 +165,14 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 			return err
 		}
 		// Snapshot the root qdisc tree before installing the attack so we can
-		// restore it on revert. Only the first attack per netns takes the
-		// snapshot (loadSnapshot returns ok=true once one is stored).
-		// Failures are logged but do not block the attack — the experiment
-		// must still execute even if snapshot is unavailable.
-		if snapshotEnabled {
+		// restore it on revert. Only runs when strict mode is OFF — with
+		// strict mode ON the preflight already refused non-`noqueue` roots,
+		// and on a `noqueue` root there's nothing to preserve. Only the first
+		// attack per netns takes the snapshot (loadSnapshot returns ok=true
+		// once one is stored). Failures are logged but do not block the
+		// attack — the experiment must still execute even if snapshot is
+		// unavailable.
+		if !strictRootQdisc {
 			if _, exists := loadSnapshot(netNsID); !exists {
 				if p, ok := opts.(tcCommandProvider); ok {
 					if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
@@ -268,11 +271,11 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	if mode == modeDelete {
 		popActiveNetfault(netNsID, opts)
 		// After the last attack on this netns is reverted, restore the saved
-		// qdisc tree (if any). The snapshot only exists when snapshotEnabled
-		// was true at apply time and the apply succeeded. On restore failure
-		// keep the snapshot so a manual retry (e.g. operator re-runs revert)
-		// has another chance; only delete on success.
-		if snapshotEnabled && !hasActiveNetfault(netNsID) {
+		// qdisc tree (if any). A snapshot only exists when strict mode was
+		// OFF at apply time and the apply succeeded. On restore failure keep
+		// the snapshot so a manual retry (e.g. operator re-runs revert) has
+		// another chance; only delete on success.
+		if !strictRootQdisc && !hasActiveNetfault(netNsID) {
 			if snap, ok := loadSnapshot(netNsID); ok {
 				if rerr := applyRestore(runner, snap); rerr != nil {
 					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; snapshot retained for retry")

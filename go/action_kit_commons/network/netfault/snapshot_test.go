@@ -124,11 +124,3 @@ func TestSnapshotStore_OverwriteSameNetNs(t *testing.T) {
 	assert.Contains(t, got.Interfaces, "eth1")
 }
 
-func TestSetSnapshotRestore_TogglesFlag(t *testing.T) {
-	t.Cleanup(func() { SetSnapshotRestore(false) })
-
-	SetSnapshotRestore(true)
-	assert.True(t, snapshotEnabled)
-	SetSnapshotRestore(false)
-	assert.False(t, snapshotEnabled)
-}
