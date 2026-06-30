@@ -20,6 +20,10 @@ import (
 
 const maxTcCommands = 2048
 
+// ipFamilyFlag is the `ip` CLI option that selects the address family
+// (inet/inet6) for `ip rule` and `ip -batch` calls.
+const ipFamilyFlag = "-family"
+
 var (
 	ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 
@@ -46,9 +50,23 @@ type CommandRunner interface {
 	netNsPath() string
 }
 
-// Apply installs the attack.
-func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, modeAdd)
+// Apply installs the attack and returns a QdiscSnapshot describing the
+// pre-attack qdisc tree. The caller is expected to persist the snapshot in
+// the action's per-execution state (action_kit_sdk JSON state) and pass it
+// back to Revert.
+//
+// The returned snapshot is empty (QdiscSnapshot.IsEmpty() == true) when:
+//   - strict-root-qdisc mode is on (preflight refused non-`noqueue` roots —
+//     there's nothing to preserve),
+//   - the opts do not implement tcCommandProvider (no tc root touched),
+//   - the snapshot capture itself errored (logged; attack still proceeds).
+//
+// On Apply failure the returned snapshot is empty even when capture
+// succeeded: the snapshot would describe a state the attack never fully
+// replaced, and replaying it from Revert would clobber a partial attack
+// install with the original tree. Drop it instead.
+func Apply(ctx context.Context, runner CommandRunner, opts Opts) (QdiscSnapshot, error) {
+	return generateAndRunCommands(ctx, runner, opts, modeAdd, QdiscSnapshot{})
 }
 
 // ErrUserRootQdisc reports that a target interface already carries a
@@ -113,206 +131,247 @@ func hasActiveNetfault(netNsId string) bool {
 	return len(activeNetfault[netNsId]) > 0
 }
 
-func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, modeDelete)
+// Revert removes the attack and replays the snapshot (if non-empty) onto
+// the netns root qdisc tree. `snap` should be the value Apply returned for
+// the same opts; pass a zero QdiscSnapshot to skip the restore step (used
+// by callers that don't care about preserving the pre-attack tree, e.g.
+// iptables-only attacks).
+func Revert(ctx context.Context, runner CommandRunner, opts Opts, snap QdiscSnapshot) error {
+	_, err := generateAndRunCommands(ctx, runner, opts, modeDelete, snap)
+	return err
 }
 
-func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode) error {
-	var ipCommandsV4, ipCommandsV6, tcCommands []string
-	var err error
-
-	if p, ok := opts.(ipCommandProvider); ok {
-		if ipCommandsV4, err = p.ipCommands(familyV4, mode); err != nil {
-			return err
-		}
-		if ipv6Supported() {
-			if ipCommandsV6, err = p.ipCommands(familyV6, mode); err != nil {
-				return err
-			}
-		}
+// generateAndRunCommands is the shared body for Apply (modeAdd) and Revert
+// (modeDelete). On Add it captures a snapshot before running the attack
+// commands and returns it to the caller; on Delete it consumes the snapshot
+// from the caller and replays it after running the cleanup commands.
+//
+// The `incoming` snapshot is meaningful on Delete only — Apply ignores it.
+// The returned snapshot is meaningful on Add only — Delete always returns an
+// empty one. Splitting Apply/Revert into separate exported functions keeps
+// the public API typed (Apply returns a snapshot, Revert doesn't) without
+// the shared body needing a sum type.
+func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode, incoming QdiscSnapshot) (QdiscSnapshot, error) {
+	ipCommandsV4, ipCommandsV6, tcCommands, err := generateCommands(opts, mode)
+	if err != nil {
+		return QdiscSnapshot{}, err
 	}
-
-	if p, ok := opts.(tcCommandProvider); ok {
-		if tcCommands, err = p.tcCommands(mode); err != nil {
-			return err
-		}
-	}
-
-	if log.Debug().Enabled() {
-		if len(ipCommandsV4) > 0 {
-			log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v4", ipCommandsV4).Msg("prepared ip batch commands (IPv4)")
-		}
-		if len(ipCommandsV6) > 0 {
-			log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v6", ipCommandsV6).Msg("prepared ip batch commands (IPv6)")
-		}
-		if len(tcCommands) > 0 {
-			log.Debug().Str("mode", string(mode)).Strs("tc_cmds", tcCommands).Msg("prepared tc batch commands")
-		}
-	}
+	logPreparedCommands(mode, ipCommandsV4, ipCommandsV6, tcCommands)
 
 	netNsID := runner.id()
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
-	// snapshotTakenHere records whether this invocation took the qdisc
-	// snapshot (vs reusing one a previous attack had already stored). Used to
-	// roll back the snapshot if the attack's tc commands fail — otherwise the
-	// snapshot would persist describing a state that was never fully installed,
-	// and a later revert would replay it against a partial attack.
-	var snapshotTakenHere bool
+	var snapshot QdiscSnapshot
 	if mode == modeAdd {
 		if err := pushActiveNetfault(netNsID, opts); err != nil {
-			return err
+			return QdiscSnapshot{}, err
 		}
-		// Snapshot the root qdisc tree before installing the attack so we can
-		// restore it on revert. Only runs when strict mode is OFF — with
-		// strict mode ON the preflight already refused non-`noqueue` roots,
-		// and on a `noqueue` root there's nothing to preserve. Only the first
-		// attack per netns takes the snapshot (loadSnapshot returns ok=true
-		// once one is stored). Failures are logged but do not block the
-		// attack — the experiment must still execute even if snapshot is
-		// unavailable.
-		if !strictRootQdisc {
-			if _, exists := loadSnapshot(netNsID); !exists {
-				if p, ok := opts.(tcCommandProvider); ok {
-					if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
-						if serr := captureSnapshot(runner, netNsID, ifs); serr != nil {
-							log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
-						} else {
-							snapshotTakenHere = true
-						}
-					}
-				}
-			}
-		}
+		snapshot = captureSnapshotForApply(runner, netNsID, opts)
 	}
 
-	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, runner, familyV4, "before")
-	}
+	logBeforeAfterRules(ctx, runner, ipCommandsV4, ipCommandsV6, tcCommands, "before")
 
-	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, runner, familyV6, "before")
+	if scriptErr := runIptablesScripts(ctx, runner, opts, mode, &err); scriptErr != nil {
+		return QdiscSnapshot{}, scriptErr
 	}
+	runBatchCommands(ctx, runner, mode, ipCommandsV4, ipCommandsV6, tcCommands, &err)
 
-	if len(tcCommands) > 0 {
-		logCurrentTcRules(ctx, runner, "before")
-	}
-
-	// If opts provide iptables scripts, execute them first
-	if provider, ok := opts.(iptablesScriptProvider); ok {
-		v4, v6, scriptErr := provider.iptablesScripts(mode)
-		if scriptErr != nil {
-			return scriptErr
-		}
-
-		if log.Debug().Enabled() {
-			if len(v4) > 0 {
-				log.Debug().Str("mode", string(mode)).Str("iptables_v4", strings.Join(v4, "\n")).Msg("prepared iptables-restore script (IPv4)")
-			}
-			if len(v6) > 0 {
-				log.Debug().Str("mode", string(mode)).Str("iptables_v6", strings.Join(v6, "\n")).Msg("prepared ip6tables-restore script (IPv6)")
-			}
-		}
-		if len(v4) > 0 {
-			if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, v4); restoreErr != nil {
-				log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("iptables-restore failed")
-				err = errors.Join(err, restoreErr)
-			}
-		}
-		if ipv6Supported() && len(v6) > 0 {
-			if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, v6); restoreErr != nil {
-				log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("ip6tables-restore failed")
-				err = errors.Join(err, restoreErr)
-			}
-		}
-	}
-
-	if len(ipCommandsV4) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV4, "-family", string(familyV4)); ipErr != nil {
-			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV4))
-		}
-	}
-
-	if len(ipCommandsV6) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipCommandsV6, "-family", string(familyV6)); ipErr != nil {
-			err = errors.Join(err, filterBatchErrors(ipErr, mode, ipCommandsV6))
-		}
-	}
-
-	if len(tcCommands) > 0 {
-		if _, tcErr := executeTcCommands(ctx, runner, tcCommands); tcErr != nil {
-			err = errors.Join(err, filterBatchErrors(tcErr, mode, tcCommands))
-		}
-	}
-
-	if len(ipCommandsV4) > 0 {
-		logCurrentIpRules(ctx, runner, familyV4, "after")
-	}
-
-	if len(ipCommandsV6) > 0 {
-		logCurrentIpRules(ctx, runner, familyV6, "after")
-	}
-
-	if len(tcCommands) > 0 {
-		logCurrentTcRules(ctx, runner, "after")
-	}
+	logBeforeAfterRules(ctx, runner, ipCommandsV4, ipCommandsV6, tcCommands, "after")
 
 	// If apply failed after taking a snapshot, drop it: the snapshot describes
 	// a state the attack never fully replaced, so a later revert would replay
 	// the original tree against a partially-installed attack. Better to leave
 	// the host with the kernel's default-restore path than with a stale
 	// snapshot we can't trust.
-	if mode == modeAdd && err != nil && snapshotTakenHere {
-		deleteSnapshot(netNsID)
+	if mode == modeAdd && err != nil && !snapshot.IsEmpty() {
 		log.Warn().Str("netNs", netNsID).Msg("dropped qdisc snapshot because apply errored; revert will fall back to kernel-default restore")
+		snapshot = QdiscSnapshot{}
 	}
 
 	if mode == modeDelete {
 		popActiveNetfault(netNsID, opts)
-		// After the last attack on this netns is reverted, restore the saved
-		// qdisc tree (if any). A snapshot only exists when strict mode was
-		// OFF at apply time and the apply succeeded. On restore failure keep
-		// the snapshot so a manual retry (e.g. operator re-runs revert) has
-		// another chance; only delete on success.
-		if !strictRootQdisc && !hasActiveNetfault(netNsID) {
-			if snap, ok := loadSnapshot(netNsID); ok {
-				if rerr := applyRestore(runner, snap); rerr != nil {
-					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; snapshot retained for retry")
-					err = errors.Join(err, rerr)
-				} else {
-					// applyRestore logs the verified post-restore state itself.
-					deleteSnapshot(netNsID)
-				}
+		// Replay the caller-provided snapshot (if any) after the attack's
+		// tc-del has run. Strict-mode check guards against a caller passing
+		// in a snapshot from a mode flip — there's no scenario where Revert
+		// should replay a snapshot when strict mode is on at revert time.
+		if !strictRootQdisc && !incoming.IsEmpty() {
+			if rerr := applyRestore(runner, incoming); rerr != nil {
+				log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed")
+				err = errors.Join(err, rerr)
 			}
 		}
 	}
 
-	return err
+	return snapshot, err
 }
 
-// captureSnapshot opens the runner's netns and stores the qdisc snapshot.
+// generateCommands invokes the opt-in command providers and returns the
+// prepared ip / tc batch command strings. Any provider error short-circuits
+// and is returned to the caller.
+func generateCommands(opts Opts, mode mode) (ipV4, ipV6, tcCmds []string, err error) {
+	if p, ok := opts.(ipCommandProvider); ok {
+		if ipV4, err = p.ipCommands(familyV4, mode); err != nil {
+			return nil, nil, nil, err
+		}
+		if ipv6Supported() {
+			if ipV6, err = p.ipCommands(familyV6, mode); err != nil {
+				return nil, nil, nil, err
+			}
+		}
+	}
+	if p, ok := opts.(tcCommandProvider); ok {
+		if tcCmds, err = p.tcCommands(mode); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	return ipV4, ipV6, tcCmds, nil
+}
+
+// logPreparedCommands emits the prepared batch commands at DEBUG level so
+// operators reproducing an attack can see exactly what would be applied.
+// No-op when DEBUG is not enabled.
+func logPreparedCommands(mode mode, ipV4, ipV6, tcCmds []string) {
+	if !log.Debug().Enabled() {
+		return
+	}
+	if len(ipV4) > 0 {
+		log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v4", ipV4).Msg("prepared ip batch commands (IPv4)")
+	}
+	if len(ipV6) > 0 {
+		log.Debug().Str("mode", string(mode)).Strs("ip_cmds_v6", ipV6).Msg("prepared ip batch commands (IPv6)")
+	}
+	if len(tcCmds) > 0 {
+		log.Debug().Str("mode", string(mode)).Strs("tc_cmds", tcCmds).Msg("prepared tc batch commands")
+	}
+}
+
+// captureSnapshotForApply returns the qdisc snapshot for the given runner +
+// opts, or an empty snapshot when capture is not applicable (strict mode on,
+// no tc root touched) or fails (logged). The empty-snapshot fallback keeps
+// the attack running even when snapshot is unavailable — the experiment
+// always proceeds, only revert behaviour degrades.
+func captureSnapshotForApply(runner CommandRunner, netNsID string, opts Opts) QdiscSnapshot {
+	if strictRootQdisc {
+		return QdiscSnapshot{}
+	}
+	p, ok := opts.(tcCommandProvider)
+	if !ok {
+		return QdiscSnapshot{}
+	}
+	ifs := p.tcRootQdiscInterfaces()
+	if len(ifs) == 0 {
+		return QdiscSnapshot{}
+	}
+	snap, err := captureSnapshot(runner, netNsID, ifs)
+	if err != nil {
+		log.Warn().Err(err).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
+		return QdiscSnapshot{}
+	}
+	return snap
+}
+
+// logBeforeAfterRules emits the current ip/tc state at TRACE level around
+// the batch execution. Either skipped or unfolded into the three protocol
+// calls.
+func logBeforeAfterRules(ctx context.Context, runner CommandRunner, ipV4, ipV6, tcCmds []string, when string) {
+	if len(ipV4) > 0 {
+		logCurrentIpRules(ctx, runner, familyV4, when)
+	}
+	if len(ipV6) > 0 {
+		logCurrentIpRules(ctx, runner, familyV6, when)
+	}
+	if len(tcCmds) > 0 {
+		logCurrentTcRules(ctx, runner, when)
+	}
+}
+
+// runIptablesScripts loads the caller's iptables-restore scripts and pipes
+// them through iptables-restore / ip6tables-restore. iptables errors are
+// joined into *outErr (non-fatal for the attack lifecycle); only a
+// scriptErr from the provider itself short-circuits the caller.
+func runIptablesScripts(ctx context.Context, runner CommandRunner, opts Opts, mode mode, outErr *error) error {
+	provider, ok := opts.(iptablesScriptProvider)
+	if !ok {
+		return nil
+	}
+	v4, v6, scriptErr := provider.iptablesScripts(mode)
+	if scriptErr != nil {
+		return scriptErr
+	}
+	logIptablesScripts(mode, v4, v6)
+	if len(v4) > 0 {
+		if _, restoreErr := runner.run(ctx, []string{"iptables-restore", "-w", "-n"}, v4); restoreErr != nil {
+			log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("iptables-restore failed")
+			*outErr = errors.Join(*outErr, restoreErr)
+		}
+	}
+	if ipv6Supported() && len(v6) > 0 {
+		if _, restoreErr := runner.run(ctx, []string{"ip6tables-restore", "-w", "-n"}, v6); restoreErr != nil {
+			log.Warn().Err(restoreErr).Str("mode", string(mode)).Msg("ip6tables-restore failed")
+			*outErr = errors.Join(*outErr, restoreErr)
+		}
+	}
+	return nil
+}
+
+// logIptablesScripts emits the prepared iptables-restore scripts at DEBUG
+// level. Separate from logPreparedCommands because the iptables scripts are
+// multi-line strings rather than command slices.
+func logIptablesScripts(mode mode, v4, v6 []string) {
+	if !log.Debug().Enabled() {
+		return
+	}
+	if len(v4) > 0 {
+		log.Debug().Str("mode", string(mode)).Str("iptables_v4", strings.Join(v4, "\n")).Msg("prepared iptables-restore script (IPv4)")
+	}
+	if len(v6) > 0 {
+		log.Debug().Str("mode", string(mode)).Str("iptables_v6", strings.Join(v6, "\n")).Msg("prepared ip6tables-restore script (IPv6)")
+	}
+}
+
+// runBatchCommands executes the prepared ip/tc batch commands. Errors are
+// joined into *outErr — the caller decides whether to escalate after the
+// whole batch has run.
+func runBatchCommands(ctx context.Context, runner CommandRunner, mode mode, ipV4, ipV6, tcCmds []string, outErr *error) {
+	if len(ipV4) > 0 {
+		if _, ipErr := executeIpCommands(ctx, runner, ipV4, ipFamilyFlag, string(familyV4)); ipErr != nil {
+			*outErr = errors.Join(*outErr, filterBatchErrors(ipErr, mode, ipV4))
+		}
+	}
+	if len(ipV6) > 0 {
+		if _, ipErr := executeIpCommands(ctx, runner, ipV6, ipFamilyFlag, string(familyV6)); ipErr != nil {
+			*outErr = errors.Join(*outErr, filterBatchErrors(ipErr, mode, ipV6))
+		}
+	}
+	if len(tcCmds) > 0 {
+		if _, tcErr := executeTcCommands(ctx, runner, tcCmds); tcErr != nil {
+			*outErr = errors.Join(*outErr, filterBatchErrors(tcErr, mode, tcCmds))
+		}
+	}
+}
+
+// captureSnapshot opens the runner's netns and returns the qdisc snapshot.
 // Wrapped in its own function so the netns-fd open/close is one place.
 // Logs the rendered snapshot at INFO level so operators investigating a
 // restore failure can see exactly what was captured.
-func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) error {
+func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) (QdiscSnapshot, error) {
 	path := runner.netNsPath()
 	f, err := openNetNs(path)
 	if err != nil {
-		return err
+		return QdiscSnapshot{}, err
 	}
 	defer func() { _ = f.Close() }()
 	snap, err := takeSnapshot(int(f.Fd()), netNsID, interfaces)
 	if err != nil {
-		return err
+		return QdiscSnapshot{}, err
 	}
-	storeSnapshot(snap)
 	log.Info().
 		Str("netNs", netNsID).
 		Int("interfaces", len(snap.Interfaces)).
 		Str("snapshot", renderSnapshot(snap)).
 		Msg("captured qdisc snapshot")
-	return nil
+	return snap, nil
 }
 
 // applyRestore opens the runner's netns, replays the saved snapshot, then
@@ -320,7 +379,7 @@ func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) 
 // restore. The post-restore snapshot is logged at INFO so the operator can
 // see whether the kernel accepted the replay byte-for-byte. Any structural
 // divergence (missing qdisc, extra qdisc, wrong parent) is logged at WARN.
-func applyRestore(runner CommandRunner, snap qdiscSnapshot) error {
+func applyRestore(runner CommandRunner, snap QdiscSnapshot) error {
 	path := runner.netNsPath()
 	f, err := openNetNs(path)
 	if err != nil {
@@ -375,7 +434,7 @@ func applyRestore(runner CommandRunner, snap qdiscSnapshot) error {
 
 // snapshotInterfaceNames returns the sorted set of interface names in the
 // snapshot. Used to re-snapshot for post-restore verification.
-func snapshotInterfaceNames(snap qdiscSnapshot) []string {
+func snapshotInterfaceNames(snap QdiscSnapshot) []string {
 	out := make([]string, 0, len(snap.Interfaces))
 	for name := range snap.Interfaces {
 		out = append(out, name)
@@ -388,7 +447,7 @@ func logCurrentIpRules(ctx context.Context, runner CommandRunner, family family,
 		return
 	}
 
-	stdout, err := executeIpCommands(ctx, runner, []string{"rule show"}, "-family", string(family))
+	stdout, err := executeIpCommands(ctx, runner, []string{"rule show"}, ipFamilyFlag, string(family))
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current ip rules")
 		return
@@ -440,7 +499,7 @@ func defaultIpv6Supported() bool {
 	// execute the following command to check if ipv6 is disabled:
 	// ip -family inet6 rule
 	// if the command fails, we assume that ipv6 is disabled
-	cmd := exec.Command("ip", "-family", "inet6", "rule")
+	cmd := exec.Command("ip", ipFamilyFlag, "inet6", "rule")
 	if err := cmd.Run(); err != nil {
 		log.Trace().Err(err).Msg("ipv6 is disabled")
 		return false

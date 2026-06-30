@@ -28,7 +28,7 @@ func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
 	}
 
 	r := &fakeRunner{}
-	err := Apply(context.Background(), r, opts)
+	_, err := Apply(context.Background(), r, opts)
 	assert.NoError(t, err)
 
 	iptablesIdx := -1

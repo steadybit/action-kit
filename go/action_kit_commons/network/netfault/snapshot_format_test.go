@@ -20,9 +20,9 @@ import (
 // snapshot captured what they expect.
 func TestRenderSnapshot_GkeCosResemblesTcOutput(t *testing.T) {
 	const eth0 uint32 = 2
-	snap := qdiscSnapshot{
+	snap := QdiscSnapshot{
 		NetNsID: "test",
-		Interfaces: map[string]interfaceSnapshot{
+		Interfaces: map[string]InterfaceSnapshot{
 			"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: fixtureGkeCosEth0Tuned(eth0)},
 		},
 	}
@@ -51,16 +51,16 @@ func TestRenderSnapshot_GkeCosResemblesTcOutput(t *testing.T) {
 // distinguishable from a render bug (we explicitly print '(empty snapshot)'
 // rather than nothing).
 func TestRenderSnapshot_EmptyIsSelfDescribing(t *testing.T) {
-	assert.Equal(t, "(empty snapshot)", renderSnapshot(qdiscSnapshot{}))
+	assert.Equal(t, "(empty snapshot)", renderSnapshot(QdiscSnapshot{}))
 }
 
 // TestRenderSnapshot_SortedInterfaces ensures the rendered output is stable
 // across calls — two interfaces in the snapshot must always appear in the
 // same order, otherwise log diffing between captures becomes painful.
 func TestRenderSnapshot_SortedInterfaces(t *testing.T) {
-	snap := qdiscSnapshot{
+	snap := QdiscSnapshot{
 		NetNsID: "test",
-		Interfaces: map[string]interfaceSnapshot{
+		Interfaces: map[string]InterfaceSnapshot{
 			"zeth": {Name: "zeth", Ifindex: 3, Qdiscs: []tc.Object{{
 				Msg:       tc.Msg{Ifindex: 3, Handle: handle(1, 0), Parent: tcHRoot},
 				Attribute: tc.Attribute{Kind: "noqueue"},
@@ -83,10 +83,10 @@ func TestRenderSnapshot_SortedInterfaces(t *testing.T) {
 // triggers the "post-restore state matches snapshot" log message.
 func TestCompareSnapshotsByHandle_NoDiffForIdentical(t *testing.T) {
 	const eth0 uint32 = 2
-	a := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	a := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: fixtureGkeCosEth0Tuned(eth0)},
 	}}
-	b := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	b := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: fixtureGkeCosEth0Tuned(eth0)},
 	}}
 	assert.Empty(t, compareSnapshotsByHandle(a, b))
@@ -100,10 +100,10 @@ func TestCompareSnapshotsByHandle_DetectsMissingChild(t *testing.T) {
 	full := fixtureGkeCosEth0Tuned(eth0)
 	partial := full[:len(full)-1] // drop the last fq child
 
-	before := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	before := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: full},
 	}}
-	after := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	after := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: partial},
 	}}
 	diff := compareSnapshotsByHandle(before, after)
@@ -127,10 +127,10 @@ func TestCompareSnapshotsByHandle_IgnoresKernelAutoManaged(t *testing.T) {
 			noMq = append(noMq, q)
 		}
 	}
-	before := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	before := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: full},
 	}}
-	after := qdiscSnapshot{Interfaces: map[string]interfaceSnapshot{
+	after := QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{
 		"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: noMq},
 	}}
 	assert.Empty(t, compareSnapshotsByHandle(before, after), "mq absence must be ignored — it's kernel-auto-managed")

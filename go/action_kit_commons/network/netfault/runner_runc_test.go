@@ -48,10 +48,10 @@ func Test_generateAndRunCommands_using_runc_should_serialize(t *testing.T) {
 
 			runner := NewRuncRunner(runcMock, sidecar)
 
-			_ = Apply(context.Background(), runner, &blackholeOpts)
-			defer func(ctx context.Context, runner CommandRunner, opts Opts) {
-				_ = Revert(ctx, runner, opts)
-			}(context.Background(), runner, &blackholeOpts)
+			snap, _ := Apply(context.Background(), runner, &blackholeOpts)
+			defer func(ctx context.Context, runner CommandRunner, opts Opts, snap QdiscSnapshot) {
+				_ = Revert(ctx, runner, opts, snap)
+			}(context.Background(), runner, &blackholeOpts, snap)
 		}()
 	}
 	wg.Wait()

@@ -87,40 +87,13 @@ func TestOrderQdiscsForRestore_RootsBeforeChildren(t *testing.T) {
 	}
 }
 
-func TestSnapshotStore_Roundtrip(t *testing.T) {
-	t.Cleanup(func() { deleteSnapshot("test-roundtrip") })
-
-	_, ok := loadSnapshot("test-roundtrip")
-	assert.False(t, ok, "store starts empty for this id")
-
-	snap := qdiscSnapshot{
-		NetNsID: "test-roundtrip",
-		Interfaces: map[string]interfaceSnapshot{
-			"eth0": {Name: "eth0", Ifindex: 2},
-		},
-	}
-	storeSnapshot(snap)
-
-	got, ok := loadSnapshot("test-roundtrip")
-	assert.True(t, ok)
-	assert.Equal(t, "test-roundtrip", got.NetNsID)
-	assert.Contains(t, got.Interfaces, "eth0")
-	assert.Equal(t, uint32(2), got.Interfaces["eth0"].Ifindex)
-
-	deleteSnapshot("test-roundtrip")
-	_, ok = loadSnapshot("test-roundtrip")
-	assert.False(t, ok)
-}
-
-func TestSnapshotStore_OverwriteSameNetNs(t *testing.T) {
-	t.Cleanup(func() { deleteSnapshot("test-overwrite") })
-
-	storeSnapshot(qdiscSnapshot{NetNsID: "test-overwrite", Interfaces: map[string]interfaceSnapshot{"eth0": {Name: "eth0"}}})
-	storeSnapshot(qdiscSnapshot{NetNsID: "test-overwrite", Interfaces: map[string]interfaceSnapshot{"eth1": {Name: "eth1"}}})
-
-	got, ok := loadSnapshot("test-overwrite")
-	assert.True(t, ok)
-	assert.NotContains(t, got.Interfaces, "eth0", "second store should replace, not merge")
-	assert.Contains(t, got.Interfaces, "eth1")
+func TestQdiscSnapshot_IsEmpty(t *testing.T) {
+	assert.True(t, QdiscSnapshot{}.IsEmpty(), "zero value is empty")
+	assert.True(t, QdiscSnapshot{NetNsID: "x"}.IsEmpty(), "no interfaces is empty (regardless of NetNsID)")
+	assert.True(t, QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{}}.IsEmpty(), "empty map is empty")
+	assert.False(t,
+		QdiscSnapshot{Interfaces: map[string]InterfaceSnapshot{"eth0": {Name: "eth0"}}}.IsEmpty(),
+		"at least one interface makes it non-empty",
+	)
 }
 

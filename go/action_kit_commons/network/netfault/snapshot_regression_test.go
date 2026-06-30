@@ -89,7 +89,7 @@ func TestReAnchorAutoManagedParents_RewritesGkeStyleMqChildren(t *testing.T) {
 	savedMqMajor := uint32(0x80260000)
 	liveMqMajor := uint32(0x00000000) // kernel re-attaches mq with handle 0:
 
-	saved := interfaceSnapshot{
+	saved := InterfaceSnapshot{
 		Name:    "eth0",
 		Ifindex: eth0,
 		Qdiscs: []tc.Object{
@@ -127,7 +127,7 @@ func TestReAnchorAutoManagedParents_RewritesGkeStyleMqChildren(t *testing.T) {
 // through untouched.
 func TestReAnchorAutoManagedParents_NoMatchingRootIsNoOp(t *testing.T) {
 	const eth0 uint32 = 2
-	saved := interfaceSnapshot{
+	saved := InterfaceSnapshot{
 		Name:    "eth0",
 		Ifindex: eth0,
 		Qdiscs: []tc.Object{
@@ -150,7 +150,7 @@ func TestReAnchorAutoManagedParents_NoMatchingRootIsNoOp(t *testing.T) {
 // clsact, we must not rewrite (the relationship doesn't carry over).
 func TestReAnchorAutoManagedParents_OnlyRewritesMatchingKind(t *testing.T) {
 	const eth0 uint32 = 2
-	saved := interfaceSnapshot{
+	saved := InterfaceSnapshot{
 		Name:    "eth0",
 		Ifindex: eth0,
 		Qdiscs: []tc.Object{
@@ -174,7 +174,7 @@ func TestReAnchorAutoManagedParents_OnlyRewritesMatchingKind(t *testing.T) {
 func TestReAnchorAutoManagedParents_FiltersIfindex(t *testing.T) {
 	const eth0 uint32 = 2
 	const eth1 uint32 = 3
-	saved := interfaceSnapshot{
+	saved := InterfaceSnapshot{
 		Name:    "eth0",
 		Ifindex: eth0,
 		Qdiscs: []tc.Object{
@@ -199,7 +199,7 @@ func TestReAnchorAutoManagedParents_FiltersIfindex(t *testing.T) {
 func TestReAnchorAutoManagedParents_PreservesAllFields(t *testing.T) {
 	const eth0 uint32 = 2
 	tunedFq := &tc.Fq{BucketsLog: uint32Ptr(15), Horizon: uint32Ptr(2_000_000)}
-	saved := interfaceSnapshot{
+	saved := InterfaceSnapshot{
 		Name:    "eth0",
 		Ifindex: eth0,
 		Qdiscs: []tc.Object{
