@@ -115,13 +115,25 @@ func buildRepresentativeSnapshot() QdiscSnapshot {
 		},
 	}
 
+	// clsact and ingress share the same kernel slot
+	// (TC_H_CLSACT == TC_H_INGRESS == 0xffff0000) so a real interface only
+	// ever carries one. We exercise both kinds in the JSON roundtrip by
+	// putting them on different interfaces (eth0 has clsact alongside mq+fq;
+	// eth3 has ingress on its own). The handle + parent values match what
+	// the kernel reports — handleMajor(parent) == handleMajor(handle), but
+	// the topological sort treats them as roots via isRootQdisc only when
+	// Parent is TC_H_ROOT or 0; here they're hook qdiscs and fall through
+	// the cycle-detection fallback in orderQdiscsForRestore. That's fine for
+	// the restore path (isKernelAutoManaged skips them), but it would be
+	// confusing if a future test reused this fixture against ordering code,
+	// so keep them apart.
 	clsact := tc.Object{
 		Msg:       tc.Msg{Ifindex: 2, Handle: 0xffff0000, Parent: 0xfffffff1},
 		Attribute: tc.Attribute{Kind: "clsact"},
 	}
 
 	ingress := tc.Object{
-		Msg:       tc.Msg{Ifindex: 2, Handle: 0xffff0000, Parent: 0xfffffff1},
+		Msg:       tc.Msg{Ifindex: 6, Handle: 0xffff0000, Parent: 0xfffffff1},
 		Attribute: tc.Attribute{Kind: "ingress"},
 	}
 
@@ -162,8 +174,14 @@ func buildRepresentativeSnapshot() QdiscSnapshot {
 			"eth0": {
 				Name:    "eth0",
 				Ifindex: 2,
-				Qdiscs:  []tc.Object{mqRoot, fqChild, clsact, ingress},
+				Qdiscs:  []tc.Object{mqRoot, fqChild, clsact},
 				Filters: []tc.Object{filter},
+			},
+			"eth3": {
+				Name:    "eth3",
+				Ifindex: 6,
+				Qdiscs:  []tc.Object{ingress},
+				Filters: nil,
 			},
 			"eth1": {
 				Name:    "eth1",
