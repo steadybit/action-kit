@@ -20,6 +20,10 @@ import (
 
 const maxTcCommands = 2048
 
+// ipFamilyFlag is the `ip` CLI option that selects the address family
+// (inet/inet6) for `ip rule` and `ip -batch` calls.
+const ipFamilyFlag = "-family"
+
 var (
 	ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 
@@ -331,12 +335,12 @@ func logIptablesScripts(mode mode, v4, v6 []string) {
 // whole batch has run.
 func runBatchCommands(ctx context.Context, runner CommandRunner, mode mode, ipV4, ipV6, tcCmds []string, outErr *error) {
 	if len(ipV4) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipV4, "-family", string(familyV4)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipV4, ipFamilyFlag, string(familyV4)); ipErr != nil {
 			*outErr = errors.Join(*outErr, filterBatchErrors(ipErr, mode, ipV4))
 		}
 	}
 	if len(ipV6) > 0 {
-		if _, ipErr := executeIpCommands(ctx, runner, ipV6, "-family", string(familyV6)); ipErr != nil {
+		if _, ipErr := executeIpCommands(ctx, runner, ipV6, ipFamilyFlag, string(familyV6)); ipErr != nil {
 			*outErr = errors.Join(*outErr, filterBatchErrors(ipErr, mode, ipV6))
 		}
 	}
@@ -443,7 +447,7 @@ func logCurrentIpRules(ctx context.Context, runner CommandRunner, family family,
 		return
 	}
 
-	stdout, err := executeIpCommands(ctx, runner, []string{"rule show"}, "-family", string(family))
+	stdout, err := executeIpCommands(ctx, runner, []string{"rule show"}, ipFamilyFlag, string(family))
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current ip rules")
 		return
@@ -495,7 +499,7 @@ func defaultIpv6Supported() bool {
 	// execute the following command to check if ipv6 is disabled:
 	// ip -family inet6 rule
 	// if the command fails, we assume that ipv6 is disabled
-	cmd := exec.Command("ip", "-family", "inet6", "rule")
+	cmd := exec.Command("ip", ipFamilyFlag, "inet6", "rule")
 	if err := cmd.Run(); err != nil {
 		log.Trace().Err(err).Msg("ipv6 is disabled")
 		return false
