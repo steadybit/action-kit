@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.0
+
+- **Breaking:** netfault snapshot now lives in caller-owned state, not a process-local map.
+  `netfault.Apply` returns `(QdiscSnapshot, error)`; `netfault.Revert` takes the snapshot as a
+  fourth argument. Types `QdiscSnapshot` and `InterfaceSnapshot` are exported and JSON-serializable
+  so callers can persist them in their action's per-execution state. The in-memory `snapshotStore`
+  is removed. This makes the snapshot survive extension restarts mid-attack (state lives on the
+  Steadybit platform, not the extension pod) and removes the cross-attack store coordination that
+  was already redundant given `activeNetfault` serializes attacks per netns. `tc.Object` JSON
+  roundtrip is verified by a new regression test (`TestQdiscSnapshotJSONRoundtrip`) covering mq,
+  tuned fq (BucketsLog/Horizon), prio, htb, clsact, ingress, pfifo_fast, noqueue, and filters.
+
 ## 1.9.0
 
 - **Breaking:** `netfault.SetSnapshotRestore` is removed. The snapshot/restore path now runs whenever strict mode is OFF (i.e. `SetStrictRootQdisc(false)`), and is implicitly disabled when strict mode is ON because preflight already refuses non-`noqueue` roots. Callers should drop their `SetSnapshotRestore(...)` call; the behaviour is now driven entirely by `SetStrictRootQdisc`.

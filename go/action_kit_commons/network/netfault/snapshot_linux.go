@@ -36,8 +36,8 @@ func openNetNs(path string) (*os.File, error) {
 // takeSnapshot captures the root qdisc tree and filters for every interface in
 // `interfaces` within the netns identified by `netNsFd`. Interfaces not found
 // in the netns are silently skipped (they may be CNI veths that come and go).
-func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (qdiscSnapshot, error) {
-	snap := qdiscSnapshot{NetNsID: netNsID, Interfaces: map[string]interfaceSnapshot{}}
+func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (QdiscSnapshot, error) {
+	snap := QdiscSnapshot{NetNsID: netNsID, Interfaces: map[string]InterfaceSnapshot{}}
 
 	conn, err := tc.Open(&tc.Config{NetNS: netNsFd})
 	if err != nil {
@@ -65,7 +65,7 @@ func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (qdiscSnapsh
 			log.Trace().Str("interface", name).Msg("interface not present in netns; skipping snapshot")
 			continue
 		}
-		ifSnap := interfaceSnapshot{Name: name, Ifindex: idx}
+		ifSnap := InterfaceSnapshot{Name: name, Ifindex: idx}
 		for _, q := range qdiscs {
 			if q.Ifindex == idx {
 				ifSnap.Qdiscs = append(ifSnap.Qdiscs, q)
@@ -78,7 +78,7 @@ func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (qdiscSnapsh
 			// incomplete one — a partial snapshot leads to orphaned filter
 			// state on restore, which is worse than no snapshot at all
 			// (revert then degrades gracefully to the existing tc-del path).
-			return qdiscSnapshot{NetNsID: netNsID}, fmt.Errorf("read filters on %s: %w", name, ferr)
+			return QdiscSnapshot{NetNsID: netNsID}, fmt.Errorf("read filters on %s: %w", name, ferr)
 		}
 		ifSnap.Filters = filters
 
@@ -99,7 +99,7 @@ func takeSnapshot(netNsFd int, netNsID string, interfaces []string) (qdiscSnapsh
 //
 // Restore failures are logged but do not stop the loop; we attempt to restore
 // as much state as possible. Per-qdisc errors are joined and returned.
-func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
+func restoreSnapshot(netNsFd int, snap QdiscSnapshot) error {
 	conn, err := tc.Open(&tc.Config{NetNS: netNsFd})
 	if err != nil {
 		return fmt.Errorf("open tc netlink connection: %w", err)
@@ -135,7 +135,7 @@ func restoreSnapshot(netNsFd int, snap qdiscSnapshot) error {
 // returns 0); any attempt to attach a saved child with the old handle then
 // fails with ENOENT. We use a raw RTNETLINK message (claimAutoManagedRoot)
 // because go-tc's validateQdiscObject lacks an "mq" case.
-func claimAutoManagedRootHandles(netNsFd int, snap qdiscSnapshot) {
+func claimAutoManagedRootHandles(netNsFd int, snap QdiscSnapshot) {
 	for name, ifSnap := range snap.Interfaces {
 		for _, q := range ifSnap.Qdiscs {
 			if !shouldClaimRoot(q) {
@@ -157,7 +157,7 @@ func shouldClaimRoot(q tc.Object) bool {
 // restoreInterfaceQdiscs replays the saved qdiscs for one interface in
 // parent-first order. Kernel-auto-managed kinds are skipped; the rest are
 // Replace()d after their kernel-counter fields are zeroed.
-func restoreInterfaceQdiscs(conn *tc.Tc, name string, ifSnap interfaceSnapshot) error {
+func restoreInterfaceQdiscs(conn *tc.Tc, name string, ifSnap InterfaceSnapshot) error {
 	var combined error
 	for _, q := range orderQdiscsForRestore(ifSnap.Qdiscs) {
 		if shouldSkipQdiscOnRestore(q) {
@@ -179,7 +179,7 @@ func restoreInterfaceQdiscs(conn *tc.Tc, name string, ifSnap interfaceSnapshot) 
 // restoreInterfaceFilters replays the saved filters for one interface via
 // Replace() (not Add) so leftover filters from incomplete attack cleanup
 // are overwritten rather than rejected with "File exists".
-func restoreInterfaceFilters(conn *tc.Tc, name string, ifSnap interfaceSnapshot) error {
+func restoreInterfaceFilters(conn *tc.Tc, name string, ifSnap InterfaceSnapshot) error {
 	var combined error
 	for _, f := range ifSnap.Filters {
 		obj := f

@@ -59,34 +59,27 @@ func TestRestorePlan_GkeCosCustomerCase(t *testing.T) {
 }
 
 // TestRestorePlan_GkeCosMultiInterface covers the full snapshot for a GKE
-// COS node: eth0 with tuned mq+fq, lo with noqueue. After revert the
-// snapshot store should round-trip both and the planner should issue the
-// right action for each interface independently.
+// COS node: eth0 with tuned mq+fq, lo with noqueue. The planner must issue
+// the right action for each interface independently.
 func TestRestorePlan_GkeCosMultiInterface(t *testing.T) {
 	const eth0 uint32 = 2
 	const lo uint32 = 1
-	t.Cleanup(func() { deleteSnapshot("gke-multi") })
-
-	snap := qdiscSnapshot{
+	snap := QdiscSnapshot{
 		NetNsID: "gke-multi",
-		Interfaces: map[string]interfaceSnapshot{
+		Interfaces: map[string]InterfaceSnapshot{
 			"eth0": {Name: "eth0", Ifindex: eth0, Qdiscs: fixtureGkeCosEth0Tuned(eth0)},
 			"lo":   {Name: "lo", Ifindex: lo, Qdiscs: fixtureGkeCosLoopback(lo)},
 		},
 	}
-	storeSnapshot(snap)
-
-	got, ok := loadSnapshot("gke-multi")
-	require.True(t, ok)
-	require.Len(t, got.Interfaces, 2)
+	require.Len(t, snap.Interfaces, 2)
 
 	// eth0: 1 skip (mq) + 16 replaces (fq children)
-	plan := planForInterface(got.Interfaces["eth0"].Qdiscs)
+	plan := planForInterface(snap.Interfaces["eth0"].Qdiscs)
 	assert.Equal(t, planCounts{skip: 1, replace: 16}, plan, "eth0: skip mq, replace 16 fq children")
 
 	// lo: noqueue is in isKernelAutoManaged — stateless, kernel re-attaches
 	// it automatically, and go-tc doesn't implement Replace for it.
-	plan = planForInterface(got.Interfaces["lo"].Qdiscs)
+	plan = planForInterface(snap.Interfaces["lo"].Qdiscs)
 	assert.Equal(t, planCounts{skip: 1, replace: 0}, plan, "lo: noqueue is kernel-auto-managed, skipped on restore")
 }
 
@@ -221,17 +214,12 @@ func TestRestorePlan_OrderingThreeLevelNesting(t *testing.T) {
 
 // TestRestorePlan_EmptySnapshot covers veth/CNI interfaces with no
 // pre-existing root qdisc (a fresh netns). The snapshot captures nothing
-// and restore is a no-op. Important: storeSnapshot should NOT later think
-// there's nothing to restore and crash; it should just iterate over an
-// empty map.
+// and IsEmpty reports true so Revert skips the restore path.
 func TestRestorePlan_EmptySnapshot(t *testing.T) {
-	t.Cleanup(func() { deleteSnapshot("empty-ns") })
+	snap := QdiscSnapshot{NetNsID: "empty-ns", Interfaces: map[string]InterfaceSnapshot{}}
 
-	storeSnapshot(qdiscSnapshot{NetNsID: "empty-ns", Interfaces: map[string]interfaceSnapshot{}})
-
-	got, ok := loadSnapshot("empty-ns")
-	require.True(t, ok)
-	assert.Empty(t, got.Interfaces, "empty snapshot has no interfaces to restore")
+	assert.True(t, snap.IsEmpty(), "empty interfaces map -> no restore work")
+	assert.Empty(t, snap.Interfaces)
 }
 
 // TestRestorePlan_MqWithoutChildren covers the (rare) case where an mq root
@@ -246,39 +234,6 @@ func TestRestorePlan_MqWithoutChildren(t *testing.T) {
 	}}
 	plan := planForInterface(qdiscs)
 	assert.Equal(t, planCounts{skip: 1, replace: 0}, plan)
-}
-
-// TestRestorePlan_StoreLifecycleAcrossMultipleAttacks simulates the
-// snapshot-store guard: the first attack on a netns takes a snapshot; a
-// second concurrent attack on the same netns reuses the existing snapshot
-// (loadSnapshot returns ok=true) without overwriting it. Lifecycle ends
-// when the last attack reverts and we call deleteSnapshot.
-func TestRestorePlan_StoreLifecycleAcrossMultipleAttacks(t *testing.T) {
-	const netNs = "multi-attack"
-	t.Cleanup(func() { deleteSnapshot(netNs) })
-
-	// First attack takes snapshot.
-	_, exists := loadSnapshot(netNs)
-	assert.False(t, exists)
-	storeSnapshot(qdiscSnapshot{
-		NetNsID:    netNs,
-		Interfaces: map[string]interfaceSnapshot{"eth0": {Name: "eth0", Qdiscs: fixtureGkeCosEth0Tuned(2)}},
-	})
-	first, _ := loadSnapshot(netNs)
-	firstQdiscCount := len(first.Interfaces["eth0"].Qdiscs)
-
-	// Second concurrent attack arrives — loadSnapshot says one already
-	// exists, so the caller should skip taking another.
-	_, exists = loadSnapshot(netNs)
-	assert.True(t, exists, "second attack should see existing snapshot and skip taking another")
-
-	// Last attack reverts: load + restore + delete.
-	loaded, ok := loadSnapshot(netNs)
-	require.True(t, ok)
-	assert.Equal(t, firstQdiscCount, len(loaded.Interfaces["eth0"].Qdiscs), "snapshot must be unchanged from first attack's capture")
-	deleteSnapshot(netNs)
-	_, exists = loadSnapshot(netNs)
-	assert.False(t, exists)
 }
 
 // planCounts aggregates planner decisions for an interface so tests can

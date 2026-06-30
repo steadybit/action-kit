@@ -20,7 +20,7 @@ import (
 // Interface names are sorted so the output is stable across calls.
 // Per-interface, qdiscs are rendered in restore order (parent-first via
 // orderQdiscsForRestore) and filters are listed afterwards.
-func renderSnapshot(snap qdiscSnapshot) string {
+func renderSnapshot(snap QdiscSnapshot) string {
 	if len(snap.Interfaces) == 0 {
 		return "(empty snapshot)"
 	}
@@ -223,7 +223,7 @@ func formatMicroseconds(us uint32) string {
 // differences are ignored — those legitimately diverge after a restore.
 // Returns the empty string when the two snapshots are equivalent at the
 // shape level.
-func compareSnapshotsByHandle(before, after qdiscSnapshot) string {
+func compareSnapshotsByHandle(before, after QdiscSnapshot) string {
 	var diffs []string
 	for name, b := range before.Interfaces {
 		a, ok := after.Interfaces[name]

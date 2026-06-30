@@ -5,8 +5,6 @@
 package netfault
 
 import (
-	"sync"
-
 	"github.com/florianl/go-tc"
 )
 
@@ -21,48 +19,38 @@ import (
 //
 // Snapshot/restore uses RTNETLINK (github.com/florianl/go-tc) and only
 // takes effect on Linux. On non-Linux builds the path is a no-op.
+//
+// Lifecycle: Apply returns the captured snapshot, the caller stores it in
+// the action's per-execution state (via action_kit_sdk JSON state), and
+// passes it back to Revert. The library holds no cross-call state.
 
-// interfaceSnapshot holds the qdisc and filter state for one interface within
+// InterfaceSnapshot holds the qdisc and filter state for one interface within
 // a single network namespace.
-type interfaceSnapshot struct {
+type InterfaceSnapshot struct {
 	Name    string
 	Ifindex uint32
 	Qdiscs  []tc.Object
 	Filters []tc.Object
 }
 
-// qdiscSnapshot holds the snapshot for every interface an attack touches in a
-// network namespace.
-type qdiscSnapshot struct {
+// QdiscSnapshot holds the snapshot for every interface an attack touches in a
+// network namespace. The zero value (empty NetNsID, nil Interfaces) is a
+// valid "nothing to restore" sentinel — Revert treats it as a no-op.
+//
+// All fields are JSON-serializable so callers can persist the snapshot in
+// per-execution state (e.g. action_kit_sdk's state). The embedded tc.Object
+// values from github.com/florianl/go-tc roundtrip cleanly through
+// encoding/json (verified by TestQdiscSnapshotJSONRoundtrip).
+type QdiscSnapshot struct {
 	NetNsID    string
-	Interfaces map[string]interfaceSnapshot
+	Interfaces map[string]InterfaceSnapshot
 }
 
-// snapshotStore keeps snapshots in memory keyed by the runner's netns id. The
-// first concurrent attack on a netns takes the snapshot; subsequent attacks
-// reuse it. The last attack to be reverted triggers the restore.
-var (
-	snapshotStoreLock sync.Mutex
-	snapshotStore     = map[string]qdiscSnapshot{}
-)
-
-func storeSnapshot(snap qdiscSnapshot) {
-	snapshotStoreLock.Lock()
-	defer snapshotStoreLock.Unlock()
-	snapshotStore[snap.NetNsID] = snap
-}
-
-func loadSnapshot(netNsID string) (qdiscSnapshot, bool) {
-	snapshotStoreLock.Lock()
-	defer snapshotStoreLock.Unlock()
-	snap, ok := snapshotStore[netNsID]
-	return snap, ok
-}
-
-func deleteSnapshot(netNsID string) {
-	snapshotStoreLock.Lock()
-	defer snapshotStoreLock.Unlock()
-	delete(snapshotStore, netNsID)
+// IsEmpty reports whether the snapshot carries no per-interface state and
+// Revert should treat it as a no-op (e.g. strict mode was on at Apply time,
+// or the attack didn't touch a tc root qdisc).
+func (s QdiscSnapshot) IsEmpty() bool {
+	return len(s.Interfaces) == 0
 }
 
 // isKernelAutoManaged returns true for qdisc kinds the kernel automatically
@@ -209,7 +197,7 @@ func stripRuntimeStats(obj *tc.Object) {
 // matches the major of a saved root that (a) is itself kernel-auto-managed
 // and (b) has been replaced by a kernel-auto-managed root of the same kind
 // in the live tree. Everything else passes through unchanged.
-func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) interfaceSnapshot {
+func reAnchorAutoManagedParents(ifSnap InterfaceSnapshot, currentQdiscs []tc.Object) InterfaceSnapshot {
 	rewrite := buildAutoManagedRewriteMap(ifSnap, currentQdiscs)
 	if len(rewrite) == 0 {
 		return ifSnap
@@ -221,7 +209,7 @@ func reAnchorAutoManagedParents(ifSnap interfaceSnapshot, currentQdiscs []tc.Obj
 // live counterpart on the same interface has a different major handle and
 // returns a saved-major → live-major map. Other saved roots and
 // non-auto-managed kinds contribute nothing.
-func buildAutoManagedRewriteMap(ifSnap interfaceSnapshot, currentQdiscs []tc.Object) map[uint32]uint32 {
+func buildAutoManagedRewriteMap(ifSnap InterfaceSnapshot, currentQdiscs []tc.Object) map[uint32]uint32 {
 	rewrite := map[uint32]uint32{}
 	for _, saved := range ifSnap.Qdiscs {
 		if !isRootQdisc(saved) || !isKernelAutoManaged(saved.Kind) {
@@ -247,13 +235,13 @@ func findLiveRootMajor(currentQdiscs []tc.Object, ifindex uint32, kind string) (
 	return 0, false
 }
 
-// applyParentRewrites returns a new interfaceSnapshot whose non-root child
+// applyParentRewrites returns a new InterfaceSnapshot whose non-root child
 // qdiscs have their Parent.major replaced via the rewrite map (minor is
 // preserved). The roots themselves are left untouched — the kernel
 // re-attaches them under their own (potentially still-different) live
 // handles.
-func applyParentRewrites(ifSnap interfaceSnapshot, rewrite map[uint32]uint32) interfaceSnapshot {
-	out := interfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex, Filters: ifSnap.Filters}
+func applyParentRewrites(ifSnap InterfaceSnapshot, rewrite map[uint32]uint32) InterfaceSnapshot {
+	out := InterfaceSnapshot{Name: ifSnap.Name, Ifindex: ifSnap.Ifindex, Filters: ifSnap.Filters}
 	out.Qdiscs = make([]tc.Object, 0, len(ifSnap.Qdiscs))
 	for _, q := range ifSnap.Qdiscs {
 		if !isRootQdisc(q) {

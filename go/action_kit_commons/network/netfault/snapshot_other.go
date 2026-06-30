@@ -18,10 +18,10 @@ func openNetNs(_ string) (*os.File, error) {
 	return nil, errSnapshotUnsupported
 }
 
-func takeSnapshot(_ int, netNsID string, _ []string) (qdiscSnapshot, error) {
-	return qdiscSnapshot{NetNsID: netNsID, Interfaces: map[string]interfaceSnapshot{}}, errSnapshotUnsupported
+func takeSnapshot(_ int, netNsID string, _ []string) (QdiscSnapshot, error) {
+	return QdiscSnapshot{NetNsID: netNsID, Interfaces: map[string]InterfaceSnapshot{}}, errSnapshotUnsupported
 }
 
-func restoreSnapshot(_ int, _ qdiscSnapshot) error {
+func restoreSnapshot(_ int, _ QdiscSnapshot) error {
 	return errSnapshotUnsupported
 }

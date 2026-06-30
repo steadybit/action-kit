@@ -46,9 +46,23 @@ type CommandRunner interface {
 	netNsPath() string
 }
 
-// Apply installs the attack.
-func Apply(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, modeAdd)
+// Apply installs the attack and returns a QdiscSnapshot describing the
+// pre-attack qdisc tree. The caller is expected to persist the snapshot in
+// the action's per-execution state (action_kit_sdk JSON state) and pass it
+// back to Revert.
+//
+// The returned snapshot is empty (QdiscSnapshot.IsEmpty() == true) when:
+//   - strict-root-qdisc mode is on (preflight refused non-`noqueue` roots —
+//     there's nothing to preserve),
+//   - the opts do not implement tcCommandProvider (no tc root touched),
+//   - the snapshot capture itself errored (logged; attack still proceeds).
+//
+// On Apply failure the returned snapshot is empty even when capture
+// succeeded: the snapshot would describe a state the attack never fully
+// replaced, and replaying it from Revert would clobber a partial attack
+// install with the original tree. Drop it instead.
+func Apply(ctx context.Context, runner CommandRunner, opts Opts) (QdiscSnapshot, error) {
+	return generateAndRunCommands(ctx, runner, opts, modeAdd, QdiscSnapshot{})
 }
 
 // ErrUserRootQdisc reports that a target interface already carries a
@@ -113,28 +127,44 @@ func hasActiveNetfault(netNsId string) bool {
 	return len(activeNetfault[netNsId]) > 0
 }
 
-func Revert(ctx context.Context, runner CommandRunner, opts Opts) error {
-	return generateAndRunCommands(ctx, runner, opts, modeDelete)
+// Revert removes the attack and replays the snapshot (if non-empty) onto
+// the netns root qdisc tree. `snap` should be the value Apply returned for
+// the same opts; pass a zero QdiscSnapshot to skip the restore step (used
+// by callers that don't care about preserving the pre-attack tree, e.g.
+// iptables-only attacks).
+func Revert(ctx context.Context, runner CommandRunner, opts Opts, snap QdiscSnapshot) error {
+	_, err := generateAndRunCommands(ctx, runner, opts, modeDelete, snap)
+	return err
 }
 
-func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode) error {
+// generateAndRunCommands is the shared body for Apply (modeAdd) and Revert
+// (modeDelete). On Add it captures a snapshot before running the attack
+// commands and returns it to the caller; on Delete it consumes the snapshot
+// from the caller and replays it after running the cleanup commands.
+//
+// The `incoming` snapshot is meaningful on Delete only — Apply ignores it.
+// The returned snapshot is meaningful on Add only — Delete always returns an
+// empty one. Splitting Apply/Revert into separate exported functions keeps
+// the public API typed (Apply returns a snapshot, Revert doesn't) without
+// the shared body needing a sum type.
+func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts, mode mode, incoming QdiscSnapshot) (QdiscSnapshot, error) {
 	var ipCommandsV4, ipCommandsV6, tcCommands []string
 	var err error
 
 	if p, ok := opts.(ipCommandProvider); ok {
 		if ipCommandsV4, err = p.ipCommands(familyV4, mode); err != nil {
-			return err
+			return QdiscSnapshot{}, err
 		}
 		if ipv6Supported() {
 			if ipCommandsV6, err = p.ipCommands(familyV6, mode); err != nil {
-				return err
+				return QdiscSnapshot{}, err
 			}
 		}
 	}
 
 	if p, ok := opts.(tcCommandProvider); ok {
 		if tcCommands, err = p.tcCommands(mode); err != nil {
-			return err
+			return QdiscSnapshot{}, err
 		}
 	}
 
@@ -154,33 +184,25 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	runLock.LockKey(netNsID)
 	defer func() { _ = runLock.UnlockKey(netNsID) }()
 
-	// snapshotTakenHere records whether this invocation took the qdisc
-	// snapshot (vs reusing one a previous attack had already stored). Used to
-	// roll back the snapshot if the attack's tc commands fail — otherwise the
-	// snapshot would persist describing a state that was never fully installed,
-	// and a later revert would replay it against a partial attack.
-	var snapshotTakenHere bool
+	var snapshot QdiscSnapshot
 	if mode == modeAdd {
 		if err := pushActiveNetfault(netNsID, opts); err != nil {
-			return err
+			return QdiscSnapshot{}, err
 		}
-		// Snapshot the root qdisc tree before installing the attack so we can
-		// restore it on revert. Only runs when strict mode is OFF — with
-		// strict mode ON the preflight already refused non-`noqueue` roots,
-		// and on a `noqueue` root there's nothing to preserve. Only the first
-		// attack per netns takes the snapshot (loadSnapshot returns ok=true
-		// once one is stored). Failures are logged but do not block the
-		// attack — the experiment must still execute even if snapshot is
-		// unavailable.
+		// Snapshot the root qdisc tree before installing the attack so the
+		// caller can hand it back to Revert. Skipped when strict mode is ON
+		// (preflight already refused non-`noqueue` roots, nothing to
+		// preserve) and when opts doesn't touch a tc root (e.g. iptables-only
+		// attacks). Capture failures are logged but do not block the attack —
+		// the experiment must still execute even if snapshot is unavailable.
 		if !strictRootQdisc {
-			if _, exists := loadSnapshot(netNsID); !exists {
-				if p, ok := opts.(tcCommandProvider); ok {
-					if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
-						if serr := captureSnapshot(runner, netNsID, ifs); serr != nil {
-							log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
-						} else {
-							snapshotTakenHere = true
-						}
+			if p, ok := opts.(tcCommandProvider); ok {
+				if ifs := p.tcRootQdiscInterfaces(); len(ifs) > 0 {
+					snap, serr := captureSnapshot(runner, netNsID, ifs)
+					if serr != nil {
+						log.Warn().Err(serr).Str("netNs", netNsID).Msg("qdisc snapshot failed; revert will not restore prior state")
+					} else {
+						snapshot = snap
 					}
 				}
 			}
@@ -203,7 +225,7 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	if provider, ok := opts.(iptablesScriptProvider); ok {
 		v4, v6, scriptErr := provider.iptablesScripts(mode)
 		if scriptErr != nil {
-			return scriptErr
+			return QdiscSnapshot{}, scriptErr
 		}
 
 		if log.Debug().Enabled() {
@@ -263,56 +285,49 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	// the original tree against a partially-installed attack. Better to leave
 	// the host with the kernel's default-restore path than with a stale
 	// snapshot we can't trust.
-	if mode == modeAdd && err != nil && snapshotTakenHere {
-		deleteSnapshot(netNsID)
+	if mode == modeAdd && err != nil && !snapshot.IsEmpty() {
 		log.Warn().Str("netNs", netNsID).Msg("dropped qdisc snapshot because apply errored; revert will fall back to kernel-default restore")
+		snapshot = QdiscSnapshot{}
 	}
 
 	if mode == modeDelete {
 		popActiveNetfault(netNsID, opts)
-		// After the last attack on this netns is reverted, restore the saved
-		// qdisc tree (if any). A snapshot only exists when strict mode was
-		// OFF at apply time and the apply succeeded. On restore failure keep
-		// the snapshot so a manual retry (e.g. operator re-runs revert) has
-		// another chance; only delete on success.
-		if !strictRootQdisc && !hasActiveNetfault(netNsID) {
-			if snap, ok := loadSnapshot(netNsID); ok {
-				if rerr := applyRestore(runner, snap); rerr != nil {
-					log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed; snapshot retained for retry")
-					err = errors.Join(err, rerr)
-				} else {
-					// applyRestore logs the verified post-restore state itself.
-					deleteSnapshot(netNsID)
-				}
+		// Replay the caller-provided snapshot (if any) after the attack's
+		// tc-del has run. Strict-mode check guards against a caller passing
+		// in a snapshot from a mode flip — there's no scenario where Revert
+		// should replay a snapshot when strict mode is on at revert time.
+		if !strictRootQdisc && !incoming.IsEmpty() {
+			if rerr := applyRestore(runner, incoming); rerr != nil {
+				log.Warn().Err(rerr).Str("netNs", netNsID).Msg("qdisc restore failed")
+				err = errors.Join(err, rerr)
 			}
 		}
 	}
 
-	return err
+	return snapshot, err
 }
 
-// captureSnapshot opens the runner's netns and stores the qdisc snapshot.
+// captureSnapshot opens the runner's netns and returns the qdisc snapshot.
 // Wrapped in its own function so the netns-fd open/close is one place.
 // Logs the rendered snapshot at INFO level so operators investigating a
 // restore failure can see exactly what was captured.
-func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) error {
+func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) (QdiscSnapshot, error) {
 	path := runner.netNsPath()
 	f, err := openNetNs(path)
 	if err != nil {
-		return err
+		return QdiscSnapshot{}, err
 	}
 	defer func() { _ = f.Close() }()
 	snap, err := takeSnapshot(int(f.Fd()), netNsID, interfaces)
 	if err != nil {
-		return err
+		return QdiscSnapshot{}, err
 	}
-	storeSnapshot(snap)
 	log.Info().
 		Str("netNs", netNsID).
 		Int("interfaces", len(snap.Interfaces)).
 		Str("snapshot", renderSnapshot(snap)).
 		Msg("captured qdisc snapshot")
-	return nil
+	return snap, nil
 }
 
 // applyRestore opens the runner's netns, replays the saved snapshot, then
@@ -320,7 +335,7 @@ func captureSnapshot(runner CommandRunner, netNsID string, interfaces []string) 
 // restore. The post-restore snapshot is logged at INFO so the operator can
 // see whether the kernel accepted the replay byte-for-byte. Any structural
 // divergence (missing qdisc, extra qdisc, wrong parent) is logged at WARN.
-func applyRestore(runner CommandRunner, snap qdiscSnapshot) error {
+func applyRestore(runner CommandRunner, snap QdiscSnapshot) error {
 	path := runner.netNsPath()
 	f, err := openNetNs(path)
 	if err != nil {
@@ -375,7 +390,7 @@ func applyRestore(runner CommandRunner, snap qdiscSnapshot) error {
 
 // snapshotInterfaceNames returns the sorted set of interface names in the
 // snapshot. Used to re-snapshot for post-restore verification.
-func snapshotInterfaceNames(snap qdiscSnapshot) []string {
+func snapshotInterfaceNames(snap QdiscSnapshot) []string {
 	out := make([]string, 0, len(snap.Interfaces))
 	for name := range snap.Interfaces {
 		out = append(out, name)
