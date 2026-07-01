@@ -65,7 +65,7 @@ func (o *CorruptPackagesOpts) tcCommands(mode mode) ([]string, error) {
 	}
 	reorderForMode(cmds, mode)
 
-	if len(cmds)/len(o.Interfaces) > maxTcCommands {
+	if len(o.Interfaces) > 0 && len(cmds)/len(o.Interfaces) > maxTcCommands {
 		log.Trace().Strs("cmds", cmds).Msg("too many tc commands")
 		return nil, &ErrTooManyTcCommands{Count: len(cmds)}
 	}
