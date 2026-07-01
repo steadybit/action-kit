@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.2
 
 - fix: prevent data races and panics in the action stop/heartbeat handling — guard the shared `stopEvents` slice with a mutex, make `heartbeat.Monitor.Stop` idempotent, and make `RecordHeartbeat` a non-blocking, closed-safe send, so concurrent stop/status/timeout paths can no longer crash the extension (double-close / send-on-closed-channel / slice race)
 - fix: stop and replace an existing heartbeat monitor when an action is started again for the same execution id, instead of leaking the previous monitor's goroutines
