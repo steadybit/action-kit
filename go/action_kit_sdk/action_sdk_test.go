@@ -3,10 +3,27 @@ package action_kit_sdk
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 )
+
+// TestMonitorHeartbeat_restart_does_not_leak_goroutines verifies that repeatedly starting a
+// heartbeat monitor for the same execution id (e.g. a retried Start) replaces and stops the
+// previous monitor rather than leaking its goroutines. Each monitor spins two goroutines;
+// without the Swap-and-Stop they would accumulate.
+func TestMonitorHeartbeat_restart_does_not_leak_goroutines(t *testing.T) {
+	id := uuid.New()
+	base := runtime.NumGoroutine()
+	for i := 0; i < 50; i++ {
+		monitorHeartbeatWithCallback(id, time.Hour, time.Hour, func() {})
+	}
+	stopMonitorHeartbeat(id)
+	assert.Eventually(t, func() bool {
+		return runtime.NumGoroutine() <= base+4
+	}, 2*time.Second, 20*time.Millisecond, "restarting the monitor must not leak goroutines")
+}
 
 // TestStopEvents_concurrent_access exercises markAsStopped (write) and getStopEvent (read)
 // from many goroutines, mirroring the HTTP stop/status handlers, the heartbeat-timeout
