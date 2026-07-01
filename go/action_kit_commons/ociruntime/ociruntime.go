@@ -290,7 +290,13 @@ func (r *defaultRuntime) Run(ctx context.Context, container ContainerBundle, ioO
 	log.Trace().Str("id", container.ContainerId()).Msg("running container")
 	err = cmd.Run()
 
-	log.Trace().Str("id", container.ContainerId()).Int("exitCode", cmd.ProcessState.ExitCode()).Msg("container exited")
+	// ProcessState is nil if the process never started (e.g. the runtime binary is
+	// missing), so guard the exit-code read to avoid a nil-pointer panic on that path.
+	exitCode := -1
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+	log.Trace().Str("id", container.ContainerId()).Int("exitCode", exitCode).Msg("container exited")
 	return err
 }
 
@@ -429,7 +435,7 @@ func unmarshalGuarded(output []byte, v any) error {
 		return nil
 	}
 
-	if output[0] != '{' && bytes.Contains(output, []byte("{")) && bytes.Contains(output, []byte("}")) {
+	if len(output) > 0 && output[0] != '{' && bytes.Contains(output, []byte("{")) && bytes.Contains(output, []byte("}")) {
 		if err := json.Unmarshal(output[bytes.IndexByte(output, '{'):], v); err == nil {
 			return nil
 		}

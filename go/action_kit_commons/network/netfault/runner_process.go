@@ -26,6 +26,9 @@ func (p processRunner) run(ctx context.Context, args []string, cmds []string) (s
 	cmd := utils.RootCommandContext(ctx, args[0], args[1:]...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
+	if rErr := validateBatchCommands(cmds); rErr != nil {
+		return "", rErr
+	}
 	cmd.Stdin = toReader(cmds)
 	err := cmd.Run()
 

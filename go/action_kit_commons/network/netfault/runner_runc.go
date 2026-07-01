@@ -89,6 +89,9 @@ func (r *runcRunner) executeInNamedNetworkUsingIpNetNs(ctx context.Context, proc
 	cmd := utils.RootCommandContext(ctx, ipPath, ipArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
+	if rErr := validateBatchCommands(cmds); rErr != nil {
+		return "", rErr
+	}
 	cmd.Stdin = toReader(cmds)
 	err := cmd.Run()
 
@@ -128,6 +131,9 @@ func (r *runcRunner) executeInNetworkNamespaceUsingRunc(ctx context.Context, pro
 		return "", err
 	}
 
+	if rErr := validateBatchCommands(cmds); rErr != nil {
+		return "", rErr
+	}
 	var outb, errb bytes.Buffer
 	err = r.runc.Run(ctx, bundle, ociruntime.IoOpts{
 		Stdin:  toReader(cmds),

@@ -34,6 +34,10 @@ func NewStressProcess(opts Opts) (Stress, error) {
 }
 
 func (s *stressProcess) Exited() (bool, error) {
+	if s.state == nil {
+		// Start was never called (or failed): there is no running process.
+		return true, nil
+	}
 	return s.state.Exited()
 }
 
@@ -52,14 +56,21 @@ func (s *stressProcess) Start() error {
 }
 
 func (s *stressProcess) Stop() {
+	if s.cmd.Process == nil || s.state == nil {
+		// never started (or start failed) — nothing to stop
+		return
+	}
 	//as the process is running with a different user, we also need to do so, for sending signals
 	ctx := context.Background()
-	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(s.cmd.Process.Pid)).Run(); err != nil {
+	// Capture the pid up front so the timer goroutine below doesn't read s.cmd.Process
+	// concurrently with the exec waiter.
+	pid := strconv.Itoa(s.cmd.Process.Pid)
+	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", pid).Run(); err != nil {
 		log.Warn().Err(err).Msg("failed to send SIGINT to stress-ng")
 	}
 
 	timer := time.AfterFunc(10*time.Second, func() {
-		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(s.cmd.Process.Pid)).Run(); err != nil {
+		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", pid).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to send SIGTERM to stress-ng")
 		}
 	})

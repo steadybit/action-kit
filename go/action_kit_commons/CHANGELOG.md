@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fix: guard runtime crash paths — no nil-deref reading a process exit code when a runtime binary fails to start, no index panic parsing empty runtime output (`ociruntime`), no divide-by-zero when a netfault attack has no interfaces, and no nil-deref when a stress/memfill/diskfill process wrapper's `Exited`/`Stop` is called without a successful `Start`
+- fix: reject newline injection into `tc`/`iptables` batch stdin and into `dig` stdin, so an unsanitized interface name / rate / hostname forwarded from user input can no longer inject an extra privileged command; also capture the process pid before the SIGTERM timer goroutine to avoid a data race, and skip un-parseable IPs in DNS resolution
+
 ## 1.10.0
 
 - **Breaking:** netfault snapshot now lives in caller-owned state, not a process-local map.

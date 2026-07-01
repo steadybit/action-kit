@@ -38,6 +38,10 @@ func NewDiskfillProcess(ctx context.Context, opts Opts) (Diskfill, error) {
 }
 
 func (df *diskfillProcess) Exited() (bool, error) {
+	if df.state == nil {
+		// Start was never called (or failed): there is no running process.
+		return true, nil
+	}
 	return df.state.Exited()
 }
 
@@ -59,14 +63,21 @@ func (df *diskfillProcess) Stop() error {
 	log.Info().
 		Msg("stopping diskfill")
 
+	if df.cmd.Process == nil || df.state == nil {
+		// never started (or start failed) — nothing to stop
+		return nil
+	}
 	//as the process is running with a different user, we also need to do so, for sending signals
 	ctx := context.Background()
-	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(df.cmd.Process.Pid)).Run(); err != nil {
+	// Capture the pid up front so the timer goroutine doesn't read df.cmd.Process
+	// concurrently with the exec waiter.
+	pid := strconv.Itoa(df.cmd.Process.Pid)
+	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", pid).Run(); err != nil {
 		log.Warn().Err(err).Msg("failed to send SIGINT to diskfill")
 	}
 
 	timer := time.AfterFunc(10*time.Second, func() {
-		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(df.cmd.Process.Pid)).Run(); err != nil {
+		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", pid).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to send SIGTERM to diskfill")
 		}
 	})

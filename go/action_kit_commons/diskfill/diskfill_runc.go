@@ -53,6 +53,10 @@ func NewDiskfillRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar Sidec
 }
 
 func (df *diskfillRunc) Exited() (bool, error) {
+	if df.state == nil {
+		// Start was never called (or failed): there is no running process.
+		return true, nil
+	}
 	return df.state.Exited()
 }
 
@@ -74,6 +78,11 @@ func (df *diskfillRunc) Stop() error {
 	log.Info().
 		Str("containerId", df.bundle.ContainerId()).
 		Msg("stopping diskfill")
+
+	if df.state == nil {
+		// never started (or start failed) — nothing to stop
+		return nil
+	}
 	ctx := context.Background()
 
 	//stop writer

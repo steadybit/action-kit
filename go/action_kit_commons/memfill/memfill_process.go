@@ -37,6 +37,10 @@ func NewMemfillProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Me
 }
 
 func (mf *memfillRunc) Exited() (bool, error) {
+	if mf.state == nil {
+		// Start was never called (or failed): there is no running process.
+		return true, nil
+	}
 	return mf.state.Exited()
 }
 
@@ -58,14 +62,21 @@ func (mf *memfillRunc) Stop() error {
 	log.Info().
 		Msg("stopping memfill")
 
+	if mf.cmd.Process == nil || mf.state == nil {
+		// never started (or start failed) — nothing to stop
+		return nil
+	}
 	//as the process is running with a different user, we also need to do so, for sending signals
 	ctx := context.Background()
-	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", strconv.Itoa(mf.cmd.Process.Pid)).Run(); err != nil {
+	// Capture the pid up front so the timer goroutine doesn't read mf.cmd.Process
+	// concurrently with the exec waiter.
+	pid := strconv.Itoa(mf.cmd.Process.Pid)
+	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", pid).Run(); err != nil {
 		log.Warn().Err(err).Msg("failed to send SIGINT to memfill")
 	}
 
 	timer := time.AfterFunc(10*time.Second, func() {
-		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", strconv.Itoa(mf.cmd.Process.Pid)).Run(); err != nil {
+		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", pid).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to send SIGTERM to memfill")
 		}
 	})

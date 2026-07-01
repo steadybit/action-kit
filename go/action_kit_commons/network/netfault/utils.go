@@ -35,6 +35,19 @@ func toReader(strs []string) io.Reader {
 	return strings.NewReader(fmt.Sprintf("%s\n", strings.Join(strs, "\n")))
 }
 
+// validateBatchCommands rejects any command containing a newline before it is written to a
+// `tc`/`iptables` batch stdin. Each command must be exactly one directive; a newline would
+// split into extra batch directives, which is how an unsanitized interface name or rate
+// value forwarded from user input could inject an arbitrary privileged command.
+func validateBatchCommands(cmds []string) error {
+	for _, s := range cmds {
+		if strings.ContainsAny(s, "\n\r") {
+			return fmt.Errorf("refusing to build batch: command contains a newline (possible injection): %q", s)
+		}
+	}
+	return nil
+}
+
 func getFamily(net net.IPNet) (family, error) {
 	switch {
 	case net.IP.To4() != nil:

@@ -118,6 +118,15 @@ no servers could be reached`, i...)
 	}
 }
 
+func TestHostnameResolver_rejects_hostnames_with_whitespace(t *testing.T) {
+	// Hostnames are written line-by-line into dig's stdin, so whitespace (esp. a newline)
+	// must be rejected rather than injecting an extra query.
+	for _, hostname := range []string{"evil.com\nqdisc-del", "with space", "tab\tname"} {
+		_, err := resolve(context.Background(), &mockDig{}, hostname)
+		assert.ErrorContains(t, err, "invalid hostnames", "hostname %q should be rejected", hostname)
+	}
+}
+
 type mockDig struct {
 	output []byte
 	err    error
