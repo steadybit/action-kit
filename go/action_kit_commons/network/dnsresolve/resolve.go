@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/rs/zerolog/log"
 )
@@ -39,7 +40,10 @@ func resolve(ctx context.Context, d dig, hostnames ...string) ([]net.IP, error) 
 	var invalid []string
 	var sb strings.Builder
 	for _, hostname := range hostnames {
-		if len(strings.TrimSpace(hostname)) == 0 {
+		// Reject empty hostnames and any containing whitespace: hostnames are written
+		// line-by-line into dig's `-f-` stdin, so a space or newline would inject an
+		// additional dig query. Valid DNS hostnames never contain whitespace.
+		if len(strings.TrimSpace(hostname)) == 0 || strings.ContainsFunc(hostname, unicode.IsSpace) {
 			invalid = append(invalid, hostname)
 			continue
 		}
@@ -67,8 +71,13 @@ func resolve(ctx context.Context, d dig, hostnames ...string) ([]net.IP, error) 
 			messages = append(messages, strings.TrimSpace(strings.TrimPrefix(line, ";;")))
 			continue
 		} else if fields := strings.Fields(line); len(fields) >= 4 {
+			ip := net.ParseIP(fields[3])
+			if ip == nil {
+				// Skip lines whose answer isn't a valid IP rather than appending a nil IP.
+				continue
+			}
 			domain := strings.TrimSuffix(fields[0], ".")
-			resolved = append(resolved, net.ParseIP(fields[3]))
+			resolved = append(resolved, ip)
 			unresolved = slices.DeleteFunc(unresolved, func(hostname string) bool {
 				return strings.EqualFold(hostname, domain)
 			})

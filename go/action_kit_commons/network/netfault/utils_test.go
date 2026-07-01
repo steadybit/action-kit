@@ -10,6 +10,18 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
+func Test_validateBatchCommands(t *testing.T) {
+	if err := validateBatchCommands([]string{"qdisc add dev eth0 root", "filter add dev eth0"}); err != nil {
+		t.Errorf("expected no error for clean commands, got %v", err)
+	}
+	if err := validateBatchCommands([]string{"qdisc add dev eth0 root\nqdisc del dev eth0 root"}); err == nil {
+		t.Error("expected an error for a command containing a newline (injection)")
+	}
+	if err := validateBatchCommands([]string{"ok", "bad\rvalue"}); err == nil {
+		t.Error("expected an error for a command containing a carriage return")
+	}
+}
+
 func Test_getMask(t *testing.T) {
 	tests := []struct {
 		name      string
