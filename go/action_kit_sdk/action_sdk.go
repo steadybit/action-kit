@@ -17,9 +17,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_sdk/heartbeat"
 	"github.com/steadybit/action-kit/go/action_kit_sdk/state_persister"
 	"github.com/steadybit/extension-kit/extconversion"
+	"github.com/steadybit/extension-kit/extheartbeat"
 	"github.com/steadybit/extension-kit/exthttp"
 	"github.com/steadybit/extension-kit/extsignals"
 )
@@ -254,8 +254,13 @@ func monitorHeartbeatWithCallback(executionId uuid.UUID, interval, timeout time.
 	// as we observed heartbeats always narrowly missing the specified interval.
 	extendedInterval := interval + min(interval/100*5, 500*time.Millisecond)
 	ch := make(chan time.Time, 1)
-	monitor := heartbeat.Notify(ch, extendedInterval, timeout)
-	heartbeatMonitors.Store(executionId, monitor)
+	monitor := extheartbeat.Notify(ch, extendedInterval, timeout)
+	// Stop and replace any monitor already registered for this execution so a repeated
+	// Start (same execution id) can't leak the previous monitor's goroutines. Stop is
+	// idempotent, so this is safe even if the previous monitor already stopped.
+	if prev, loaded := heartbeatMonitors.Swap(executionId, monitor); loaded {
+		prev.(*extheartbeat.Monitor).Stop()
+	}
 	go func() {
 		for range ch {
 			callback()
@@ -266,7 +271,7 @@ func monitorHeartbeatWithCallback(executionId uuid.UUID, interval, timeout time.
 func recordHeartbeat(executionId uuid.UUID) {
 	monitor, _ := heartbeatMonitors.Load(executionId)
 	if monitor != nil {
-		monitor.(*heartbeat.Monitor).RecordHeartbeat()
+		monitor.(*extheartbeat.Monitor).RecordHeartbeat()
 	}
 }
 
@@ -275,7 +280,7 @@ func stopMonitorHeartbeat(executionId uuid.UUID) {
 	// stop handler and the heartbeat-timeout goroutine) only one gets the monitor; Stop is
 	// idempotent regardless.
 	if monitor, ok := heartbeatMonitors.LoadAndDelete(executionId); ok {
-		monitor.(*heartbeat.Monitor).Stop()
+		monitor.(*extheartbeat.Monitor).Stop()
 	}
 }
 
