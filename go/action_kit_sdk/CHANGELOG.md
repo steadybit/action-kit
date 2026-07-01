@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix: prevent data races and panics in the action stop/heartbeat handling — guard the shared `stopEvents` slice with a mutex, make `heartbeat.Monitor.Stop` idempotent, and make `RecordHeartbeat` a non-blocking, closed-safe send, so concurrent stop/status/timeout paths can no longer crash the extension (double-close / send-on-closed-channel / slice race)
+
 ## 1.3.1
 
 - Update dependencies
