@@ -5,10 +5,34 @@ package heartbeat
 
 import (
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+// TestMonitor_concurrent_stop_and_record hammers RecordHeartbeat with concurrent and
+// repeated Stop calls: it must never panic (double close / send on closed channel), and a
+// RecordHeartbeat after Stop must be a no-op. Run under -race.
+func TestMonitor_concurrent_stop_and_record(t *testing.T) {
+	ch := make(chan time.Time, 1)
+	hb := Notify(ch, time.Hour, time.Hour)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); hb.RecordHeartbeat() }()
+	}
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); hb.Stop() }()
+	}
+	wg.Wait()
+
+	// After Stop, further heartbeats are dropped rather than panicking.
+	hb.RecordHeartbeat()
+	hb.Stop()
+}
 
 func TestHeartbeat_should_timeout(t *testing.T) {
 	ch := make(chan time.Time)

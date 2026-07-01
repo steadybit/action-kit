@@ -3,9 +3,24 @@ package action_kit_sdk
 import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
+
+// TestStopEvents_concurrent_access exercises markAsStopped (write) and getStopEvent (read)
+// from many goroutines, mirroring the HTTP stop/status handlers, the heartbeat-timeout
+// goroutine and the signal handler racing on the shared stopEvents slice. Run under -race.
+func TestStopEvents_concurrent_access(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		id := uuid.New()
+		wg.Add(2)
+		go func() { defer wg.Done(); markAsStopped(id, "test") }()
+		go func() { defer wg.Done(); _ = getStopEvent(id) }()
+	}
+	wg.Wait()
+}
 
 // This test reproduced an issue in which new heartbeats
 // would not be processed anymore and led to a stop of the experiment.
