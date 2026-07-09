@@ -45,8 +45,8 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 	serverPodName := fmt.Sprintf("%s-server", name)
 	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Pod"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Pod"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
 			Name:   &serverPodName,
@@ -56,21 +56,21 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  extutil.Ptr("netserver"),
-					Image: extutil.Ptr(netserverImage),
+					Name:  new("netserver"),
+					Image: new(netserverImage),
 					Args:  []string{"-D"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
-							Name:          extutil.Ptr("control"),
-							ContainerPort: extutil.Ptr(int32(12865)),
+							Name:          new("control"),
+							ContainerPort: new(int32(12865)),
 						},
 						{
-							Name:          extutil.Ptr("data-tcp"),
-							ContainerPort: extutil.Ptr(int32(5000)),
+							Name:          new("data-tcp"),
+							ContainerPort: new(int32(5000)),
 							Protocol:      extutil.Ptr(corev1.ProtocolTCP),
 						}, {
-							Name:          extutil.Ptr("data-udp"),
-							ContainerPort: extutil.Ptr(int32(5001)),
+							Name:          new("data-udp"),
+							ContainerPort: new(int32(5001)),
 							Protocol:      extutil.Ptr(corev1.ProtocolUDP),
 						},
 					},
@@ -83,8 +83,8 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 	clientPodName := fmt.Sprintf("%s-client", name)
 	clientCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Pod"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Pod"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
 			Name:   &clientPodName,
@@ -94,8 +94,8 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("netperf"),
-					Image:   extutil.Ptr(netperfImage),
+					Name:    new("netperf"),
+					Image:   new(netperfImage),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -188,7 +188,7 @@ func (n *Netperf) run(test string, args ...string) (string, error) {
 	var out string
 	var err error
 	cmd := append([]string{"netperf", "-H", n.ServerIp, "-l2", "-t", test, "--"}, args...)
-	for attempt := 0; attempt < 5; attempt++ {
+	for range 5 {
 		out, err = n.Minikube.PodExec(n.ClientPod, "netperf", cmd...)
 		if err == nil {
 			break

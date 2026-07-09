@@ -96,7 +96,7 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 	unameInformation := extruntime.GetUnameInformation()
 	if unameInformation != "" {
 		if result.Messages == nil {
-			result.Messages = extutil.Ptr([]action_kit_api.Message{})
+			result.Messages = new([]action_kit_api.Message{})
 		}
 		*result.Messages = append(*result.Messages, action_kit_api.Message{
 			Level:   extutil.Ptr(action_kit_api.Info),
@@ -116,7 +116,7 @@ func (a *actionHttpAdapter[T]) handlePrepare(w http.ResponseWriter, r *http.Requ
 		var extensionError *extension_kit.ExtensionError
 		isExtensionError := errors.As(err, &extensionError)
 		if !isExtensionError {
-			extensionError = extutil.Ptr(extension_kit.ToError("Failed to prepare.", err))
+			extensionError = new(extension_kit.ToError("Failed to prepare.", err))
 		}
 		result.Error = &action_kit_api.ActionKitError{
 			Title:    extensionError.Title,
@@ -240,7 +240,7 @@ func (a *actionHttpAdapter[T]) handleStart(w http.ResponseWriter, r *http.Reques
 		var extensionError *extension_kit.ExtensionError
 		isExtensionError := errors.As(err, &extensionError)
 		if !isExtensionError {
-			extensionError = extutil.Ptr(extension_kit.ToError("Failed to start action.", err))
+			extensionError = new(extension_kit.ToError("Failed to start action.", err))
 		}
 		result.Error = &action_kit_api.ActionKitError{
 			Title:    extensionError.Title,
@@ -332,7 +332,7 @@ func (a *actionHttpAdapter[T]) handleStatus(w http.ResponseWriter, r *http.Reque
 		var extensionError *extension_kit.ExtensionError
 		isExtensionError := errors.As(err, &extensionError)
 		if !isExtensionError {
-			extensionError = extutil.Ptr(extension_kit.ToError("Failed to read status.", err))
+			extensionError = new(extension_kit.ToError("Failed to read status.", err))
 		}
 		result.Error = &action_kit_api.ActionKitError{
 			Title:    extensionError.Title,
@@ -504,7 +504,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 	// If the action has a stop, we augment a status endpoint. It is used to check for agent heartbeats and to report extraordinary stops.
 	if description.Stop != nil && description.Status == nil {
 		description.Status = &action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			CallInterval: extutil.Ptr("15s"),
+			CallInterval: new("15s"),
 		}
 	}
 	if description.Status != nil {
@@ -515,7 +515,7 @@ func getDescriptionWithDefaults[T any](action Action[T]) action_kit_api.ActionDe
 			description.Status.Method = action_kit_api.POST
 		}
 		if description.Status.CallInterval == nil || *description.Status.CallInterval == "" {
-			description.Status.CallInterval = extutil.Ptr(defaultCallInterval)
+			description.Status.CallInterval = new(defaultCallInterval)
 		}
 	}
 

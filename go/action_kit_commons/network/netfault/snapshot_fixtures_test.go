@@ -51,8 +51,8 @@ func fixtureGkeCosEth0Tuned(ifindex uint32) []tc.Object {
 	// entry doesn't bleed into the other 15 (shared-pointer aliasing bug).
 	newTunedFq := func() *tc.Fq {
 		return &tc.Fq{
-			BucketsLog:      uint32Ptr(15),         // 2^15 == 32768 buckets
-			Horizon:         uint32Ptr(2_000_000),  // 2s == 2_000_000 us
+			BucketsLog:      uint32Ptr(15),        // 2^15 == 32768 buckets
+			Horizon:         uint32Ptr(2_000_000), // 2s == 2_000_000 us
 			Quantum:         uint32Ptr(2948),
 			InitQuantum:     uint32Ptr(14740),
 			FlowRefillDelay: uint32Ptr(40_000_000), // 40ms in nanoseconds
@@ -197,4 +197,6 @@ func fixtureClsactWithIngress(ifindex uint32) []tc.Object {
 
 // uint32Ptr is a helper for the typed go-tc structs which take pointers for
 // optional fields.
-func uint32Ptr(v uint32) *uint32 { return &v }
+//
+//go:fix inline
+func uint32Ptr(v uint32) *uint32 { return new(v) }

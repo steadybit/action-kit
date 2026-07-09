@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -41,12 +42,7 @@ type route struct {
 }
 
 func (i *iface) hasFlag(f string) bool {
-	for _, flag := range i.Flags {
-		if flag == f {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(i.Flags, f)
 }
 
 func ListNonLoopbackInterfaceNames(ctx context.Context, r CommandRunner) ([]string, error) {

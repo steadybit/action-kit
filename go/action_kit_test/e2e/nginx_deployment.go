@@ -76,11 +76,11 @@ func (n *NginxDeployment) Deploy(deploymentName string) error {
 
 	service, err := n.Minikube.CreateService(&acorev1.ServiceApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Service"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Service"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
-			Name:   extutil.Ptr("nginx"),
+			Name:   new("nginx"),
 			Labels: map[string]string{"app": deploymentName},
 		},
 		Spec: &acorev1.ServiceSpecApplyConfiguration{
@@ -88,7 +88,7 @@ func (n *NginxDeployment) Deploy(deploymentName string) error {
 			Selector: n.Deployment.GetLabels(),
 			Ports: []acorev1.ServicePortApplyConfiguration{
 				{
-					Port:     extutil.Ptr(int32(80)),
+					Port:     new(int32(80)),
 					Protocol: extutil.Ptr(corev1.ProtocolTCP),
 				},
 			},

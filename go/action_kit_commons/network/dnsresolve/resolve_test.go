@@ -71,7 +71,7 @@ func TestHostnameResolver_ResolveHostnames_errorhandling(t *testing.T) {
 		{
 			output: []byte(""),
 			want:   []net.IP{},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, "could not resolve hostnames: 'steadybit.com'", i...)
 			},
 		},
@@ -94,7 +94,7 @@ STEADybit.com.          IN      A       141.193.213.10`),
 ;; no servers could be reached`),
 			err:  &exec.ExitError{},
 			want: []net.IP{},
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorContains(t, err, `could not resolve hostnames: <nil>
 communications error to 127.1.1.1#53: connection refused
 communications error to 127.1.1.1#53: connection refused

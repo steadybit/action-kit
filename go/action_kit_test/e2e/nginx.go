@@ -28,8 +28,8 @@ type Nginx struct {
 func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfiguration)) error {
 	cfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Pod"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Pod"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
 			Name:   &podName,
@@ -39,11 +39,11 @@ func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfigura
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  extutil.Ptr("nginx"),
-					Image: extutil.Ptr("docker.io/library/nginx:stable-alpine"),
+					Name:  new("nginx"),
+					Image: new("docker.io/library/nginx:stable-alpine"),
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
-							ContainerPort: extutil.Ptr(int32(80)),
+							ContainerPort: new(int32(80)),
 						},
 					},
 				},
@@ -64,11 +64,11 @@ func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfigura
 
 	service, err := n.Minikube.CreateService(&acorev1.ServiceApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Service"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Service"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
-			Name:   extutil.Ptr("nginx"),
+			Name:   new("nginx"),
 			Labels: map[string]string{"app": podName},
 		},
 		Spec: &acorev1.ServiceSpecApplyConfiguration{
@@ -76,7 +76,7 @@ func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfigura
 			Selector: n.Pod.GetLabels(),
 			Ports: []acorev1.ServicePortApplyConfiguration{
 				{
-					Port:     extutil.Ptr(int32(80)),
+					Port:     new(int32(80)),
 					Protocol: extutil.Ptr(corev1.ProtocolTCP),
 				},
 			},

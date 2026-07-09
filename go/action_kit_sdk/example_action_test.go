@@ -14,7 +14,7 @@ import (
 
 type Call struct {
 	Name string
-	Args []interface{}
+	Args []any
 }
 
 type ExampleAction struct {
@@ -68,21 +68,21 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 				Name:         "duration",
 				Label:        "Duration",
 				Type:         action_kit_api.ActionParameterTypeDuration,
-				DefaultValue: extutil.Ptr("10s"),
+				DefaultValue: new("10s"),
 			},
 			{
 				Name:          "duration",
 				Label:         "Duration with custom units",
-				DurationUnits: extutil.Ptr([]action_kit_api.DurationUnit{action_kit_api.DurationUnitSeconds, action_kit_api.DurationUnitMinutes}),
+				DurationUnits: new([]action_kit_api.DurationUnit{action_kit_api.DurationUnitSeconds, action_kit_api.DurationUnitMinutes}),
 				Type:          action_kit_api.ActionParameterTypeDuration,
-				DefaultValue:  extutil.Ptr("10s"),
+				DefaultValue:  new("10s"),
 			},
 			{
 				Name:     "inputFile",
 				Label:    "Input File",
 				Type:     action_kit_api.ActionParameterTypeFile,
-				Required: extutil.Ptr(true),
-				AcceptedFileTypes: extutil.Ptr([]string{
+				Required: new(true),
+				AcceptedFileTypes: new([]string{
 					".txt",
 				}),
 			},
@@ -90,8 +90,8 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 				Name:     "inputFile2",
 				Label:    "Input File 2 (optional)",
 				Type:     action_kit_api.ActionParameterTypeFile,
-				Required: extutil.Ptr(false),
-				AcceptedFileTypes: extutil.Ptr([]string{
+				Required: new(false),
+				AcceptedFileTypes: new([]string{
 					".txt",
 				}),
 			},
@@ -99,20 +99,20 @@ func (action *ExampleAction) Describe() action_kit_api.ActionDescription {
 		Prepare: action_kit_api.MutatingEndpointReference{},
 		Start:   action_kit_api.MutatingEndpointReference{},
 		Status: &action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			CallInterval: extutil.Ptr("1s"),
+			CallInterval: new("1s"),
 		},
 		Stop: &action_kit_api.MutatingEndpointReference{},
 		Metrics: &action_kit_api.MetricsConfiguration{
 			Query: &action_kit_api.MetricsQueryConfiguration{
 				Endpoint: action_kit_api.MutatingEndpointReferenceWithCallInterval{
-					CallInterval: extutil.Ptr("10s"),
+					CallInterval: new("10s"),
 				},
 			},
 		},
 	}
 }
 func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
-	action.calls <- Call{"Prepare", []interface{}{state, request}}
+	action.calls <- Call{"Prepare", []any{state, request}}
 	var config ExampleConfig
 	if err := extconversion.Convert(request.Config, &config); err != nil {
 		return nil, extension_kit.ToError("Failed to unmarshal the config.", err)
@@ -134,13 +134,13 @@ func (action *ExampleAction) Prepare(_ context.Context, state *ExampleState, req
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Prepare"},
 		},
 		Metrics: &action_kit_api.Metrics{
-			{Metric: map[string]string{"Test": "prepare"}, Name: extutil.Ptr("TestMetric")},
+			{Metric: map[string]string{"Test": "prepare"}, Name: new("TestMetric")},
 		},
 	}, nil
 }
 
 func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*action_kit_api.StartResult, error) {
-	action.calls <- Call{"Start", []interface{}{state}}
+	action.calls <- Call{"Start", []any{state}}
 	state.TestStep = "StartBeforeError"
 	if action.startError != nil {
 		return nil, action.startError
@@ -155,13 +155,13 @@ func (action *ExampleAction) Start(_ context.Context, state *ExampleState) (*act
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Start"},
 		},
 		Metrics: &action_kit_api.Metrics{
-			{Metric: map[string]string{"Test": "start"}, Name: extutil.Ptr("TestMetric")},
+			{Metric: map[string]string{"Test": "start"}, Name: new("TestMetric")},
 		},
 	}, nil
 }
 
 func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*action_kit_api.StatusResult, error) {
-	action.calls <- Call{"Status", []interface{}{state}}
+	action.calls <- Call{"Status", []any{state}}
 	state.TestStep = "StatusBeforeError"
 	if action.statusError != nil {
 		return nil, action.statusError
@@ -176,13 +176,13 @@ func (action *ExampleAction) Status(_ context.Context, state *ExampleState) (*ac
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Status"},
 		},
 		Metrics: &action_kit_api.Metrics{
-			{Metric: map[string]string{"Test": "status"}, Name: extutil.Ptr("TestMetric")},
+			{Metric: map[string]string{"Test": "status"}, Name: new("TestMetric")},
 		},
 	}, nil
 }
 
 func (action *ExampleAction) Stop(_ context.Context, state *ExampleState) (*action_kit_api.StopResult, error) {
-	action.calls <- Call{"Stop", []interface{}{state}}
+	action.calls <- Call{"Stop", []any{state}}
 	return &action_kit_api.StopResult{
 		Artifacts: &action_kit_api.Artifacts{
 			{Data: "test", Label: "artifact-stop"},
@@ -191,7 +191,7 @@ func (action *ExampleAction) Stop(_ context.Context, state *ExampleState) (*acti
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from Stop"},
 		},
 		Metrics: &action_kit_api.Metrics{
-			{Metric: map[string]string{"Test": "stop"}, Name: extutil.Ptr("TestMetric")},
+			{Metric: map[string]string{"Test": "stop"}, Name: new("TestMetric")},
 		},
 	}, nil
 }
@@ -206,7 +206,7 @@ func (action *ExampleAction) QueryMetrics(_ context.Context, _ action_kit_api.Qu
 			{Level: extutil.Ptr(action_kit_api.Info), Message: "This is a test Message from QueryMetrics"},
 		},
 		Metrics: &action_kit_api.Metrics{
-			{Metric: map[string]string{"Test": "query-metrics"}, Name: extutil.Ptr("TestMetric")},
+			{Metric: map[string]string{"Test": "query-metrics"}, Name: new("TestMetric")},
 		},
 	}, nil
 }

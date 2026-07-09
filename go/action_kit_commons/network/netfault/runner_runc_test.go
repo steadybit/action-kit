@@ -37,10 +37,8 @@ func Test_generateAndRunCommands_using_runc_should_serialize(t *testing.T) {
 	}).Return(nil)
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			sidecar := SidecarOpts{
 				TargetProcess: ociruntime.LinuxProcessInfo{},
 				Id:            "test",
@@ -52,7 +50,7 @@ func Test_generateAndRunCommands_using_runc_should_serialize(t *testing.T) {
 			defer func(ctx context.Context, runner CommandRunner, opts Opts, snap QdiscSnapshot) {
 				_ = Revert(ctx, runner, opts, snap)
 			}(context.Background(), runner, &blackholeOpts, snap)
-		}()
+		})
 	}
 	wg.Wait()
 }

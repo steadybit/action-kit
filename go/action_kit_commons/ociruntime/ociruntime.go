@@ -523,10 +523,8 @@ func WithCapabilities(caps ...string) SpecEditor {
 }
 
 func appendIfMissing(list []string, str string) []string {
-	for _, item := range list {
-		if item == str {
-			return list
-		}
+	if slices.Contains(list, str) {
+		return list
 	}
 	return append(list, str)
 }

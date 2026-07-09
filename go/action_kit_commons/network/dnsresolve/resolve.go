@@ -67,8 +67,8 @@ func resolve(ctx context.Context, d dig, hostnames ...string) ([]net.IP, error) 
 	scanner := bufio.NewScanner(bytes.NewReader(outb))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, ";;") {
-			messages = append(messages, strings.TrimSpace(strings.TrimPrefix(line, ";;")))
+		if after, ok := strings.CutPrefix(line, ";;"); ok {
+			messages = append(messages, strings.TrimSpace(after))
 			continue
 		} else if fields := strings.Fields(line); len(fields) >= 4 {
 			ip := net.ParseIP(fields[3])

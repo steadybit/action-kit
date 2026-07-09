@@ -13,8 +13,8 @@ const (
 )
 
 func RemovePrefix(containerId string) string {
-	if i := strings.Index(containerId, separator); i >= 0 {
-		return containerId[i+len(separator):]
+	if _, after, ok := strings.Cut(containerId, separator); ok {
+		return after
 	}
 	return containerId
 }

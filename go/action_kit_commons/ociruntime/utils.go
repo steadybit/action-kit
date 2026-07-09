@@ -144,8 +144,8 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 	}
 
 	var inodes []uint64
-	lines := strings.Split(sout.String(), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(sout.String(), "\n")
+	for line := range lines {
 		if line != "" {
 			inode, err := strconv.ParseUint(strings.TrimSpace(line), 10, 64)
 			if err != nil {
@@ -400,8 +400,8 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 		return "", err
 	}
 
-	lines := strings.Split(sout.String(), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(sout.String(), "\n")
+	for line := range lines {
 		if line != "" {
 			netNsName := netnsOutputCleanup.ReplaceAllString(line, "")
 			path := fmt.Sprintf("%s/%s", netnsDir, strings.TrimSpace(netNsName))
@@ -410,10 +410,8 @@ func lookupNamedNetworkNamespace(ctx context.Context, targetInode uint64) (strin
 				// Ignore error, as named network namespace could have been removed.
 				continue
 			}
-			for _, inode := range inodes {
-				if inode == targetInode {
-					return path, nil
-				}
+			if slices.Contains(inodes, targetInode) {
+				return path, nil
 			}
 		}
 	}
@@ -532,7 +530,7 @@ func parseProcCgroupFile(s string) string {
 	cgroupV1 := ""
 	cgroupV1MinHid := 9999
 
-	for _, line := range strings.Split(strings.TrimSpace(s), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(s), "\n") {
 		fields := strings.Split(line, ":")
 		if len(fields) != 3 {
 			continue

@@ -67,7 +67,7 @@ func inspectRootQdiscs(ctx context.Context, runner CommandRunner) (map[string]st
 // `ingress`/`clsact` lines use `parent` instead of `root` and are skipped.
 func parseRootQdiscKinds(out string) map[string]string {
 	kinds := make(map[string]string)
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) < 6 || fields[0] != "qdisc" || fields[3] != "dev" || fields[5] != "root" {
 			continue
