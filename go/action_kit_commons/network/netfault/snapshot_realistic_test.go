@@ -106,6 +106,48 @@ func TestRestorePlan_EksDefault(t *testing.T) {
 	assert.Equal(t, planCounts{skip: 1, replace: 0}, plan)
 }
 
+// TestRestorePlan_Ec2EnaAnonymousMq covers a stock EC2/EKS multi-queue ENA
+// interface: `mq 0: root` with one anonymous `fq_codel 0: parent :N` per TX
+// queue. Everything carries handle 0 because the kernel attached it all via
+// attach_default_qdiscs. Handle-0 parents cannot be resolved via RTNETLINK,
+// so Replace() on the children fails with ENOENT ("netlink receive: no such
+// file or directory") — observed in production as a Stop error on ens5. The
+// planner must skip the whole tree: the kernel re-attaches the identical
+// defaults after `tc qdisc del root`, so there is nothing to restore.
+func TestRestorePlan_Ec2EnaAnonymousMq(t *testing.T) {
+	const ens5 uint32 = 2
+	qdiscs := fixtureEc2EnaAnonymousMq(ens5, 4)
+
+	require.Len(t, qdiscs, 5, "fixture should have 1 mq root + 4 fq_codel children")
+	plan := planForInterface(qdiscs)
+	assert.Equal(t, planCounts{skip: 5, replace: 0}, plan, "anonymous mq tree must be skipped entirely on restore")
+}
+
+// TestShouldSkipQdiscOnRestore_AnonymousParentOnly pins the skip rule to
+// children of anonymous roots: a child whose Parent major is non-zero (the
+// GKE mq 8026: case) must still be replaced, and a root qdisc with handle 0
+// (the AKS fq_codel case) must still be replaced — Parent == TC_H_ROOT is
+// always addressable.
+func TestShouldSkipQdiscOnRestore_AnonymousParentOnly(t *testing.T) {
+	anonymousChild := tc.Object{
+		Msg:       tc.Msg{Ifindex: 2, Handle: 0, Parent: handle(0, 1)},
+		Attribute: tc.Attribute{Kind: "fq_codel"},
+	}
+	assert.True(t, shouldSkipQdiscOnRestore(anonymousChild), "child of anonymous root is unaddressable, skip")
+
+	anchoredChild := tc.Object{
+		Msg:       tc.Msg{Ifindex: 2, Handle: handle(0x802b, 0), Parent: handle(0x8026, 1)},
+		Attribute: tc.Attribute{Kind: "fq"},
+	}
+	assert.False(t, shouldSkipQdiscOnRestore(anchoredChild), "child under an explicit mq handle must be replaced")
+
+	anonymousRoot := tc.Object{
+		Msg:       tc.Msg{Ifindex: 2, Handle: 0, Parent: tcHRoot},
+		Attribute: tc.Attribute{Kind: "fq_codel"},
+	}
+	assert.False(t, shouldSkipQdiscOnRestore(anonymousRoot), "root fq_codel is addressable via TC_H_ROOT, replace it")
+}
+
 // TestRestorePlan_BareMetalHtb covers a host with a user-installed htb
 // shaper tree. In production this case is caught by preflight (htb is not
 // in safeRootQdiscKinds), so the snapshot path shouldn't run. The test

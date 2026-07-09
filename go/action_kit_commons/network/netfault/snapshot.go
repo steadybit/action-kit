@@ -168,10 +168,22 @@ func isRootQdisc(q tc.Object) bool {
 // qdisc rather than calling Replace. We skip kernel-auto-managed kinds (mq,
 // clsact, ingress) because the kernel re-attaches them automatically after
 // `tc qdisc del root`; restoring them ourselves would race the kernel.
+//
+// We also skip children of an anonymous root (Parent major == 0): on stock
+// multi-queue NICs (e.g. AWS ENA) the kernel attaches `mq 0:` with one
+// `fq_codel 0: parent :N` per TX queue, all with handle 0. Handle-0 qdiscs
+// are unaddressable via RTNETLINK — tc_modify_qdisc resolves the parent via
+// qdisc_lookup(dev, TC_H_MAJ(clid)), which returns NULL for major 0, so
+// Replace fails with ENOENT. Skipping is lossless: a child of an anonymous
+// root is by definition kernel-created (anything user-tuned has addressable
+// handles), and the kernel re-creates it identically after `tc qdisc del
+// root`.
+//
 // Pure function — no side effects, no netlink calls — so the decision is
 // unit-testable without an actual RTNETLINK socket.
 func shouldSkipQdiscOnRestore(q tc.Object) bool {
-	return isKernelAutoManaged(q.Kind)
+	return isKernelAutoManaged(q.Kind) ||
+		(!isRootQdisc(q) && handleMajor(q.Parent) == 0)
 }
 
 // stripRuntimeStats zeros the kernel-counter fields on a tc.Object so it can
