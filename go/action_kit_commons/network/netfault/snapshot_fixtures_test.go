@@ -105,6 +105,39 @@ func fixtureEksDefaultEth0(ifindex uint32) []tc.Object {
 	}}
 }
 
+// fixtureEc2EnaAnonymousMq models a stock EC2/EKS multi-queue ENA interface
+// (ens5) where nobody ever configured tc: the kernel's attach_default_qdiscs
+// creates `mq 0: root` plus one `fq_codel 0: parent :N` per TX queue, all
+// with handle 0. Handle-0 qdiscs are unaddressable via RTNETLINK
+// (tc_modify_qdisc resolves the parent via qdisc_lookup(dev, TC_H_MAJ(clid)),
+// which returns NULL for major 0), so restore must skip every entry — the
+// kernel re-attaches the identical tree after `tc qdisc del root` anyway.
+//
+// Reference: `tc qdisc show dev ens5` on Amazon Linux
+//
+//	qdisc mq 0: root
+//	qdisc fq_codel 0: parent :4 limit 10240p flows 1024 quantum 9015 ...
+//	qdisc fq_codel 0: parent :3 limit 10240p flows 1024 quantum 9015 ...
+//	qdisc fq_codel 0: parent :2 limit 10240p flows 1024 quantum 9015 ...
+//	qdisc fq_codel 0: parent :1 limit 10240p flows 1024 quantum 9015 ...
+func fixtureEc2EnaAnonymousMq(ifindex uint32, queues uint16) []tc.Object {
+	out := []tc.Object{{
+		Msg:       tc.Msg{Ifindex: ifindex, Handle: 0, Parent: tcHRoot},
+		Attribute: tc.Attribute{Kind: "mq"},
+	}}
+	for q := uint16(1); q <= queues; q++ {
+		out = append(out, tc.Object{
+			Msg: tc.Msg{Ifindex: ifindex, Handle: 0, Parent: handle(0, q)},
+			Attribute: tc.Attribute{Kind: "fq_codel", FqCodel: &tc.FqCodel{
+				Limit:   uint32Ptr(10240),
+				Flows:   uint32Ptr(1024),
+				Quantum: uint32Ptr(9015),
+			}},
+		})
+	}
+	return out
+}
+
 // fixtureBareMetalHtbWithClasses models a bare-metal Linux host with a
 // user-installed `htb` root and traffic-shaping classes. Used by some CNI
 // bandwidth plugins and by manual `tc` shaping. Preflight refuses this kind

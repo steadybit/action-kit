@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fix(netfault): skip restoring children of an anonymous root qdisc during snapshot restore. On stock multi-queue NICs (e.g. AWS ENA `ens5`) the kernel attaches `mq 0:` with one `fq_codel 0: parent :N` per TX queue — all handle 0 and therefore unaddressable via RTNETLINK, so `Qdisc().Replace()` failed with ENOENT (`netlink receive: no such file or directory`) and the Stop of every network attack on such hosts reported "Failed to revert network settings" even though the network was reverted correctly. Skipping is lossless: the kernel re-attaches the identical default tree after `tc qdisc del root`.
+
 ## 1.10.1
 
 - fix: guard runtime crash paths — no nil-deref reading a process exit code when a runtime binary fails to start, no index panic parsing empty runtime output (`ociruntime`), no divide-by-zero when a netfault attack has no interfaces, and no nil-deref when a stress/memfill/diskfill process wrapper's `Exited`/`Stop` is called without a successful `Start`
