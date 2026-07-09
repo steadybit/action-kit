@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.10.2
 
 - fix(netfault): skip restoring children of an anonymous root qdisc during snapshot restore. On stock multi-queue NICs (e.g. AWS ENA `ens5`) the kernel attaches `mq 0:` with one `fq_codel 0: parent :N` per TX queue — all handle 0 and therefore unaddressable via RTNETLINK, so `Qdisc().Replace()` failed with ENOENT (`netlink receive: no such file or directory`) and the Stop of every network attack on such hosts reported "Failed to revert network settings" even though the network was reverted correctly. Skipping is lossless: the kernel re-attaches the identical default tree after `tc qdisc del root`.
 
