@@ -43,8 +43,8 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 	serverPodName := fmt.Sprintf("%s-server", name)
 	serverCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Pod"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Pod"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
 			Name:   &serverPodName,
@@ -54,21 +54,21 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  extutil.Ptr("iperf"),
-					Image: extutil.Ptr(iperf3Image),
+					Name:  new("iperf"),
+					Image: new(iperf3Image),
 					Args:  []string{"-s", "-p", "5201"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
-							Name:          extutil.Ptr("control"),
-							ContainerPort: extutil.Ptr(int32(5201)),
+							Name:          new("control"),
+							ContainerPort: new(int32(5201)),
 						},
 						{
-							Name:          extutil.Ptr("data-tcp"),
-							ContainerPort: extutil.Ptr(int32(5000)),
+							Name:          new("data-tcp"),
+							ContainerPort: new(int32(5000)),
 							Protocol:      extutil.Ptr(corev1.ProtocolTCP),
 						}, {
-							Name:          extutil.Ptr("data-udp"),
-							ContainerPort: extutil.Ptr(int32(5001)),
+							Name:          new("data-udp"),
+							ContainerPort: new(int32(5001)),
 							Protocol:      extutil.Ptr(corev1.ProtocolUDP),
 						},
 					},
@@ -81,8 +81,8 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 	clientPodName := fmt.Sprintf("%s-client", name)
 	clientCfg := &acorev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: ametav1.TypeMetaApplyConfiguration{
-			Kind:       extutil.Ptr("Pod"),
-			APIVersion: extutil.Ptr("v1"),
+			Kind:       new("Pod"),
+			APIVersion: new("v1"),
 		},
 		ObjectMetaApplyConfiguration: &ametav1.ObjectMetaApplyConfiguration{
 			Name:   &clientPodName,
@@ -92,8 +92,8 @@ func (n *Iperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfigu
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:    extutil.Ptr("iperf"),
-					Image:   extutil.Ptr(iperf3Image),
+					Name:    new("iperf"),
+					Image:   new(iperf3Image),
 					Command: []string{"sleep", "infinity"},
 				},
 			},
@@ -153,7 +153,7 @@ func (n *Iperf) MeasurePackageLoss() (float64, error) {
 		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
-	var result interface{}
+	var result any
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
 		return 0, fmt.Errorf("failed reading results: %w", err)
@@ -188,7 +188,7 @@ func (n *Iperf) AssertPackageLossWithRetry(min float64, max float64, maxRetries 
 
 	measurements := make([]float64, 0, 5)
 	success := false
-	for i := 0; i < maxRetries; i++ {
+	for range maxRetries {
 		loss, err := n.MeasurePackageLoss()
 		if err != nil {
 			success = false
@@ -215,7 +215,7 @@ func (n *Iperf) MeasureBandwidth() (float64, error) {
 		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
-	var result interface{}
+	var result any
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
 		return 0, fmt.Errorf("failed reading results: %w", err)

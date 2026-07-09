@@ -35,7 +35,7 @@ func ReadCpusAllowedCount(fname string) (int, error) {
 // more than 32 CPUs, e.g. "ffffffff,ffffffff,ffffffff,ffffffff" for 128 CPUs.
 func countCpusAllowed(value string) (int, error) {
 	count := 0
-	for _, word := range strings.Split(strings.TrimSpace(value), ",") {
+	for word := range strings.SplitSeq(strings.TrimSpace(value), ",") {
 		bitmask, err := strconv.ParseUint(strings.TrimSpace(word), 16, 32)
 		if err != nil {
 			return -1, err

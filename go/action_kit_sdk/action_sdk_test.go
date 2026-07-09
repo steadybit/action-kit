@@ -16,7 +16,7 @@ import (
 func TestMonitorHeartbeat_restart_does_not_leak_goroutines(t *testing.T) {
 	id := uuid.New()
 	base := runtime.NumGoroutine()
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		monitorHeartbeatWithCallback(id, time.Hour, time.Hour, func() {})
 	}
 	stopMonitorHeartbeat(id)
@@ -30,7 +30,7 @@ func TestMonitorHeartbeat_restart_does_not_leak_goroutines(t *testing.T) {
 // goroutine and the signal handler racing on the shared stopEvents slice. Run under -race.
 func TestStopEvents_concurrent_access(t *testing.T) {
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		id := uuid.New()
 		wg.Add(2)
 		go func() { defer wg.Done(); markAsStopped(id, "test") }()
@@ -42,7 +42,7 @@ func TestStopEvents_concurrent_access(t *testing.T) {
 // This test reproduced an issue in which new heartbeats
 // would not be processed anymore and led to a stop of the experiment.
 func TestHeartbeat_should_not_timeout(t *testing.T) {
-	stop := make(chan interface{})
+	stop := make(chan any)
 	id, err := uuid.NewUUID()
 	assert.NoError(t, err)
 

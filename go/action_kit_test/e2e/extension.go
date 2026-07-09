@@ -74,9 +74,9 @@ func (e *Extension) DiscoverEnrichmentData(discoveryId string) ([]discovery_kit_
 	return dclient.NewDiscoveryClient("/", e.Client).DiscoverEnrichmentData(discoveryId)
 }
 
-func (e *Extension) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error) {
+func (e *Extension) RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error) {
 	return aclient.NewActionClient("/", e.Client).RunAction(actionId, target, config, executionContext)
 }
-func (e *Extension) RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error) {
+func (e *Extension) RunActionWithFiles(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error) {
 	return aclient.NewActionClient("/", e.Client).RunActionWithFiles(actionId, target, config, executionContext, files)
 }

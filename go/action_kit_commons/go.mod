@@ -1,8 +1,6 @@
 module github.com/steadybit/action-kit/go/action_kit_commons
 
-go 1.25.0
-
-toolchain go1.25.4
+go 1.26.5
 
 require (
 	github.com/florianl/go-tc v0.4.8

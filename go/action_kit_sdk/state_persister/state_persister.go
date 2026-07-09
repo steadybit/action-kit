@@ -39,7 +39,7 @@ func (p *inmemoryStatePersister) PersistState(_ context.Context, state *Persiste
 
 func (p *inmemoryStatePersister) GetExecutionIds(_ context.Context) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	p.states.Range(func(key, value interface{}) bool {
+	p.states.Range(func(key, value any) bool {
 		ids = append(ids, key.(uuid.UUID))
 		return true
 	})

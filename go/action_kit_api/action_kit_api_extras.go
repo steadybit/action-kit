@@ -1,9 +1,9 @@
 package action_kit_api
 
-type ParameterOption interface{}
-type Widget interface{}
-type LineChartWidgetGroupMatcher interface{}
-type ExecutionModification interface{}
+type ParameterOption any
+type Widget any
+type LineChartWidgetGroupMatcher any
+type ExecutionModification any
 
 const (
 	// Deprecated: Use action_kit_api.ActionParameterTypeBitrate instead.

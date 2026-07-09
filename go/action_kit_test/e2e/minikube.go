@@ -23,7 +23,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -548,7 +547,7 @@ func (m *Minikube) DeleteDeployment(deployment metav1.Object) error {
 	if deployment == nil {
 		return nil
 	}
-	return m.GetClient().AppsV1().Deployments(deployment.GetNamespace()).Delete(context.Background(), deployment.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+	return m.GetClient().AppsV1().Deployments(deployment.GetNamespace()).Delete(context.Background(), deployment.GetName(), metav1.DeleteOptions{GracePeriodSeconds: new(int64(0))})
 }
 
 func (m *Minikube) CreatePod(pod *acorev1.PodApplyConfiguration) (metav1.Object, error) {
@@ -570,7 +569,7 @@ func (m *Minikube) DeletePod(pod metav1.Object) error {
 	if pod == nil {
 		return nil
 	}
-	return m.GetClient().CoreV1().Pods(pod.GetNamespace()).Delete(context.Background(), pod.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+	return m.GetClient().CoreV1().Pods(pod.GetNamespace()).Delete(context.Background(), pod.GetName(), metav1.DeleteOptions{GracePeriodSeconds: new(int64(0))})
 }
 
 func (m *Minikube) WaitForDeploymentPhase(deployment metav1.Object, phase corev1.PodPhase, labelSelector string, duration time.Duration) ([]corev1.Pod, error) {
@@ -655,7 +654,7 @@ func (m *Minikube) DeleteService(service metav1.Object) error {
 	if service == nil {
 		return nil
 	}
-	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+	return m.GetClient().CoreV1().Services(service.GetNamespace()).Delete(context.Background(), service.GetName(), metav1.DeleteOptions{GracePeriodSeconds: new(int64(0))})
 }
 
 func (m *Minikube) CreateIngress(ingress *networkingv1.Ingress) (metav1.Object, error) {
@@ -670,7 +669,7 @@ func (m *Minikube) DeleteIngress(ingress metav1.Object) error {
 	if ingress == nil {
 		return nil
 	}
-	return m.GetClient().NetworkingV1().Ingresses(ingress.GetNamespace()).Delete(context.Background(), ingress.GetName(), metav1.DeleteOptions{GracePeriodSeconds: extutil.Ptr(int64(0))})
+	return m.GetClient().NetworkingV1().Ingresses(ingress.GetNamespace()).Delete(context.Background(), ingress.GetName(), metav1.DeleteOptions{GracePeriodSeconds: new(int64(0))})
 }
 
 // Exec executes a command in a container of a pod

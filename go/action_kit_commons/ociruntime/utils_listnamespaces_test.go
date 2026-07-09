@@ -50,7 +50,7 @@ func runStressTest(t *testing.T) {
 	defer cancel()
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < concurrentFileSystem; i++ {
+	for range concurrentFileSystem {
 		wg.Add(1)
 		go func(ctx context.Context) {
 			defer wg.Done()
@@ -69,7 +69,7 @@ func runStressTest(t *testing.T) {
 		}(ctx)
 	}
 
-	for i := 0; i < concurrentProcesses; i++ {
+	for range concurrentProcesses {
 		wg.Add(1)
 		go func(ctx context.Context) {
 			defer wg.Done()

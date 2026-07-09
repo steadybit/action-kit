@@ -71,7 +71,7 @@ func (op *ActionOperations) prepare(t *testing.T) (*action_kit_api.PrepareResult
 				"k8s.cluster-name": {"minikube"},
 			},
 		},
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"duration": "10s",
 		},
 	}
@@ -120,7 +120,7 @@ func (op *ActionOperations) prepareWithFileUpload(t *testing.T) action_kit_api.A
 				"k8s.cluster-name": {"minikube"},
 			},
 		},
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"duration":  "10s",
 			"inputFile": "file::1234567890",
 		},
@@ -234,7 +234,7 @@ func (op *ActionOperations) queryMetrics(t *testing.T) {
 				"k8s.cluster-name": {"minikube"},
 			},
 		},
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"duration": "10s",
 		},
 		Timestamp: time.Now(),
@@ -283,7 +283,7 @@ func (op *ActionOperations) resetCalls() {
 	}
 }
 
-func (op *ActionOperations) assertCall(t *testing.T, name string, args ...interface{}) {
+func (op *ActionOperations) assertCall(t *testing.T, name string, args ...any) {
 	select {
 	case call := <-op.calls:
 		assert.Equal(t, name, call.Name)

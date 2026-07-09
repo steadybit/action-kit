@@ -11,12 +11,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -44,7 +44,7 @@ func AssertProcessRunningInContainer(t *testing.T, m *Minikube, pod metav1.Objec
 			}
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
 
-			for _, line := range strings.Split(out, "\n") {
+			for line := range strings.SplitSeq(out, "\n") {
 				fields := strings.Fields(line)
 				if len(fields) >= 2 && fields[1] == comm {
 					return
@@ -70,7 +70,7 @@ func AssertProcessNOTRunningInContainer(t *testing.T, m *Minikube, pod metav1.Ob
 			out, err := m.PodExec(pod, containername, "ps", "-opid,comm", "-A")
 			require.NoError(t, err, "failed to exec ps -o=pid,comm: %s", out)
 
-			for _, line := range strings.Split(out, "\n") {
+			for line := range strings.SplitSeq(out, "\n") {
 				fields := strings.Fields(line)
 				if len(fields) >= 2 && fields[1] == comm {
 					assert.Fail(t, "process found", "process %s found in container %s/%s.\n%s", comm, pod.GetName(), containername, lastOutput)
@@ -149,7 +149,7 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 			return "", err
 		}
 
-		for _, line := range strings.Split(outb.String(), "\n") {
+		for line := range strings.SplitSeq(outb.String(), "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 3 && fields[0] == RemovePrefix(containerId) {
 				return strings.ToLower(fields[2]), nil
@@ -208,12 +208,7 @@ func HasAttribute(target discovery_kit_api.Target, key, value string) bool {
 }
 
 func ContainsAttribute(attributes map[string][]string, key, value string) bool {
-	for _, v := range attributes[key] {
-		if v == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(attributes[key], value)
 }
 
 func AssertLogContains(t *testing.T, m *Minikube, pod metav1.Object, expectedLog string) {
@@ -227,7 +222,7 @@ func AssertLogContainsWithTimeout(t *testing.T, m *Minikube, pod metav1.Object, 
 	defer cancel()
 
 	var sinceSeconds *int64
-	sinceSeconds = extutil.Ptr(int64(180))
+	sinceSeconds = new(int64(180))
 	for {
 		select {
 		case <-ctx.Done():
@@ -239,7 +234,7 @@ func AssertLogContainsWithTimeout(t *testing.T, m *Minikube, pod metav1.Object, 
 				return
 			}
 			//after first try only look for last 5 seconds
-			sinceSeconds = extutil.Ptr(int64(5))
+			sinceSeconds = new(int64(5))
 		}
 	}
 }

@@ -31,8 +31,8 @@ type ActionAPI interface {
 	ListActions() (action_kit_api.ActionList, error)
 	DescribeAction(ref action_kit_api.DescribingEndpointReference) (action_kit_api.ActionDescription, error)
 
-	RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error)
-	RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error)
+	RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error)
+	RunActionWithFiles(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error)
 }
 
 type ActionExecution interface {
@@ -142,11 +142,11 @@ func (a *actionExecutionImpl) Messages() []action_kit_api.Message {
 	return result
 }
 
-func (c *clientImpl) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
+func (c *clientImpl) RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
 	return c.RunActionWithFiles(actionId, target, config, executionContext, nil)
 }
 
-func (c *clientImpl) RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
+func (c *clientImpl) RunActionWithFiles(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
 	actionList, err := c.ListActions()
 	if err != nil {
 		return &actionExecutionImpl{}, err
@@ -166,7 +166,7 @@ func (c *clientImpl) RunActionWithFiles(actionId string, target *action_kit_api.
 	return &actionExecutionImpl{}, fmt.Errorf("action with id %s not found", actionId)
 }
 
-func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
+func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []File) (ActionExecution, error) {
 	executionId := uuid.New()
 
 	state, duration, err := c.prepareAction(action, target, config, executionId, executionContext, files)
@@ -244,7 +244,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	return actionExecution, nil
 }
 
-func (c *clientImpl) prepareAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config interface{}, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext, files []File) (action_kit_api.ActionState, time.Duration, error) {
+func (c *clientImpl) prepareAction(action action_kit_api.ActionDescription, target *action_kit_api.Target, config any, executionId uuid.UUID, executionContext *action_kit_api.ExecutionContext, files []File) (action_kit_api.ActionState, time.Duration, error) {
 	var duration time.Duration
 	prepareBody := action_kit_api.PrepareActionRequestBody{
 		ExecutionId:      executionId,
@@ -389,7 +389,7 @@ func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executi
 	return nil
 }
 
-func (c *clientImpl) executeAndValidate(ref action_kit_api.DescribingEndpointReference, result interface{}, schemaName string) error {
+func (c *clientImpl) executeAndValidate(ref action_kit_api.DescribingEndpointReference, result any, schemaName string) error {
 	method, path := getMethodAndPath(ref)
 	res, err := c.client.R().SetResult(result).Execute(method, path)
 	if err != nil {
@@ -401,7 +401,7 @@ func (c *clientImpl) executeAndValidate(ref action_kit_api.DescribingEndpointRef
 	return c.validateResponseBody(schemaName, res)
 }
 
-func (c *clientImpl) executeWithBodyAndValidate(ref action_kit_api.MutatingEndpointReference, body, result interface{}, schemaName string) error {
+func (c *clientImpl) executeWithBodyAndValidate(ref action_kit_api.MutatingEndpointReference, body, result any, schemaName string) error {
 	method, path := getMethodAndPath2(ref)
 	res, err := c.client.R().SetBody(body).SetResult(result).Execute(method, path)
 	if err != nil {
@@ -413,7 +413,7 @@ func (c *clientImpl) executeWithBodyAndValidate(ref action_kit_api.MutatingEndpo
 	return c.validateResponseBody(schemaName, res)
 }
 
-func (c *clientImpl) executeWithMultipartAndValidate(ref action_kit_api.MutatingEndpointReference, body interface{}, files []File, result interface{}, schemaName string) error {
+func (c *clientImpl) executeWithMultipartAndValidate(ref action_kit_api.MutatingEndpointReference, body any, files []File, result any, schemaName string) error {
 	prepareBodyJson, err := c.client.JSONMarshal(body)
 	if err != nil {
 		return fmt.Errorf("failed to marshall prepare request action: %w", err)
@@ -448,7 +448,7 @@ func (c *clientImpl) validateResponseBody(name string, res *resty.Response) erro
 		return fmt.Errorf("component schema '%s' not found", name)
 	}
 
-	var decoded interface{}
+	var decoded any
 	dec := json.NewDecoder(bytes.NewReader(res.Body()))
 	dec.UseNumber()
 	err := dec.Decode(&decoded)
