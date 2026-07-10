@@ -221,11 +221,13 @@ func RegisterAction[T any](a Action[T]) {
 	adapter := newActionHttpAdapter(a)
 	registeredActions[adapter.description.Id] = a
 	adapter.registerHandlers()
+	exthttp.BumpRevision()
 }
 
 // ClearRegisteredActions clears all registered actions - used for testing. Warning: This will not remove the registered routes from the http server.
 func ClearRegisteredActions() {
 	registeredActions = make(map[string]any)
+	exthttp.BumpRevision()
 }
 
 // GetActionList returns a list of all root endpoints of registered actions.
