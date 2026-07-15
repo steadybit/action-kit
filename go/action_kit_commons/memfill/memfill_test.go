@@ -39,9 +39,7 @@ func TestProcessArgs(t *testing.T) {
 
 	t.Run("optional flags are omitted when unset", func(t *testing.T) {
 		args := Opts{Size: 50, Mode: ModeUsage, Unit: UnitPercent, Duration: 5 * time.Second, IgnoreCgroup: true}.processArgs()
-		assert.Contains(t, args, "--ignore-cgroup")
-		assert.NotContains(t, args, "--reserve")
-		assert.NotContains(t, args, "--adaptive")
-		assert.NotContains(t, args, "--oom-score-adj")
+		// Exact match: --ignore-cgroup present, and none of --reserve/--adaptive/--oom-score-adj.
+		assert.Equal(t, []string{"/usr/bin/memfill", "50%", "usage", "5", "--ignore-cgroup"}, args)
 	})
 }
