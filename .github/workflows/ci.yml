@@ -52,7 +52,7 @@ jobs:
   go-action-kit-sdk-windows:
     needs:
       - go-action-kit-sdk
-    runs-on: windows-2022
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: ./go/action_kit_sdk
@@ -85,7 +85,7 @@ jobs:
   go-action-kit-commons-windows:
     needs:
       - go-action-kit-commons
-    runs-on: windows-2022
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: ./go/action_kit_commons
@@ -118,7 +118,7 @@ jobs:
   go-action-kit-test-windows:
     needs:
       - go-action-kit-test
-    runs-on: windows-2022
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: ./go/action_kit_test
