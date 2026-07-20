@@ -24,7 +24,7 @@ jobs:
       with:
         # increased fetch depth to support git diff
         fetch-depth: 2
-    - uses: actions/setup-go@v6
+    - uses: actions/setup-go@v7
       with:
         cache-dependency-path: ./go/action_kit_api
         go-version: ${{ env.GO_VERSION }}
@@ -41,7 +41,7 @@ jobs:
         working-directory: ./go/action_kit_sdk
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Audit
@@ -58,7 +58,7 @@ jobs:
         working-directory: ./go/action_kit_sdk
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Audit
@@ -73,7 +73,7 @@ jobs:
         working-directory: ./go/action_kit_commons
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Audit
@@ -91,7 +91,7 @@ jobs:
         working-directory: ./go/action_kit_commons
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Audit
@@ -106,7 +106,7 @@ jobs:
         working-directory: ./go/action_kit_test
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -124,7 +124,7 @@ jobs:
         working-directory: ./go/action_kit_test
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Audit
