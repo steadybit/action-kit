@@ -33,6 +33,13 @@ func (p *PortRange) String() string {
 	return fmt.Sprintf("%d-%d", p.From, p.To)
 }
 
+// IsAny reports whether the range is the "any port" wildcard (PortRangeAny).
+// Callers use this to decide whether to emit a port selector at all — a rule
+// scoped to "any port" must match portless protocols such as ICMP too.
+func (p *PortRange) IsAny() bool {
+	return *p == PortRangeAny
+}
+
 func (p *PortRange) Merge(other PortRange) PortRange {
 	return PortRange{From: min(p.From, other.From), To: max(p.To, other.To)}
 }
@@ -144,7 +151,7 @@ type NetWithPortRange struct {
 func (nwp NetWithPortRange) String() string {
 	var sb strings.Builder
 	sb.WriteString(nwp.Net.String())
-	if nwp.PortRange != PortRangeAny {
+	if !nwp.PortRange.IsAny() {
 		sb.WriteString(" ")
 		sb.WriteString(nwp.PortRange.String())
 	}

@@ -147,7 +147,7 @@ func buildSingleIptables(nwp network.NetWithPortRange, isDst bool, isExclude boo
 	sb.WriteString(" ")
 
 	// Port match if not any
-	if nwp.PortRange != network.PortRangeAny {
+	if !nwp.PortRange.IsAny() {
 		if isDst {
 			sb.WriteString("--dport ")
 		} else {
