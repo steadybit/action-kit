@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
 type IpProto string
@@ -62,8 +64,8 @@ func (o *BlackholeOpts) ipCommands(family family, mode mode) ([]string, error) {
 			continue
 		}
 
-		cmds = append(cmds, fmt.Sprintf("rule %s blackhole to %s%s dport %s", mode, net.String(), ipprotoSelector, portRange.String()))
-		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s sport %s", mode, net.String(), ipprotoSelector, portRange.String()))
+		cmds = append(cmds, fmt.Sprintf("rule %s blackhole to %s%s%s", mode, net.String(), ipprotoSelector, portSelector("dport", portRange)))
+		cmds = append(cmds, fmt.Sprintf("rule %s blackhole from %s%s%s", mode, net.String(), ipprotoSelector, portSelector("sport", portRange)))
 	}
 
 	for _, nwp := range filter.Exclude {
@@ -76,11 +78,22 @@ func (o *BlackholeOpts) ipCommands(family family, mode mode) ([]string, error) {
 			continue
 		}
 
-		cmds = append(cmds, fmt.Sprintf("rule %s to %s%s dport %s table main", mode, net.String(), ipprotoSelector, portRange.String()))
-		cmds = append(cmds, fmt.Sprintf("rule %s from %s%s sport %s table main", mode, net.String(), ipprotoSelector, portRange.String()))
+		cmds = append(cmds, fmt.Sprintf("rule %s to %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("dport", portRange)))
+		cmds = append(cmds, fmt.Sprintf("rule %s from %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("sport", portRange)))
 	}
 	reorderForMode(cmds, mode)
 	return cmds, nil
+}
+
+// portSelector renders the ` dport <range>` / ` sport <range>` fragment for an
+// ip rule. For PortRangeAny it returns an empty string so the rule matches all
+// traffic regardless of L4 port — otherwise portless protocols such as ICMP
+// would never match a `dport`/`sport` selector and escape the blackhole.
+func portSelector(keyword string, portRange network.PortRange) string {
+	if portRange.IsAny() {
+		return ""
+	}
+	return fmt.Sprintf(" %s %s", keyword, portRange.String())
 }
 
 func (o *BlackholeOpts) String() string {
