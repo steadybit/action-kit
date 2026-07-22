@@ -40,25 +40,25 @@ func TestBlackholeOpts_IpCommands(t *testing.T) {
 					},
 				},
 			},
-			wantAddV4: []byte(`rule add blackhole to 0.0.0.0/0 dport 1-65534
-rule add blackhole from 0.0.0.0/0 sport 1-65534
+			wantAddV4: []byte(`rule add blackhole to 0.0.0.0/0
+rule add blackhole from 0.0.0.0/0
 rule add to 192.168.2.1/32 dport 80 table main
 rule add from 192.168.2.1/32 sport 80 table main
 `),
 			wantDelV4: []byte(`rule del from 192.168.2.1/32 sport 80 table main
 rule del to 192.168.2.1/32 dport 80 table main
-rule del blackhole from 0.0.0.0/0 sport 1-65534
-rule del blackhole to 0.0.0.0/0 dport 1-65534
+rule del blackhole from 0.0.0.0/0
+rule del blackhole to 0.0.0.0/0
 `),
-			wantAddV6: []byte(`rule add blackhole to ::/0 dport 1-65534
-rule add blackhole from ::/0 sport 1-65534
+			wantAddV6: []byte(`rule add blackhole to ::/0
+rule add blackhole from ::/0
 rule add to ff02::114/128 dport 8000-8999 table main
 rule add from ff02::114/128 sport 8000-8999 table main
 `),
 			wantDelV6: []byte(`rule del from ff02::114/128 sport 8000-8999 table main
 rule del to ff02::114/128 dport 8000-8999 table main
-rule del blackhole from ::/0 sport 1-65534
-rule del blackhole to ::/0 dport 1-65534
+rule del blackhole from ::/0
+rule del blackhole to ::/0
 `),
 			wantErr: false,
 		},
@@ -84,6 +84,32 @@ rule add blackhole from ::/0 ipproto udp sport 123
 `),
 			wantDelV6: []byte(`rule del blackhole from ::/0 ipproto udp sport 123
 rule del blackhole to ::/0 ipproto udp dport 123
+`),
+			wantErr: false,
+		},
+		{
+			// No port specified => PortRangeAny => rule must omit dport/sport so
+			// that portless protocols (e.g. ICMP) are blackholed as well.
+			name: "blackhole a single host on all protocols when no port specified",
+			opts: BlackholeOpts{
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("10.0.0.5/32", "*"),
+						mustParseNetWithPortRange("2001:db8::5/128", "*"),
+					},
+				},
+			},
+			wantAddV4: []byte(`rule add blackhole to 10.0.0.5/32
+rule add blackhole from 10.0.0.5/32
+`),
+			wantDelV4: []byte(`rule del blackhole from 10.0.0.5/32
+rule del blackhole to 10.0.0.5/32
+`),
+			wantAddV6: []byte(`rule add blackhole to 2001:db8::5/128
+rule add blackhole from 2001:db8::5/128
+`),
+			wantDelV6: []byte(`rule del blackhole from 2001:db8::5/128
+rule del blackhole to 2001:db8::5/128
 `),
 			wantErr: false,
 		},

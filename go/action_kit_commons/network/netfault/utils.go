@@ -147,7 +147,7 @@ func getMatchers(nwp network.NetWithPortRange) ([]string, error) {
 const portMaxValue uint16 = 0xffff
 
 func getMask(r network.PortRange) []string {
-	if r == network.PortRangeAny {
+	if r.IsAny() {
 		return []string{"0 0x0000"}
 	} else if r.From == r.To {
 		return []string{fmt.Sprintf("%d 0xffff", r.From)}
