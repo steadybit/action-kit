@@ -48,10 +48,23 @@ func (t *batchError) Error() string {
 }
 
 func (t *batchErrors) Error() string {
+	occurrences := make(map[string]int)
+	for _, err := range t.Errors {
+		occurrences[err.Msg]++
+	}
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Command failed %s\n", strings.Join(t.Cmd, " ")))
+	reported := make(map[string]bool)
 	for _, err := range t.Errors {
+		if reported[err.Msg] {
+			continue
+		}
+		reported[err.Msg] = true
 		sb.WriteString(err.Error())
+		if count := occurrences[err.Msg]; count > 1 {
+			sb.WriteString(fmt.Sprintf(" (and %d more)", count-1))
+		}
 		sb.WriteString("\n")
 	}
 	return sb.String()
