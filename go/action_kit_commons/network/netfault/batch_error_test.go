@@ -32,6 +32,23 @@ Error: Parent Qdisc doesn't exists.
 We have an error talking to the kernel
 Command failed -:3
 `
+	exampleErrorRepeated := `Error: NLM_F_REPLACE needed to override.
+Command failed -:1
+Error: Failed to find specified qdisc.
+Command failed -:2
+Error: Parent Qdisc doesn't exists.
+We have an error talking to the kernel
+Command failed -:3
+Error: Parent Qdisc doesn't exists.
+We have an error talking to the kernel
+Command failed -:4
+Error: Parent Qdisc doesn't exists.
+We have an error talking to the kernel
+Command failed -:5
+Error: Parent Qdisc doesn't exists.
+We have an error talking to the kernel
+Command failed -:6
+`
 
 	tests := []struct {
 		name   string
@@ -56,10 +73,33 @@ Command failed -:3
 			},
 			assert: func(t assert.TestingT, err error, message string) {
 				assert.Equal(t, 3, len(err.(*batchErrors).Errors))
-				assert.Equal(t, exampleError, strings.TrimPrefix(err.Error(), "Command failed test -b -\n"))
+				assert.Equal(t, `Error: Exclusivity flag on, cannot modify.
+Command failed -:1 (and 1 more)
+RTNETLINK answers: File exists
+Command failed -:2
+`, strings.TrimPrefix(err.Error(), "Command failed test -b -\n"))
 				assert.Equal(t, "Error: Exclusivity flag on, cannot modify.", err.(*batchErrors).Errors[0].Msg)
 				assert.Equal(t, "RTNETLINK answers: File exists", err.(*batchErrors).Errors[1].Msg)
 				assert.Equal(t, "Error: Exclusivity flag on, cannot modify.", err.(*batchErrors).Errors[2].Msg)
+			},
+		},
+		{
+			name: "should report repeated errors only once",
+			args: args{
+				cmd: []string{"tc", "-force", "-batch", "-"},
+				r:   strings.NewReader(exampleErrorRepeated),
+			},
+			assert: func(t assert.TestingT, err error, message string) {
+				assert.Equal(t, 6, len(err.(*batchErrors).Errors))
+				assert.Equal(t, `Command failed tc -force -batch -
+Error: NLM_F_REPLACE needed to override.
+Command failed -:1
+Error: Failed to find specified qdisc.
+Command failed -:2
+Error: Parent Qdisc doesn't exists.
+We have an error talking to the kernel
+Command failed -:3 (and 3 more)
+`, err.Error())
 			},
 		},
 		{
