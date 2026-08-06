@@ -1,8 +1,16 @@
 # Changelog
 
-## 1.10.3
+## 1.10.5
 
 - fix(netfault): report repeated `tc` batch errors only once. `tc -batch` emits one error per failed batch line, so actions installing many rules (e.g. network delay) rendered the same message dozens of times in the user-facing error details. Identical messages are now deduplicated when rendering, keeping the first occurrence with an `(and N more)` suffix; the structured error list and ignore-filtering are unchanged.
+
+## 1.10.4
+
+- fix(netfault): network attacks now affect portless protocols such as ICMP. When no port was configured, the generated rules still carried a dport/sport selector for the any-port wildcard, restricting matching to port-bearing protocols (TCP/UDP/SCTP) and letting ICMP traffic escape e.g. the blackhole. The port selector is now omitted for the any-port wildcard.
+
+## 1.10.3
+
+- feat(memfill): pass `--reserve`, `--adaptive` and `--oom-score-adj` flags to memfill (requires memfill >= 1.4.0). Callers (e.g. extension-host's host memory fill) can leave a headroom reserve, enable PSI-based adaptive back-off, and set the fill process's `oom_score_adj` — so a host fill can run hard without taking the node NotReady.
 
 ## 1.10.2
 
