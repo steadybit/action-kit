@@ -15,21 +15,52 @@ import (
 	"time"
 )
 
+// joinCgroupScript moves the current shell into the target's memory cgroup and then execs the
+// remaining arguments. It replaces the previous `cgexec -g memory:<path>` invocation, which
+// depended on libcgroup-tools (the cgroup-tools/libcgroup-tools package). That package does not
+// exist for Enterprise Linux 9 and never supported cgroup v2, so the extension could neither be
+// installed nor fill memory correctly on modern hosts.
+//
+// The move must happen before exec: under cgroup v2 a process keeps the memory already charged to
+// it when migrated, so anything memfill allocates before joining would be accounted to the wrong
+// cgroup. Writing $$ and then `exec`ing keeps the same PID, so memfill starts already inside the
+// target cgroup with nothing allocated yet.
+//
+// The first argument is the target cgroup path (as read from /proc/<pid>/cgroup); the remaining
+// arguments are the command to exec. cgroup v1 (memory controller) is preferred over v2 unified to
+// match the historical `memory:` semantics on hybrid hosts.
+const joinCgroupScript = `cg="$1"; shift
+if [ -e "/sys/fs/cgroup/memory${cg}/cgroup.procs" ]; then
+  procs="/sys/fs/cgroup/memory${cg}/cgroup.procs"
+elif [ -e "/sys/fs/cgroup${cg}/cgroup.procs" ]; then
+  procs="/sys/fs/cgroup${cg}/cgroup.procs"
+else
+  echo "memfill: no cgroup.procs found for ${cg} (looked under cgroup v1 memory and v2 unified)" >&2
+  exit 1
+fi
+printf '%s\n' "$$" > "$procs" || { echo "memfill: failed to join cgroup $procs" >&2; exit 1; }
+exec "$@"`
+
 type memfillRunc struct {
 	cmd   *exec.Cmd
 	state *utils.BackgroundState
 	args  []string
 }
 
-func NewMemfillProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Memfill, error) {
-	args := append([]string{
+// memfillCommandArgs builds the argument vector that runs memfill inside the target's memory
+// cgroup and PID namespace. It enters the host mount namespace (nsenter -t 1 -C), joins the target
+// cgroup via joinCgroupScript, then enters the target PID namespace and execs memfill.
+func memfillCommandArgs(targetProcess ociruntime.LinuxProcessInfo, opts Opts) []string {
+	args := []string{
 		"nsenter", "-t", "1", "-C", "--",
-		//when util-linux package >= 2.39 is broadly available we could also the cgroup change using nsenter,
-		"cgexec", "-g", fmt.Sprintf("memory:%s", targetProcess.CGroupPath),
+		"sh", "-c", joinCgroupScript, "sh", targetProcess.CGroupPath,
 		"nsenter", "-t", strconv.Itoa(targetProcess.Pid), "-p", "-F", "--",
-	},
-		opts.processArgs()...,
-	)
+	}
+	return append(args, opts.processArgs()...)
+}
+
+func NewMemfillProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Memfill, error) {
+	args := memfillCommandArgs(targetProcess, opts)
 
 	cmd := utils.RootCommandContext(context.Background(), args[0], args[1:]...)
 

@@ -8,8 +8,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMemfillCommandArgs(t *testing.T) {
+	t.Setenv("STEADYBIT_EXTENSION_MEMFILL_PATH", "/usr/bin/memfill")
+
+	target := ociruntime.LinuxProcessInfo{Pid: 4242, CGroupPath: "/system.slice/target.scope"}
+	args := memfillCommandArgs(target, Opts{Size: 80, Mode: ModeUsage, Unit: UnitPercent, Duration: 30 * time.Second, IgnoreCgroup: true})
+
+	// Enters the host mount namespace, joins the target cgroup via the sh wrapper, then enters the
+	// target PID namespace and execs memfill. No cgexec anywhere.
+	assert.Equal(t, []string{
+		"nsenter", "-t", "1", "-C", "--",
+		"sh", "-c", joinCgroupScript, "sh", "/system.slice/target.scope",
+		"nsenter", "-t", "4242", "-p", "-F", "--",
+		"/usr/bin/memfill", "80%", "usage", "30", "--ignore-cgroup",
+	}, args)
+
+	for _, arg := range args {
+		assert.NotContains(t, arg, "cgexec", "cgexec must no longer be used")
+	}
+
+	// The cgroup path is passed as a positional argument (not interpolated into the script),
+	// so it cannot break out of the shell.
+	assert.Contains(t, joinCgroupScript, "cgroup.procs")
+	assert.Contains(t, joinCgroupScript, "exec \"$@\"")
+}
 
 func TestProcessArgs(t *testing.T) {
 	t.Setenv("STEADYBIT_EXTENSION_MEMFILL_PATH", "/usr/bin/memfill")
