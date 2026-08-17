@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.0
+
+- feat(memfill): let memfill join the target's memory cgroup and PID namespace itself, instead of wrapping it in `cgexec -g memory:<path>` and a second `nsenter -t <pid> -p -F`. The fill process is now launched as `nsenter -t 1 -C -- memfill --target-cgroup-path <path> --target-pid <pid> ...`; the outer `nsenter` (host cgroup namespace) is unchanged. This removes the `libcgroup-tools` runtime dependency, which has no Enterprise Linux 9 package and never supported cgroup v2, so consumers can drop `cgroup-tools` / `/usr/bin/cgexec` from their packaging.
+
+  **Requires memfill >= v1.5.0** — older binaries reject the new flags. Bump `MEMFILL_VERSION` in the same change.
+
 ## 1.10.5
 
 - fix(netfault): report repeated `tc` batch errors only once. `tc -batch` emits one error per failed batch line, so actions installing many rules (e.g. network delay) rendered the same message dozens of times in the user-facing error details. Identical messages are now deduplicated when rendering, keeping the first occurrence with an `(and N more)` suffix; the structured error list and ignore-filtering are unchanged.

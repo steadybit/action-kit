@@ -22,18 +22,14 @@ type memfillRunc struct {
 }
 
 func NewMemfillProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Memfill, error) {
-	args := append([]string{
-		"nsenter", "-t", "1", "-C", "--",
-		//when util-linux package >= 2.39 is broadly available we could also the cgroup change using nsenter,
-		"cgexec", "-g", fmt.Sprintf("memory:%s", targetProcess.CGroupPath),
-		"nsenter", "-t", strconv.Itoa(targetProcess.Pid), "-p", "-F", "--",
-	},
-		opts.processArgs()...,
-	)
+	// Only the host cgroup namespace is entered externally; memfill joins the
+	// target's memory cgroup and PID namespace itself via --target-* flags.
+	processArgs := opts.processArgs(targetProcess)
+	args := append([]string{"nsenter", "-t", "1", "-C", "--"}, processArgs...)
 
 	cmd := utils.RootCommandContext(context.Background(), args[0], args[1:]...)
 
-	return &memfillRunc{cmd: cmd, args: opts.processArgs()}, nil
+	return &memfillRunc{cmd: cmd, args: processArgs}, nil
 }
 
 func (mf *memfillRunc) Exited() (bool, error) {
