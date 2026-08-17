@@ -1,6 +1,6 @@
 module github.com/steadybit/action-kit/go/action_kit_test
 
-go 1.26.5
+go 1.26
 
 toolchain go1.25.4
 

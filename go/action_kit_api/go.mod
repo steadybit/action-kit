@@ -1,6 +1,6 @@
 module github.com/steadybit/action-kit/go/action_kit_api/v2
 
-go 1.26.5
+go 1.26
 
 require (
 	github.com/getkin/kin-openapi v0.146.0
