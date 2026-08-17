@@ -1,13 +1,13 @@
 module github.com/steadybit/action-kit/go/action_kit_sdk
 
-go 1.26.5
+go 1.26
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.35.1
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.5
-	github.com/steadybit/extension-kit v1.11.1
+	github.com/steadybit/extension-kit v1.11.2
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -20,7 +20,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/klauspost/compress v1.19.1 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.2.0 // indirect
