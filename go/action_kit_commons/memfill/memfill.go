@@ -6,6 +6,7 @@ package memfill
 
 import (
 	"fmt"
+	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"strconv"
 	"time"
@@ -44,7 +45,7 @@ type Opts struct {
 	OomScoreAdj *int
 }
 
-func (o Opts) processArgs() []string {
+func (o Opts) processArgs(targetProcess ociruntime.LinuxProcessInfo) []string {
 	path := utils.LocateExecutable("memfill", "STEADYBIT_EXTENSION_MEMFILL_PATH")
 	args := []string{path, fmt.Sprintf("%d%s", o.Size, o.Unit), string(o.Mode), fmt.Sprintf("%.0f", o.Duration.Seconds())}
 	if o.IgnoreCgroup {
@@ -58,6 +59,12 @@ func (o Opts) processArgs() []string {
 	}
 	if o.OomScoreAdj != nil {
 		args = append(args, "--oom-score-adj", strconv.Itoa(*o.OomScoreAdj))
+	}
+	if targetProcess.CGroupPath != "" {
+		args = append(args, "--target-cgroup-path", targetProcess.CGroupPath)
+	}
+	if targetProcess.Pid > 0 {
+		args = append(args, "--target-pid", strconv.Itoa(targetProcess.Pid))
 	}
 	return args
 }
