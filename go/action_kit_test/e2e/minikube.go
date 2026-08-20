@@ -368,6 +368,15 @@ func createKubernetesClient(context string) (*kubernetes.Clientset, *rest.Config
 		return nil, nil, err
 	}
 
+	// Inline the client certificates instead of letting client-go read them from disk. With cert
+	// files client-go starts a certificate rotation controller whose loadClientCert returns
+	// c.clientCert after releasing the read lock (client-go transport/cert_rotation.go:79), which
+	// races with the write from a concurrent TLS handshake and fails e2e tests run with -race.
+	// See https://github.com/kubernetes/kubernetes/issues/134876.
+	if err := rest.LoadTLSFiles(config); err != nil {
+		return nil, nil, err
+	}
+
 	client, err := kubernetes.NewForConfig(config)
 	return client, config, err
 }
