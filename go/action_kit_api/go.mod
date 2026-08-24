@@ -3,7 +3,7 @@ module github.com/steadybit/action-kit/go/action_kit_api/v2
 go 1.26
 
 require (
-	github.com/getkin/kin-openapi v0.146.0
+	github.com/getkin/kin-openapi v0.147.0
 	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/stretchr/testify v1.12.0
