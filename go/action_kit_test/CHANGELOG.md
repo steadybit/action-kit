@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.10
 
 - expose an action's artifacts to e2e tests via `ActionExecution.Artifacts()`
 - Update dependencies
