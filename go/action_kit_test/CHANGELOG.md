@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- expose an action's artifacts to e2e tests via `ActionExecution.Artifacts()`
+- Update dependencies
+
+## 1.4.9
+
+- fix: avoid a client-go certificate rotation data race in the minikube client
+
+## 1.4.8
+
+- Update dependencies (including letting the Go patch version float instead of pinning it)
+
+## 1.4.7
+
+- add duration measurement to action execution via `ActionExecution.Duration()`
+- Update dependencies
+
 ## 1.4.6
 
 - fix: shutdown minikube after e2e tests
