@@ -40,7 +40,17 @@ type ActionExecution interface {
 	Cancel() error
 	Metrics() []action_kit_api.Metric
 	Messages() []action_kit_api.Message
+	Artifacts() []action_kit_api.Artifact
 	Duration() time.Duration
+}
+
+// resultCollector receives the parts of an action result that a test wants to inspect afterwards.
+// They arrive spread over the status responses and the final stop response, so they have to be
+// accumulated as the run progresses rather than read off a single response.
+type resultCollector interface {
+	appendMetrics(metrics []action_kit_api.Metric)
+	appendMessages(messages []action_kit_api.Message)
+	appendArtifacts(artifacts []action_kit_api.Artifact)
 }
 
 type clientImpl struct {
@@ -71,15 +81,17 @@ func (c *clientImpl) DescribeAction(ref action_kit_api.DescribingEndpointReferen
 }
 
 type actionExecutionImpl struct {
-	ch            <-chan error
-	cancel        context.CancelFunc
-	metrics       []action_kit_api.Metric
-	metricsMutex  sync.RWMutex
-	messages      []action_kit_api.Message
-	messagesMutex sync.RWMutex
-	started       time.Time
-	ended         time.Time
-	endedMutex    sync.RWMutex
+	ch             <-chan error
+	cancel         context.CancelFunc
+	metrics        []action_kit_api.Metric
+	metricsMutex   sync.RWMutex
+	messages       []action_kit_api.Message
+	messagesMutex  sync.RWMutex
+	artifacts      []action_kit_api.Artifact
+	artifactsMutex sync.RWMutex
+	started        time.Time
+	ended          time.Time
+	endedMutex     sync.RWMutex
 }
 
 func (a *actionExecutionImpl) Duration() time.Duration {
@@ -142,6 +154,20 @@ func (a *actionExecutionImpl) Messages() []action_kit_api.Message {
 	return result
 }
 
+func (a *actionExecutionImpl) appendArtifacts(artifacts []action_kit_api.Artifact) {
+	a.artifactsMutex.Lock()
+	defer a.artifactsMutex.Unlock()
+	a.artifacts = append(a.artifacts, artifacts...)
+}
+
+func (a *actionExecutionImpl) Artifacts() []action_kit_api.Artifact {
+	a.artifactsMutex.RLock()
+	defer a.artifactsMutex.RUnlock()
+	result := make([]action_kit_api.Artifact, len(a.artifacts))
+	copy(result, a.artifacts)
+	return result
+}
+
 func (c *clientImpl) RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (ActionExecution, error) {
 	return c.RunActionWithFiles(actionId, target, config, executionContext, nil)
 }
@@ -182,7 +208,7 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 	state, err = c.startAction(action, executionId, state)
 	if err != nil {
 		if action.Stop != nil {
-			_ = c.stopAction(action, executionId, state, nil, nil)
+			_ = c.stopAction(action, executionId, state, nil)
 		}
 		return &actionExecutionImpl{}, err
 	}
@@ -201,13 +227,9 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 		ctx, cancel = context.WithCancel(context.Background())
 	}
 	actionExecution := &actionExecutionImpl{
-		ch:            ch,
-		cancel:        cancel,
-		metrics:       nil,
-		metricsMutex:  sync.RWMutex{},
-		messages:      nil,
-		messagesMutex: sync.RWMutex{},
-		started:       started,
+		ch:      ch,
+		cancel:  cancel,
+		started: started,
 	}
 
 	go func(actionExecution *actionExecutionImpl) {
@@ -218,13 +240,13 @@ func (c *clientImpl) runAction(action action_kit_api.ActionDescription, target *
 
 		var err error
 		if action.Status != nil {
-			state, err = c.actionStatus(ctx, action, executionId, state, actionExecution.appendMetrics, actionExecution.appendMessages)
+			state, err = c.actionStatus(ctx, action, executionId, state, actionExecution)
 		} else {
 			<-ctx.Done()
 		}
 
 		if action.Stop != nil {
-			stopErr := c.stopAction(action, executionId, state, actionExecution.appendMetrics, actionExecution.appendMessages)
+			stopErr := c.stopAction(action, executionId, state, actionExecution)
 			actionExecution.setEnded(time.Now())
 			if stopErr != nil {
 				err = errors.Join(err, stopErr)
@@ -303,7 +325,7 @@ func (c *clientImpl) startAction(action action_kit_api.ActionDescription, execut
 	return state, nil
 }
 
-func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) (action_kit_api.ActionState, error) {
+func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, collect resultCollector) (action_kit_api.ActionState, error) {
 	interval, err := time.ParseDuration(*action.Status.CallInterval)
 	if err != nil {
 		interval = 1 * time.Second
@@ -325,12 +347,7 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 			}
 
 			logMessages(executionId, statusResult.Messages)
-			if statusResult.Metrics != nil {
-				metrics(*statusResult.Metrics)
-			}
-			if statusResult.Messages != nil {
-				messages(*statusResult.Messages)
-			}
+			collectResults(collect, statusResult.Metrics, statusResult.Messages, statusResult.Artifacts)
 
 			if statusResult.State != nil {
 				state = *statusResult.State
@@ -344,6 +361,23 @@ func (c *clientImpl) actionStatus(ctx context.Context, action action_kit_api.Act
 				return state, nil
 			}
 		}
+	}
+}
+
+// collectResults hands whatever a result carried to the collector. collect is nil when nobody is
+// observing the run - stopAction is called that way to clean up after a failed start.
+func collectResults(collect resultCollector, metrics *action_kit_api.Metrics, messages *action_kit_api.Messages, artifacts *action_kit_api.Artifacts) {
+	if collect == nil {
+		return
+	}
+	if metrics != nil {
+		collect.appendMetrics(*metrics)
+	}
+	if messages != nil {
+		collect.appendMessages(*messages)
+	}
+	if artifacts != nil {
+		collect.appendArtifacts(*artifacts)
 	}
 }
 
@@ -365,7 +399,7 @@ func toError(err *action_kit_api.ActionKitError) error {
 	return fmt.Errorf("%s", sb.String())
 }
 
-func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, metrics func(metrics []action_kit_api.Metric), messages func(messages []action_kit_api.Message)) error {
+func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executionId uuid.UUID, state action_kit_api.ActionState, collect resultCollector) error {
 	stopBody := action_kit_api.StopActionRequestBody{
 		ExecutionId: executionId,
 		State:       state,
@@ -376,12 +410,7 @@ func (c *clientImpl) stopAction(action action_kit_api.ActionDescription, executi
 	}
 
 	logMessages(executionId, stopResult.Messages)
-	if metrics != nil && stopResult.Metrics != nil {
-		metrics(*stopResult.Metrics)
-	}
-	if messages != nil && stopResult.Messages != nil {
-		messages(*stopResult.Messages)
-	}
+	collectResults(collect, stopResult.Metrics, stopResult.Messages, stopResult.Artifacts)
 
 	if stopResult.Error != nil {
 		return toError(stopResult.Error)
