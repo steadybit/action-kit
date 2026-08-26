@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat(proxyfault): add `network/proxyfault`, which launches and manages the steadybit `transparent-proxy` binary inside a target's network namespace (runc sidecar or `ip netns exec`), mirroring `dnsinject`. The proxy self-manages its iptables interception and injects network faults (latency, connection reset, HTTP status) against a target's dependencies; `Revert` provides idempotent out-of-band teardown for the case where the proxy was killed before its own cleanup ran. The proxy is run as an external binary (located via `STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH`), so this package has no build dependency on the transparent-proxy module.
 - feat(nsrunner): add `network/nsrunner`, a general-purpose exported runner that executes a one-shot command inside a target's network namespace (runc sidecar joined to the target netns, or `ip netns exec` for named namespaces, or the extension's own netns via the process runner). It mirrors the netfault runner but is exported and dependency-free, so extensions can run an arbitrary tool or binary in a discovered container/host netns — feeding stdin as a batch of directives and reading back combined output. Used by the upcoming transparent-proxy network-fault extension to apply iptables interception rules in the target namespace.
 
 ## 1.11.0
