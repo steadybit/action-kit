@@ -34,10 +34,11 @@ func sampleOpts(t *testing.T) Opts {
 		ExcludeCIDRs: []net.IPNet{mustCIDR(t, "10.1.2.3/32")},
 		Ports:        []uint16{80, 443},
 		Fault: Fault{
-			Latency:          250 * time.Millisecond,
-			AbortProbability: 0.25,
-			HTTPStatus:       503,
-			Hosts:            []string{"api.example.com", "db.internal"},
+			Latency:     250 * time.Millisecond,
+			Reset:       true,
+			HTTPStatus:  503,
+			Probability: 0.25,
+			Hosts:       []string{"api.example.com", "db.internal"},
 		},
 	}
 }
@@ -54,8 +55,9 @@ func TestStartArgs(t *testing.T) {
 		"--max-duration 30s",
 		"--metrics-addr 0.0.0.0:9090",
 		"--fault-latency 250ms",
-		"--fault-abort-probability 0.25",
+		"--fault-reset",
 		"--fault-http-status 503",
+		"--fault-probability 0.25",
 		"--fault-hosts api.example.com,db.internal",
 	} {
 		assert.Contains(t, got, want, "startArgs missing %q", want)

@@ -40,10 +40,12 @@ var proxyPath = utils.LocateExecutable("transparent-proxy", "STEADYBIT_EXTENSION
 
 // Fault is the single fault the proxy injects on matching connections.
 type Fault struct {
-	Latency          time.Duration
-	AbortProbability float64
-	HTTPStatus       int
-	Hosts            []string
+	Latency    time.Duration
+	Reset      bool
+	HTTPStatus int
+	// Probability in [0,1] gates the fault per connection (0 = always).
+	Probability float64
+	Hosts       []string
 }
 
 // Opts configures interception and the injected fault.
@@ -95,11 +97,14 @@ func (o Opts) startArgs() []string {
 	if o.Fault.Latency > 0 {
 		args = append(args, "--fault-latency", o.Fault.Latency.String())
 	}
-	if o.Fault.AbortProbability > 0 {
-		args = append(args, "--fault-abort-probability", strconv.FormatFloat(o.Fault.AbortProbability, 'f', -1, 64))
+	if o.Fault.Reset {
+		args = append(args, "--fault-reset")
 	}
 	if o.Fault.HTTPStatus != 0 {
 		args = append(args, "--fault-http-status", strconv.Itoa(o.Fault.HTTPStatus))
+	}
+	if o.Fault.Probability > 0 {
+		args = append(args, "--fault-probability", strconv.FormatFloat(o.Fault.Probability, 'f', -1, 64))
 	}
 	if len(o.Fault.Hosts) > 0 {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
