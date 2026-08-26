@@ -8,9 +8,9 @@
 // netfault package: extensions that need to execute a tool (iptables, a custom
 // binary, ...) inside a discovered container/host network namespace can use it
 // directly, feeding the command's stdin as a batch of directives and reading
-// back its combined output. Two backends are provided: a runc sidecar joined to
-// the target's network namespace, and a process runner that executes in the
-// extension's own namespace.
+// back its standard output. Three backends are provided: a runc sidecar joined
+// to the target's network namespace, `ip netns exec` for named namespaces, and
+// a process runner that executes in the extension's own namespace.
 package nsrunner
 
 import (
@@ -22,6 +22,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
@@ -36,8 +38,9 @@ var ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 type Runner interface {
 	// Run executes argv inside the target network namespace, writes the stdin
 	// lines (joined by newlines) to the process's standard input, and returns
-	// its combined stdout. Each stdin line must be a single directive; a line
-	// containing a newline is rejected to prevent batch injection.
+	// its standard output. On failure the error includes the captured stderr.
+	// Each stdin line must be a single directive; a line containing a newline is
+	// rejected to prevent batch injection.
 	Run(ctx context.Context, argv []string, stdin []string) (string, error)
 	// NetNsPath is the target network namespace path (/proc/<pid>/ns/net or
 	// /var/run/netns/<name>).
@@ -53,6 +56,10 @@ type SidecarOpts struct {
 	// Capabilities granted to the sidecar process. Defaults to
 	// CAP_NET_ADMIN and CAP_NET_RAW when empty.
 	Capabilities []string
+	// Env are additional KEY=VALUE environment variables for the sidecar
+	// process. The runner adds none of its own; a caller running iptables, for
+	// example, passes "XTABLES_LOCKFILE=/tmp/xtables.lock" here.
+	Env []string
 }
 
 func (o SidecarOpts) capabilities() []string {
@@ -78,8 +85,14 @@ func toReader(lines []string) io.Reader {
 	return strings.NewReader(strings.Join(lines, "\n") + "\n")
 }
 
+var containerSeq atomic.Uint64
+
+// nextContainerId builds a unique sidecar container id. The millisecond
+// timestamp plus a monotonic counter keep it unique even when the same runner
+// (same tool + SidecarOpts.Id) is invoked repeatedly (apply then revert) or a
+// previous container's deferred delete has not yet completed.
 func nextContainerId(tool, id string) string {
-	return fmt.Sprintf("sb-%s-%s", path.Base(tool), id)
+	return fmt.Sprintf("sb-%s-%d-%d-%s", path.Base(tool), time.Now().UnixMilli(), containerSeq.Add(1), id)
 }
 
 // --- process runner ---
@@ -151,6 +164,9 @@ func (r *runcRunner) runInNamedNetns(ctx context.Context, argv []string, stdin [
 			break
 		}
 	}
+	if netns == "" {
+		return "", errors.New("target reports a named network namespace but its name resolved empty")
+	}
 	log.Debug().Str("netns", netns).Strs("argv", argv).Msg("running command via ip netns exec")
 
 	ipArgs := append([]string{"netns", "exec", netns}, argv...)
@@ -179,16 +195,19 @@ func (r *runcRunner) runInRuncSidecar(ctx context.Context, argv []string, stdin 
 		}
 	}()
 
-	if err = bundle.EditSpec(
+	editors := []ociruntime.SpecEditor{
 		ociruntime.WithHostname(id),
 		ociruntime.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)),
 		ociruntime.WithCapabilities(r.sidecar.capabilities()...),
 		ociruntime.WithCopyEnviron(),
-		ociruntime.WithEnv("XTABLES_LOCKFILE=/tmp/xtables.lock"),
 		ociruntime.WithMountIfNotPresent(specs.Mount{Destination: "/tmp", Type: "tmpfs", Source: "tmpfs", Options: []string{"nosuid", "nodev", "noexec"}}),
 		ociruntime.WithProcessArgs(argv...),
-	); err != nil {
+	}
+	for _, e := range r.sidecar.Env {
+		editors = append(editors, ociruntime.WithEnv(e))
+	}
+	if err = bundle.EditSpec(editors...); err != nil {
 		return "", err
 	}
 

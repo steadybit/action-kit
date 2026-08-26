@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -27,6 +28,20 @@ func TestValidateStdin_RejectsNewlineInjection(t *testing.T) {
 func TestToReader_JoinsWithNewlinesAndTrailer(t *testing.T) {
 	b, _ := io.ReadAll(toReader([]string{"a", "b", "c"}))
 	assert.Equal(t, "a\nb\nc\n", string(b))
+}
+
+func TestNextContainerId_UniquePerCall(t *testing.T) {
+	seen := map[string]bool{}
+	for i := 0; i < 1000; i++ {
+		id := nextContainerId("iptables-restore", "exec-1")
+		if !strings.Contains(id, "iptables-restore") {
+			t.Fatalf("id %q lost the tool name", id)
+		}
+		if seen[id] {
+			t.Fatalf("duplicate container id generated: %q", id)
+		}
+		seen[id] = true
+	}
 }
 
 func TestProcessRunner_EmptyArgv(t *testing.T) {
