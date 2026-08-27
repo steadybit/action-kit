@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -158,17 +159,34 @@ func (o Opts) String() string {
 // processBase holds the exit channel and start/monitor helper shared by both
 // backends.
 type processBase struct {
-	exited chan error
+	started atomic.Bool
+	done    chan struct{} // closed exactly once when the process exits
+	exitErr error         // set before done is closed; read only after
 }
 
+func newProcessBase() processBase {
+	return processBase{done: make(chan struct{})}
+}
+
+// Exited reports whether the process has exited, without consuming any state —
+// it is safe to call repeatedly and after Stop.
 func (b *processBase) Exited() (bool, error) {
 	select {
-	case err := <-b.exited:
-		b.exited <- err // put back for subsequent reads
-		return true, err
+	case <-b.done:
+		return true, b.exitErr
 	default:
 		return false, nil
 	}
+}
+
+// waitExited blocks until the process has exited. It is safe to call more than
+// once (a closed channel keeps returning) and safe when the process was never
+// started (returns immediately rather than blocking forever).
+func (b *processBase) waitExited() {
+	if !b.started.Load() {
+		return
+	}
+	<-b.done
 }
 
 func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
@@ -178,7 +196,11 @@ func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start transparent-proxy: %w", err)
 	}
-	go func() { b.exited <- cmd.Wait() }()
+	b.started.Store(true)
+	go func() {
+		b.exitErr = cmd.Wait()
+		close(b.done)
+	}()
 	return nil
 }
 
@@ -213,7 +235,7 @@ func newNetnsProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Prox
 	ipPath := utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 	cmdArgs := append([]string{"netns", "exec", netns, proxyPath}, opts.startArgs()...)
 	cmd := utils.RootCommandContext(context.Background(), ipPath, cmdArgs...)
-	return &netnsProxy{processBase: processBase{exited: make(chan error, 1)}, cmd: cmd, opts: opts}, nil
+	return &netnsProxy{processBase: newProcessBase(), cmd: cmd, opts: opts}, nil
 }
 
 func (p *netnsProxy) Start() error {
@@ -222,7 +244,7 @@ func (p *netnsProxy) Start() error {
 }
 
 func (p *netnsProxy) Stop() error {
-	if p.cmd.Process == nil {
+	if !p.started.Load() {
 		return nil
 	}
 	pid := p.cmd.Process.Pid
@@ -236,7 +258,7 @@ func (p *netnsProxy) Stop() error {
 			log.Warn().Err(err).Msg("failed to SIGKILL transparent-proxy")
 		}
 	})
-	<-p.exited
+	p.waitExited()
 	killTimer.Stop()
 	return nil
 }
@@ -273,7 +295,7 @@ func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess 
 		return nil, fmt.Errorf("failed to configure bundle: %w", err)
 	}
 
-	return &runcProxy{processBase: processBase{exited: make(chan error, 1)}, bundle: bundle, runc: r, opts: opts}, nil
+	return &runcProxy{processBase: newProcessBase(), bundle: bundle, runc: r, opts: opts}, nil
 }
 
 func (d *runcProxy) Start() error {
@@ -287,6 +309,14 @@ func (d *runcProxy) Start() error {
 
 func (d *runcProxy) Stop() error {
 	ctx := context.Background()
+	// If Start never succeeded, no monitor goroutine will ever close done, so
+	// waiting on it would block forever. Still remove the bundle we created.
+	if !d.started.Load() {
+		if err := d.bundle.Remove(); err != nil {
+			log.Warn().Str("id", d.bundle.ContainerId()).Err(err).Msg("failed to remove bundle")
+		}
+		return nil
+	}
 	// SIGTERM lets the in-proxy Guard tear down interception cleanly.
 	if err := d.runc.Kill(ctx, d.bundle.ContainerId(), syscall.SIGTERM); err != nil {
 		log.Warn().Str("id", d.bundle.ContainerId()).Err(err).Msg("failed to SIGTERM transparent-proxy")
@@ -296,7 +326,7 @@ func (d *runcProxy) Stop() error {
 			log.Warn().Str("id", d.bundle.ContainerId()).Err(err).Msg("failed to SIGKILL transparent-proxy")
 		}
 	})
-	<-d.exited
+	d.waitExited()
 	killTimer.Stop()
 
 	if err := d.runc.Delete(ctx, d.bundle.ContainerId(), false); err != nil {
