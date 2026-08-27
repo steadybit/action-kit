@@ -37,7 +37,7 @@ func sampleOpts(t *testing.T) Opts {
 			Latency:     250 * time.Millisecond,
 			Reset:       true,
 			HTTPStatus:  503,
-			Probability: 0.25,
+			Probability: fptr(0.25),
 			Hosts:       []string{"api.example.com", "db.internal"},
 		},
 	}
@@ -63,6 +63,25 @@ func TestStartArgs(t *testing.T) {
 		assert.Contains(t, got, want, "startArgs missing %q", want)
 	}
 	assert.NotContains(t, got, "--revert")
+}
+
+func fptr(f float64) *float64 { return &f }
+
+// An explicit probability — including 0 (never) — must be forwarded; a nil
+// probability must omit the flag so the proxy default (always) applies.
+func TestStartArgs_probability(t *testing.T) {
+	o := sampleOpts(t)
+
+	o.Fault.Probability = fptr(0)
+	assert.Contains(t, strings.Join(o.startArgs(), " "), "--fault-probability 0",
+		"explicit 0 must be forwarded as never")
+
+	o.Fault.Probability = fptr(1)
+	assert.Contains(t, strings.Join(o.startArgs(), " "), "--fault-probability 1")
+
+	o.Fault.Probability = nil
+	assert.NotContains(t, strings.Join(o.startArgs(), " "), "--fault-probability",
+		"nil must omit the flag so the proxy default applies")
 }
 
 func TestRevertArgs(t *testing.T) {

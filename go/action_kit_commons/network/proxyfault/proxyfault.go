@@ -38,14 +38,17 @@ import (
 )
 
 var proxyPath = utils.LocateExecutable("transparent-proxy", "STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH")
+var ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 
 // Fault is the single fault the proxy injects on matching connections.
 type Fault struct {
 	Latency    time.Duration
 	Reset      bool
 	HTTPStatus int
-	// Probability in [0,1] gates the fault per connection (0 = always).
-	Probability float64
+	// Probability in [0,1] gates the fault per connection. nil (unset) lets the
+	// proxy default apply (always); an explicit value — including 0 (never) — is
+	// forwarded as-is, so callers can express "never" as well as "always".
+	Probability *float64
 	Hosts       []string
 }
 
@@ -104,8 +107,8 @@ func (o Opts) startArgs() []string {
 	if o.Fault.HTTPStatus != 0 {
 		args = append(args, "--fault-http-status", strconv.Itoa(o.Fault.HTTPStatus))
 	}
-	if o.Fault.Probability > 0 {
-		args = append(args, "--fault-probability", strconv.FormatFloat(o.Fault.Probability, 'f', -1, 64))
+	if o.Fault.Probability != nil {
+		args = append(args, "--fault-probability", strconv.FormatFloat(*o.Fault.Probability, 'f', -1, 64))
 	}
 	if len(o.Fault.Hosts) > 0 {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
@@ -232,7 +235,6 @@ func newNetnsProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Prox
 	if netns == "" {
 		return nil, errors.New("no network namespace found")
 	}
-	ipPath := utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 	cmdArgs := append([]string{"netns", "exec", netns, proxyPath}, opts.startArgs()...)
 	cmd := utils.RootCommandContext(context.Background(), ipPath, cmdArgs...)
 	return &netnsProxy{processBase: newProcessBase(), cmd: cmd, opts: opts}, nil
@@ -247,6 +249,11 @@ func (p *netnsProxy) Stop() error {
 	if !p.started.Load() {
 		return nil
 	}
+	// Already exited: nothing to signal, and the pid may have been reaped and
+	// recycled — signalling it could hit an unrelated process.
+	if exited, _ := p.Exited(); exited {
+		return nil
+	}
 	pid := p.cmd.Process.Pid
 	ctx := context.Background()
 	// SIGTERM lets the in-proxy Guard tear down its interception cleanly.
@@ -254,7 +261,10 @@ func (p *netnsProxy) Stop() error {
 		log.Warn().Err(err).Msg("failed to SIGTERM transparent-proxy")
 	}
 	killTimer := time.AfterFunc(15*time.Second, func() {
-		if err := p.cmd.Process.Signal(syscall.SIGKILL); err != nil {
+		// Escalate through the same root helper as SIGTERM: an in-process
+		// Signal would return EPERM if the proxy runs privileged while this
+		// extension does not, leaving a hung proxy alive.
+		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGKILL", strconv.Itoa(pid)).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to SIGKILL transparent-proxy")
 		}
 	})
@@ -272,8 +282,12 @@ type runcProxy struct {
 	opts   Opts
 }
 
+// proxyContainerSeq disambiguates sidecar container ids created within the same
+// millisecond, mirroring nsrunner's counter — a timestamp alone is not unique.
+var proxyContainerSeq atomic.Uint64
+
 func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess ociruntime.LinuxProcessInfo, id string, opts Opts) (Proxy, error) {
-	containerId := fmt.Sprintf("sb-transparent-proxy-%d-%s", time.Now().UnixMilli(), id)
+	containerId := fmt.Sprintf("sb-transparent-proxy-%d-%d-%s", time.Now().UnixMilli(), proxyContainerSeq.Add(1), id)
 	bundle, err := r.Create(ctx, "/", containerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bundle: %w", err)
@@ -288,7 +302,7 @@ func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess 
 		ociruntime.WithCopyEnviron(),
 		// iptables in the sidecar needs a writable lock location.
 		ociruntime.WithEnv("XTABLES_LOCKFILE=/tmp/xtables.lock"),
-		ociruntime.WithMountIfNotPresent(specs.Mount{Destination: "/tmp", Type: "tmpfs", Source: "tmpfs", Options: []string{"nosuid", "nodev"}}),
+		ociruntime.WithMountIfNotPresent(specs.Mount{Destination: "/tmp", Type: "tmpfs", Source: "tmpfs", Options: []string{"nosuid", "nodev", "noexec"}}),
 		ociruntime.WithProcessArgs(processArgs...),
 	); err != nil {
 		_ = bundle.Remove()
