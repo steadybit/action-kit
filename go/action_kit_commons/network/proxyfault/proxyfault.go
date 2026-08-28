@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -45,6 +46,11 @@ type Fault struct {
 	Latency    time.Duration
 	Reset      bool
 	HTTPStatus int
+	// HTTPBody / HTTPHeaders customize the synthesized HTTP response that
+	// accompanies HTTPStatus (cleartext HTTP only). Empty keeps the proxy's
+	// defaults.
+	HTTPBody    string
+	HTTPHeaders map[string]string
 	// Probability in [0,1] gates the fault per connection. nil (unset) lets the
 	// proxy default apply (always); an explicit value — including 0 (never) — is
 	// forwarded as-is, so callers can express "never" as well as "always".
@@ -107,6 +113,12 @@ func (o Opts) startArgs() []string {
 	if o.Fault.HTTPStatus != 0 {
 		args = append(args, "--fault-http-status", strconv.Itoa(o.Fault.HTTPStatus))
 	}
+	if o.Fault.HTTPBody != "" {
+		args = append(args, "--fault-http-body", o.Fault.HTTPBody)
+	}
+	for _, k := range sortedKeys(o.Fault.HTTPHeaders) {
+		args = append(args, "--fault-http-header", fmt.Sprintf("%s: %s", k, o.Fault.HTTPHeaders[k]))
+	}
 	if o.Fault.Probability != nil {
 		args = append(args, "--fault-probability", strconv.FormatFloat(*o.Fault.Probability, 'f', -1, 64))
 	}
@@ -114,6 +126,17 @@ func (o Opts) startArgs() []string {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
 	}
 	return args
+}
+
+// sortedKeys returns a map's keys in a deterministic order so the built argv is
+// stable (which keeps revert-arg matching and tests predictable).
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // revertArgs are the flags to reconstruct and remove the same interception.
