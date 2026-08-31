@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -110,5 +112,46 @@ func TestArgs_OmitOptionalWhenUnset(t *testing.T) {
 	got := strings.Join(o.startArgs(), " ")
 	for _, absent := range []string{"--exclude-cidrs", "--mark", "--max-duration", "--metrics-addr", "--fault-"} {
 		assert.NotContains(t, got, absent)
+	}
+}
+
+func TestMetricsCollector_ParsesLatestFromStdout(t *testing.T) {
+	var c metricsCollector
+	if _, ok := c.snapshot(); ok {
+		t.Fatal("expected no snapshot before any line")
+	}
+	stream := strings.Join([]string{
+		`{"connections_matched":1,"connections_aborted":0}`,
+		`not-json noise line`,
+		`{"connections_matched":5,"connections_aborted":2,"per_host":{"api.example.com":{"matched":5,"faulted":2}}}`,
+		``,
+	}, "\n")
+	c.collectFromReader(strings.NewReader(stream), zerolog.Nop())
+
+	s, ok := c.snapshot()
+	if !ok {
+		t.Fatal("expected a snapshot after parsing")
+	}
+	if s.ConnectionsMatched != 5 || s.ConnectionsAborted != 2 {
+		t.Fatalf("latest snapshot = %+v", s)
+	}
+	if h := s.PerHost["api.example.com"]; h.Matched != 5 || h.Faulted != 2 {
+		t.Fatalf("per-host = %+v", h)
+	}
+	if hosts := s.SortedHosts(); len(hosts) != 1 || hosts[0] != "api.example.com" {
+		t.Fatalf("sorted hosts = %v", hosts)
+	}
+}
+
+func TestStartArgs_MetricsStdoutAndNoFlush(t *testing.T) {
+	o := sampleOpts(t)
+	o.MetricsStdoutInterval = 2 * time.Second
+	o.NoFlush = true
+	args := strings.Join(o.startArgs(), " ")
+	if !strings.Contains(args, "--metrics-stdout-interval 2s") {
+		t.Errorf("missing metrics-stdout-interval flag: %s", args)
+	}
+	if !strings.Contains(args, "--no-flush") {
+		t.Errorf("missing no-flush flag: %s", args)
 	}
 }

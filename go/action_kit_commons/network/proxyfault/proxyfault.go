@@ -18,14 +18,18 @@
 package proxyfault
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -60,11 +64,21 @@ type Fault struct {
 
 // Opts configures interception and the injected fault.
 type Opts struct {
-	ExecutionId  string
-	ProxyPort    uint16
-	MetricsPort  uint16 // 0 disables the metrics endpoint
-	Mark         uint32 // 0 uses the proxy's default loop-protection mark
-	MaxDuration  time.Duration
+	ExecutionId string
+	ProxyPort   uint16
+	MetricsPort uint16 // 0 disables the HTTP metrics endpoint
+	// MetricsStdoutInterval, when >0, makes the proxy print JSON metrics
+	// snapshots to stdout at this cadence. This is how the extension reads
+	// intercept statistics: the proxy runs in the target's netns (a container's,
+	// for container attacks), so its HTTP endpoint is unreachable, but its stdout
+	// is always captured here.
+	MetricsStdoutInterval time.Duration
+	Mark                  uint32 // 0 uses the proxy's default loop-protection mark
+	MaxDuration           time.Duration
+	// NoFlush leaves already-established connections alone (only new connections
+	// are intercepted). Default (false) resets warm connection pools so the fault
+	// takes effect immediately.
+	NoFlush      bool
 	IncludeCIDRs []net.IPNet
 	ExcludeCIDRs []net.IPNet
 	Ports        []uint16
@@ -76,6 +90,81 @@ type Proxy interface {
 	Start() error
 	Stop() error
 	Exited() (bool, error)
+	// Metrics returns the latest interception statistics scraped from the proxy's
+	// stdout, and whether any snapshot has been received yet. Requires the proxy
+	// to have been started with a MetricsStdoutInterval.
+	Metrics() (Snapshot, bool)
+}
+
+// HostStat is the per-dependency-hostname breakdown in a Snapshot.
+type HostStat struct {
+	Matched int64 `json:"matched"`
+	Faulted int64 `json:"faulted"`
+}
+
+// Snapshot mirrors the transparent-proxy metrics JSON emitted on stdout.
+type Snapshot struct {
+	ConnectionsMatched    int64               `json:"connections_matched"`
+	ConnectionsActive     int64               `json:"connections_active"`
+	ConnectionsProxied    int64               `json:"connections_proxied"`
+	ConnectionsAborted    int64               `json:"connections_aborted"`
+	ConnectionsDropped    int64               `json:"connections_dropped"`
+	LatencyApplied        int64               `json:"latency_applied"`
+	HTTPResponsesInjected int64               `json:"http_responses_injected"`
+	UpstreamErrors        int64               `json:"upstream_errors"`
+	BytesToUpstream       int64               `json:"bytes_to_upstream"`
+	BytesToClient         int64               `json:"bytes_to_client"`
+	PerHost               map[string]HostStat `json:"per_host,omitempty"`
+}
+
+// SortedHosts returns the per-host keys in a stable order.
+func (s Snapshot) SortedHosts() []string {
+	hosts := make([]string, 0, len(s.PerHost))
+	for h := range s.PerHost {
+		hosts = append(hosts, h)
+	}
+	sort.Strings(hosts)
+	return hosts
+}
+
+// metricsCollector keeps the most recent metrics snapshot scraped from stdout.
+type metricsCollector struct {
+	mu     sync.Mutex
+	latest Snapshot
+	got    bool
+}
+
+func (c *metricsCollector) store(s Snapshot) {
+	c.mu.Lock()
+	c.latest, c.got = s, true
+	c.mu.Unlock()
+}
+
+func (c *metricsCollector) snapshot() (Snapshot, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.latest, c.got
+}
+
+// collectFromReader scans the proxy's stdout line by line. Each line is a JSON
+// metrics snapshot (the proxy sends logs to stderr, keeping stdout clean); a
+// line that does not decode is forwarded to the debug log, matching the old
+// behaviour where stdout was logged.
+func (c *metricsCollector) collectFromReader(r io.Reader, logger zerolog.Logger) {
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(strings.TrimSpace(string(line))) == 0 {
+			continue
+		}
+		var snap Snapshot
+		if err := json.Unmarshal(line, &snap); err == nil {
+			c.store(snap)
+			continue
+		}
+		logger.Debug().Msg(strings.TrimRight(string(line), "\n"))
+	}
 }
 
 // NewProcess builds (but does not start) a proxy for the target's netns.
@@ -103,6 +192,12 @@ func (o Opts) startArgs() []string {
 	}
 	if o.MetricsPort != 0 {
 		args = append(args, "--metrics-addr", fmt.Sprintf("0.0.0.0:%d", o.MetricsPort))
+	}
+	if o.MetricsStdoutInterval > 0 {
+		args = append(args, "--metrics-stdout-interval", o.MetricsStdoutInterval.String())
+	}
+	if o.NoFlush {
+		args = append(args, "--no-flush")
 	}
 	if o.Fault.Latency > 0 {
 		args = append(args, "--fault-latency", o.Fault.Latency.String())
@@ -188,11 +283,15 @@ type processBase struct {
 	started atomic.Bool
 	done    chan struct{} // closed exactly once when the process exits
 	exitErr error         // set before done is closed; read only after
+	metrics metricsCollector
 }
 
 func newProcessBase() processBase {
 	return processBase{done: make(chan struct{})}
 }
+
+// Metrics returns the latest snapshot scraped from the proxy's stdout.
+func (b *processBase) Metrics() (Snapshot, bool) { return b.metrics.snapshot() }
 
 // Exited reports whether the process has exited, without consuming any state —
 // it is safe to call repeatedly and after Stop.
@@ -217,13 +316,24 @@ func (b *processBase) waitExited() {
 
 func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
 	logger := log.With().Str("id", logId).Logger()
-	cmd.Stdout = &logWriter{logger: logger}
+	// stdout carries the JSON metrics stream (scraped for statistics); stderr
+	// carries the proxy's structured logs.
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to pipe transparent-proxy stdout: %w", err)
+	}
 	cmd.Stderr = &logWriter{logger: logger}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start transparent-proxy: %w", err)
 	}
 	b.started.Store(true)
+	scanDone := make(chan struct{})
 	go func() {
+		defer close(scanDone)
+		b.metrics.collectFromReader(stdout, logger)
+	}()
+	go func() {
+		<-scanDone // drain stdout before reaping, so the final snapshot is not lost
 		b.exitErr = cmd.Wait()
 		close(b.done)
 	}()
