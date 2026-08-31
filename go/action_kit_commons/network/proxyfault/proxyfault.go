@@ -109,6 +109,7 @@ type Snapshot struct {
 	ConnectionsProxied    int64               `json:"connections_proxied"`
 	ConnectionsAborted    int64               `json:"connections_aborted"`
 	ConnectionsDropped    int64               `json:"connections_dropped"`
+	ConnectionsFaulted    int64               `json:"connections_faulted"`
 	LatencyApplied        int64               `json:"latency_applied"`
 	HTTPResponsesInjected int64               `json:"http_responses_injected"`
 	UpstreamErrors        int64               `json:"upstream_errors"`
@@ -165,6 +166,14 @@ func (c *metricsCollector) collectFromReader(r io.Reader, logger zerolog.Logger)
 		}
 		logger.Debug().Msg(strings.TrimRight(string(line), "\n"))
 	}
+	// The scanner stops on the first error (e.g. a line over the buffer cap). If
+	// the process is still running it would then block writing to an unread pipe,
+	// and cmd.Wait would never return — so keep draining until EOF. Metrics past
+	// the offending line are lost, but the process still exits cleanly.
+	if err := sc.Err(); err != nil {
+		logger.Debug().Err(err).Msg("transparent-proxy stdout scan stopped; draining remainder")
+		_, _ = io.Copy(io.Discard, r)
+	}
 }
 
 // NewProcess builds (but does not start) a proxy for the target's netns.
@@ -195,9 +204,6 @@ func (o Opts) startArgs() []string {
 	}
 	if o.MetricsStdoutInterval > 0 {
 		args = append(args, "--metrics-stdout-interval", o.MetricsStdoutInterval.String())
-	}
-	if o.NoFlush {
-		args = append(args, "--no-flush")
 	}
 	if o.Fault.Latency > 0 {
 		args = append(args, "--fault-latency", o.Fault.Latency.String())
@@ -253,6 +259,12 @@ func (o Opts) interceptArgs() []string {
 	}
 	if o.Mark != 0 {
 		args = append(args, "--mark", strconv.FormatUint(uint64(o.Mark), 10))
+	}
+	// NoFlush is part of the shared interception args (not just start), so the
+	// out-of-band --revert reconstructs the same flush decision and does not try
+	// to delete a filter chain that was never installed.
+	if o.NoFlush {
+		args = append(args, "--no-flush")
 	}
 	return args
 }
