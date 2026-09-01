@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat(proxyfault): add `network/proxyfault`, which launches and manages the steadybit `transparent-proxy` binary inside a target's network namespace (runc sidecar or `ip netns exec`), mirroring `dnsinject`. The proxy self-manages its iptables interception and injects network faults (latency, connection reset, HTTP status) against a target's dependencies; `Revert` provides idempotent out-of-band teardown for the case where the proxy was killed before its own cleanup ran. The proxy is run as an external binary (located via `STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH`), so this package has no build dependency on the transparent-proxy module.
+- feat(nsrunner): add `network/nsrunner`, a general-purpose exported runner that executes a one-shot command inside a target's network namespace (runc sidecar joined to the target netns, or `ip netns exec` for named namespaces, or the extension's own netns via the process runner). It mirrors the netfault runner but is exported and dependency-free, so extensions can run an arbitrary tool or binary in a discovered container/host netns — feeding stdin as a batch of directives and reading back combined output. Used by the upcoming transparent-proxy network-fault extension to apply iptables interception rules in the target namespace.
+
 ## 1.11.0
 
 - feat(memfill): let memfill join the target's memory cgroup and PID namespace itself, instead of wrapping it in `cgexec -g memory:<path>` and a second `nsenter -t <pid> -p -F`. The fill process is now launched as `nsenter -t 1 -C -- memfill --target-cgroup-path <path> --target-pid <pid> ...`; the outer `nsenter` (host cgroup namespace) is unchanged. This removes the `libcgroup-tools` runtime dependency, which has no Enterprise Linux 9 package and never supported cgroup v2, so consumers can drop `cgroup-tools` / `/usr/bin/cgexec` from their packaging.
