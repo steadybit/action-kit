@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustCIDR(t *testing.T, s string) net.IPNet {
@@ -84,6 +85,36 @@ func TestStartArgs_probability(t *testing.T) {
 	o.Fault.Probability = nil
 	assert.NotContains(t, strings.Join(o.startArgs(), " "), "--fault-probability",
 		"nil must omit the flag so the proxy default applies")
+}
+
+func TestStartArgs_tlsInterceptCA(t *testing.T) {
+	o := sampleOpts(t)
+
+	// Unset: TLS is never decrypted, so the flags must be absent entirely.
+	got := strings.Join(o.startArgs(), " ")
+	assert.NotContains(t, got, "--tls-ca-cert")
+	assert.NotContains(t, got, "--tls-ca-key")
+
+	o.TLSInterceptCA = &TLSInterceptCA{CertPath: "/etc/steadybit/ca.crt", KeyPath: "/etc/steadybit/ca.key"}
+	got = strings.Join(o.startArgs(), " ")
+	assert.Contains(t, got, "--tls-ca-cert /etc/steadybit/ca.crt")
+	assert.Contains(t, got, "--tls-ca-key /etc/steadybit/ca.key")
+
+	// Revert only reconstructs interception rules, which do not depend on the CA.
+	assert.NotContains(t, strings.Join(o.revertArgs(), " "), "--tls-ca")
+}
+
+func TestSnapshot_tlsInterceptRejected(t *testing.T) {
+	// The rejected counter must survive the stdout round-trip, since it is the
+	// signal that the CA is missing from the target's truststore.
+	var c metricsCollector
+	c.collectFromReader(strings.NewReader(
+		`{"connections_matched":2,"connections_faulted":0,"tls_intercept_rejected":2}`+"\n"), zerolog.Nop())
+
+	snap, ok := c.snapshot()
+	require.True(t, ok)
+	assert.Equal(t, int64(2), snap.TLSInterceptRejected)
+	assert.Equal(t, int64(0), snap.ConnectionsFaulted)
 }
 
 func TestRevertArgs(t *testing.T) {

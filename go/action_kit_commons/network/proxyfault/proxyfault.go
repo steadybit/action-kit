@@ -62,6 +62,23 @@ type Fault struct {
 	Hosts       []string
 }
 
+// TLSInterceptCA points at the certificate authority the proxy uses to mint
+// per-SNI certificates, which is what lets an HTTPStatus fault reach an HTTPS
+// dependency instead of only a cleartext one.
+//
+// The CA belongs to the customer: they generate it, choose how long it lives,
+// and install it in the truststores of the workloads they want to fault. The
+// extension only points the proxy at the pair.
+//
+// The paths are read inside the proxy's sidecar, whose root filesystem is an
+// overlay of the extension's own — so these are paths in the extension
+// container (e.g. a mounted Secret), and the key is never written into the
+// target.
+type TLSInterceptCA struct {
+	CertPath string
+	KeyPath  string
+}
+
 // Opts configures interception and the injected fault.
 type Opts struct {
 	ExecutionId string
@@ -83,6 +100,10 @@ type Opts struct {
 	ExcludeCIDRs []net.IPNet
 	Ports        []uint16
 	Fault        Fault
+	// TLSInterceptCA, when set, lets an HTTPStatus fault also apply to HTTPS
+	// connections. Nil (the default) means TLS is never decrypted and HTTPS is
+	// spliced through untouched.
+	TLSInterceptCA *TLSInterceptCA
 }
 
 // Proxy is a running transparent-proxy instance.
@@ -104,18 +125,23 @@ type HostStat struct {
 
 // Snapshot mirrors the transparent-proxy metrics JSON emitted on stdout.
 type Snapshot struct {
-	ConnectionsMatched    int64               `json:"connections_matched"`
-	ConnectionsActive     int64               `json:"connections_active"`
-	ConnectionsProxied    int64               `json:"connections_proxied"`
-	ConnectionsAborted    int64               `json:"connections_aborted"`
-	ConnectionsDropped    int64               `json:"connections_dropped"`
-	ConnectionsFaulted    int64               `json:"connections_faulted"`
-	LatencyApplied        int64               `json:"latency_applied"`
-	HTTPResponsesInjected int64               `json:"http_responses_injected"`
-	UpstreamErrors        int64               `json:"upstream_errors"`
-	BytesToUpstream       int64               `json:"bytes_to_upstream"`
-	BytesToClient         int64               `json:"bytes_to_client"`
-	PerHost               map[string]HostStat `json:"per_host,omitempty"`
+	ConnectionsMatched    int64 `json:"connections_matched"`
+	ConnectionsActive     int64 `json:"connections_active"`
+	ConnectionsProxied    int64 `json:"connections_proxied"`
+	ConnectionsAborted    int64 `json:"connections_aborted"`
+	ConnectionsDropped    int64 `json:"connections_dropped"`
+	ConnectionsFaulted    int64 `json:"connections_faulted"`
+	LatencyApplied        int64 `json:"latency_applied"`
+	HTTPResponsesInjected int64 `json:"http_responses_injected"`
+	// TLSInterceptRejected counts HTTPS connections on which the client refused
+	// the minted certificate. A non-zero value is the canonical "the CA is not in
+	// the target's truststore (or the client pins certificates)" signal — the
+	// fault never applied, so these are deliberately not counted as faulted.
+	TLSInterceptRejected int64               `json:"tls_intercept_rejected"`
+	UpstreamErrors       int64               `json:"upstream_errors"`
+	BytesToUpstream      int64               `json:"bytes_to_upstream"`
+	BytesToClient        int64               `json:"bytes_to_client"`
+	PerHost              map[string]HostStat `json:"per_host,omitempty"`
 }
 
 // SortedHosts returns the per-host keys in a stable order.
@@ -225,6 +251,11 @@ func (o Opts) startArgs() []string {
 	}
 	if len(o.Fault.Hosts) > 0 {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
+	}
+	// Start-only: --revert reconstructs the interception rules, which do not
+	// depend on the CA.
+	if o.TLSInterceptCA != nil {
+		args = append(args, "--tls-ca-cert", o.TLSInterceptCA.CertPath, "--tls-ca-key", o.TLSInterceptCA.KeyPath)
 	}
 	return args
 }
