@@ -92,13 +92,21 @@ func TestStartArgs_tlsInterceptCA(t *testing.T) {
 
 	// Unset: TLS is never decrypted, so the flags must be absent entirely.
 	got := strings.Join(o.startArgs(), " ")
-	assert.NotContains(t, got, "--tls-ca-cert")
-	assert.NotContains(t, got, "--tls-ca-key")
+	assert.NotContains(t, got, "--tls-ca")
 
-	o.TLSInterceptCA = &TLSInterceptCA{CertPath: "/etc/steadybit/ca.crt", KeyPath: "/etc/steadybit/ca.key"}
+	assert.Nil(t, o.stdinPayload())
+
+	o.TLSInterceptCA = &TLSInterceptCA{CertPEM: []byte("CERT-PEM"), KeyPEM: []byte("KEY-PEM")}
 	got = strings.Join(o.startArgs(), " ")
-	assert.Contains(t, got, "--tls-ca-cert /etc/steadybit/ca.crt")
-	assert.Contains(t, got, "--tls-ca-key /etc/steadybit/ca.key")
+	assert.Contains(t, got, "--tls-ca-stdin")
+	// The key must never reach the command line.
+	assert.NotContains(t, got, "CERT-PEM")
+	assert.NotContains(t, got, "KEY-PEM")
+
+	// Both halves are handed over on stdin as one PEM stream.
+	payload := string(o.stdinPayload())
+	assert.Contains(t, payload, "CERT-PEM")
+	assert.Contains(t, payload, "KEY-PEM")
 
 	// Revert only reconstructs interception rules, which do not depend on the CA.
 	assert.NotContains(t, strings.Join(o.revertArgs(), " "), "--tls-ca")

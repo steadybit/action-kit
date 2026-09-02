@@ -54,7 +54,7 @@ func Test_waitExited_returns_when_never_started(t *testing.T) {
 // value, so a second Stop blocked and Exited() went back to reporting running.
 func Test_exited_stable_across_repeated_stop(t *testing.T) {
 	b := newProcessBase()
-	require.NoError(t, b.startAndMonitor(exec.Command("sh", "-c", "exit 0"), "test"))
+	require.NoError(t, b.startAndMonitor(exec.Command("sh", "-c", "exit 0"), "test", nil))
 	waitForExit(t, &b)
 
 	ex, err := b.Exited()
@@ -74,10 +74,24 @@ func Test_exited_stable_across_repeated_stop(t *testing.T) {
 // A non-zero exit is surfaced (and remains readable after Stop).
 func Test_exited_reports_error(t *testing.T) {
 	b := newProcessBase()
-	require.NoError(t, b.startAndMonitor(exec.Command("sh", "-c", "exit 7"), "test"))
+	require.NoError(t, b.startAndMonitor(exec.Command("sh", "-c", "exit 7"), "test", nil))
 	waitForExit(t, &b)
 	b.waitExited()
 	ex, err := b.Exited()
 	require.True(t, ex)
 	require.Error(t, err)
+}
+
+// The interception CA is handed over on stdin, so it never appears on the
+// command line and is never written to a filesystem the target can reach.
+func Test_startAndMonitor_writesStdin(t *testing.T) {
+	b := newProcessBase()
+	// cat echoes stdin to stdout, which the metrics scanner drains; the point is
+	// that the process sees the payload and reaches EOF so it can exit.
+	require.NoError(t, b.startAndMonitor(exec.Command("cat"), "test", []byte("PEM-PAYLOAD\n")))
+	waitForExit(t, &b)
+
+	ex, err := b.Exited()
+	require.True(t, ex, "cat must reach EOF once stdin is closed")
+	require.NoError(t, err)
 }

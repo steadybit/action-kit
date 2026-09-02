@@ -62,21 +62,35 @@ type Fault struct {
 	Hosts       []string
 }
 
-// TLSInterceptCA points at the certificate authority the proxy uses to mint
+// TLSInterceptCA carries the certificate authority the proxy uses to mint
 // per-SNI certificates, which is what lets an HTTPStatus fault reach an HTTPS
 // dependency instead of only a cleartext one.
 //
 // The CA belongs to the customer: they generate it, choose how long it lives,
-// and install it in the truststores of the workloads they want to fault. The
-// extension only points the proxy at the pair.
+// and install it in the truststores of the workloads they want to fault. This
+// package only relays it.
 //
-// The paths are read inside the proxy's sidecar, whose root filesystem is an
-// overlay of the extension's own — so these are paths in the extension
-// container (e.g. a mounted Secret), and the key is never written into the
-// target.
+// It is carried as PEM rather than as file paths on purpose. The runc backend
+// runs the proxy in a bundle whose rootfs is an overlay of the extension's "/",
+// and an overlay does not carry the extension's submounts — so a CA mounted
+// from a Kubernetes Secret is simply not visible by path inside the sidecar
+// (verified: the mount point appears as an empty directory). Passing the PEM
+// over the process's stdin works identically for both backends, keeps the key
+// off the command line, and never writes it to a disk the target could reach.
 type TLSInterceptCA struct {
-	CertPath string
-	KeyPath  string
+	CertPEM []byte
+	KeyPEM  []byte
+}
+
+// pemStream is what the proxy reads from stdin: one PEM stream carrying both
+// halves. Order is irrelevant to the parser on the other side.
+func (c *TLSInterceptCA) pemStream() []byte {
+	out := make([]byte, 0, len(c.CertPEM)+len(c.KeyPEM)+1)
+	out = append(out, c.CertPEM...)
+	if len(c.CertPEM) > 0 && c.CertPEM[len(c.CertPEM)-1] != '\n' {
+		out = append(out, '\n')
+	}
+	return append(out, c.KeyPEM...)
 }
 
 // Opts configures interception and the injected fault.
@@ -253,11 +267,20 @@ func (o Opts) startArgs() []string {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
 	}
 	// Start-only: --revert reconstructs the interception rules, which do not
-	// depend on the CA.
+	// depend on the CA. The PEM itself goes over stdin, never argv.
 	if o.TLSInterceptCA != nil {
-		args = append(args, "--tls-ca-cert", o.TLSInterceptCA.CertPath, "--tls-ca-key", o.TLSInterceptCA.KeyPath)
+		args = append(args, "--tls-ca-stdin")
 	}
 	return args
+}
+
+// stdinPayload is what gets written to the proxy's stdin at start: the
+// interception CA, or nothing when HTTPS is not being decrypted.
+func (o Opts) stdinPayload() []byte {
+	if o.TLSInterceptCA == nil {
+		return nil
+	}
+	return o.TLSInterceptCA.pemStream()
 }
 
 // sortedKeys returns a map's keys in a deterministic order so the built argv is
@@ -357,8 +380,26 @@ func (b *processBase) waitExited() {
 	<-b.done
 }
 
-func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
+// startAndMonitor starts cmd and watches it. stdin, when non-empty, is written
+// to the process and the pipe then closed — this is how the interception CA is
+// handed over without touching argv or the filesystem.
+func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string, stdin []byte) error {
 	logger := log.With().Str("id", logId).Logger()
+	if len(stdin) > 0 {
+		w, err := cmd.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to pipe transparent-proxy stdin: %w", err)
+		}
+		// Written after Start below; the proxy reads stdin to EOF at startup.
+		defer func() {
+			go func() {
+				defer func() { _ = w.Close() }()
+				if _, werr := w.Write(stdin); werr != nil {
+					logger.Warn().Err(werr).Msg("failed to write CA to transparent-proxy stdin")
+				}
+			}()
+		}()
+	}
 	// stdout carries the JSON metrics stream (scraped for statistics); stderr
 	// carries the proxy's structured logs.
 	stdout, err := cmd.StdoutPipe()
@@ -418,7 +459,7 @@ func newNetnsProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Prox
 
 func (p *netnsProxy) Start() error {
 	log.Trace().Str("cmd", p.opts.String()).Msg("starting transparent-proxy via ip netns exec")
-	return p.startAndMonitor(p.cmd, "transparent-proxy")
+	return p.startAndMonitor(p.cmd, "transparent-proxy", p.opts.stdinPayload())
 }
 
 func (p *netnsProxy) Stop() error {
@@ -494,7 +535,7 @@ func (d *runcProxy) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to create run command: %w", err)
 	}
-	return d.startAndMonitor(cmd, d.bundle.ContainerId())
+	return d.startAndMonitor(cmd, d.bundle.ContainerId(), d.opts.stdinPayload())
 }
 
 func (d *runcProxy) Stop() error {
