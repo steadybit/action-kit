@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.13.0
+
+- feat(proxyfault): add `Opts.TLSInterceptCA`, a customer-supplied CA that lets an `HTTPStatus` fault also apply to HTTPS dependencies, not just cleartext HTTP. The proxy terminates the matched TLS connection with a certificate minted for its SNI and synthesizes the response. `nil` (the default) leaves HTTPS untouched. The CA is passed on the proxy's stdin, so the key never reaches `argv` or disk.
+
+  **Requires transparent-proxy >= v1.1.0** — older binaries reject `--tls-ca-stdin`. Bump `TRANSPARENT_PROXY_VERSION` in the same change.
+
+- feat(proxyfault): `Snapshot` gains `tls_intercept_rejected` — HTTPS connections whose client refused the minted certificate, i.e. the CA is not in the target's truststore. Not counted as faulted, so a failed interception is visible rather than silent.
+
 ## 1.12.0
 
 - feat(proxyfault): add `network/proxyfault`, which launches and manages the steadybit `transparent-proxy` binary inside a target's network namespace (runc sidecar or `ip netns exec`), mirroring `dnsinject`. The proxy self-manages its iptables interception and injects network faults (latency, connection reset, HTTP status) against a target's dependencies; `Revert` provides idempotent out-of-band teardown for the case where the proxy was killed before its own cleanup ran. The proxy is run as an external binary (located via `STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH`), so this package has no build dependency on the transparent-proxy module.
