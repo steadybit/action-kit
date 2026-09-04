@@ -411,6 +411,12 @@ func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string, stdin []byte)
 	// carries the proxy's structured logs.
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		// Unreachable in practice (StdoutPipe only fails when cmd.Stdout is
+		// already set, and cmd is always freshly built), but returning here
+		// without closing the stdin pipe would strand its write end.
+		if stdinPipe != nil {
+			_ = stdinPipe.Close()
+		}
 		return fmt.Errorf("failed to pipe transparent-proxy stdout: %w", err)
 	}
 	cmd.Stderr = &logWriter{logger: logger}
