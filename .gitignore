@@ -3,3 +3,6 @@ node_modules/
 /action_kit_api.go
 **/coverage.out
 **/*.o
+
+# macOS Finder metadata
+.DS_Store

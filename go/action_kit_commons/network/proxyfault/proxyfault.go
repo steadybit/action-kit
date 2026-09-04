@@ -268,19 +268,33 @@ func (o Opts) startArgs() []string {
 	}
 	// Start-only: --revert reconstructs the interception rules, which do not
 	// depend on the CA. The PEM itself goes over stdin, never argv.
-	if o.TLSInterceptCA != nil {
+	//
+	// Gated on the same condition as the payload: telling the proxy to read its
+	// CA from stdin while writing nothing there would leave it reading an empty
+	// stream, which is a far more confusing failure than not enabling it.
+	if _, ok := o.interceptCAPayload(); ok {
 		args = append(args, "--tls-ca-stdin")
 	}
 	return args
 }
 
+// interceptCAPayload returns the PEM to hand the proxy on stdin, and whether a
+// usable CA was configured at all. A half-populated CA counts as unusable: the
+// proxy needs both halves, and silently sending one produces a startup failure
+// that reads like a certificate problem.
+func (o Opts) interceptCAPayload() ([]byte, bool) {
+	ca := o.TLSInterceptCA
+	if ca == nil || len(ca.CertPEM) == 0 || len(ca.KeyPEM) == 0 {
+		return nil, false
+	}
+	return ca.pemStream(), true
+}
+
 // stdinPayload is what gets written to the proxy's stdin at start: the
 // interception CA, or nothing when HTTPS is not being decrypted.
 func (o Opts) stdinPayload() []byte {
-	if o.TLSInterceptCA == nil {
-		return nil
-	}
-	return o.TLSInterceptCA.pemStream()
+	payload, _ := o.interceptCAPayload()
+	return payload
 }
 
 // sortedKeys returns a map's keys in a deterministic order so the built argv is
@@ -385,20 +399,13 @@ func (b *processBase) waitExited() {
 // handed over without touching argv or the filesystem.
 func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string, stdin []byte) error {
 	logger := log.With().Str("id", logId).Logger()
+	var stdinPipe io.WriteCloser
 	if len(stdin) > 0 {
 		w, err := cmd.StdinPipe()
 		if err != nil {
 			return fmt.Errorf("failed to pipe transparent-proxy stdin: %w", err)
 		}
-		// Written after Start below; the proxy reads stdin to EOF at startup.
-		defer func() {
-			go func() {
-				defer func() { _ = w.Close() }()
-				if _, werr := w.Write(stdin); werr != nil {
-					logger.Warn().Err(werr).Msg("failed to write CA to transparent-proxy stdin")
-				}
-			}()
-		}()
+		stdinPipe = w
 	}
 	// stdout carries the JSON metrics stream (scraped for statistics); stderr
 	// carries the proxy's structured logs.
@@ -411,6 +418,17 @@ func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string, stdin []byte)
 		return fmt.Errorf("failed to start transparent-proxy: %w", err)
 	}
 	b.started.Store(true)
+	// Only after a successful Start. On the error paths above os/exec never
+	// closes the child end of the pipe, so writing there would leak a descriptor
+	// and leave a copy of the CA key resident for a process that never ran.
+	if stdinPipe != nil {
+		go func() {
+			defer func() { _ = stdinPipe.Close() }()
+			if _, werr := stdinPipe.Write(stdin); werr != nil {
+				logger.Warn().Err(werr).Msg("failed to write CA to transparent-proxy stdin")
+			}
+		}()
+	}
 	scanDone := make(chan struct{})
 	go func() {
 		defer close(scanDone)

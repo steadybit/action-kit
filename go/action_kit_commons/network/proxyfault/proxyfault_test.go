@@ -194,3 +194,21 @@ func TestStartArgs_MetricsStdoutAndNoFlush(t *testing.T) {
 		t.Errorf("missing no-flush flag: %s", args)
 	}
 }
+
+// A half-populated CA is unusable: the proxy needs both halves. Telling it to
+// read the CA from stdin while writing nothing there would leave it reading an
+// empty stream — a failure that reads like a certificate problem rather than a
+// configuration one.
+func TestStartArgs_tlsInterceptCA_halfPopulated(t *testing.T) {
+	for _, ca := range []*TLSInterceptCA{
+		{CertPEM: []byte("CERT-ONLY")},
+		{KeyPEM: []byte("KEY-ONLY")},
+		{},
+	} {
+		o := sampleOpts(t)
+		o.TLSInterceptCA = ca
+		assert.NotContains(t, strings.Join(o.startArgs(), " "), "--tls-ca-stdin",
+			"the flag must not be set without a complete CA")
+		assert.Nil(t, o.stdinPayload())
+	}
+}
