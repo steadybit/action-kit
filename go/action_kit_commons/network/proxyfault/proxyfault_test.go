@@ -212,3 +212,13 @@ func TestStartArgs_tlsInterceptCA_halfPopulated(t *testing.T) {
 		assert.Nil(t, o.stdinPayload())
 	}
 }
+
+func TestStartArgs_tlsLeafValidity(t *testing.T) {
+	o := sampleOpts(t)
+	o.TLSInterceptCA = &TLSInterceptCA{CertPEM: []byte("C"), KeyPEM: []byte("K")}
+	// Unset: the proxy's own default applies, so the flag is omitted.
+	assert.NotContains(t, strings.Join(o.startArgs(), " "), "--tls-leaf-validity")
+
+	o.TLSInterceptCA.LeafValidity = 2 * time.Hour
+	assert.Contains(t, strings.Join(o.startArgs(), " "), "--tls-leaf-validity 2h0m0s")
+}

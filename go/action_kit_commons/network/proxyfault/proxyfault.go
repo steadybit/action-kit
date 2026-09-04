@@ -80,6 +80,10 @@ type Fault struct {
 type TLSInterceptCA struct {
 	CertPEM []byte
 	KeyPEM  []byte
+	// LeafValidity, when >0, overrides how long the per-SNI certificates the
+	// proxy mints stay valid. Always clamped to the CA's own expiry by the
+	// proxy. Zero keeps the proxy's built-in default.
+	LeafValidity time.Duration
 }
 
 // pemStream is what the proxy reads from stdin: one PEM stream carrying both
@@ -274,6 +278,9 @@ func (o Opts) startArgs() []string {
 	// stream, which is a far more confusing failure than not enabling it.
 	if _, ok := o.interceptCAPayload(); ok {
 		args = append(args, "--tls-ca-stdin")
+		if o.TLSInterceptCA.LeafValidity > 0 {
+			args = append(args, "--tls-leaf-validity", o.TLSInterceptCA.LeafValidity.String())
+		}
 	}
 	return args
 }
