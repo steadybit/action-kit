@@ -62,6 +62,41 @@ type Fault struct {
 	Hosts       []string
 }
 
+// TLSInterceptCA carries the certificate authority the proxy uses to mint
+// per-SNI certificates, which is what lets an HTTPStatus fault reach an HTTPS
+// dependency instead of only a cleartext one.
+//
+// The CA belongs to the customer: they generate it, choose how long it lives,
+// and install it in the truststores of the workloads they want to fault. This
+// package only relays it.
+//
+// It is carried as PEM rather than as file paths on purpose. The runc backend
+// runs the proxy in a bundle whose rootfs is an overlay of the extension's "/",
+// and an overlay does not carry the extension's submounts — so a CA mounted
+// from a Kubernetes Secret is simply not visible by path inside the sidecar
+// (verified: the mount point appears as an empty directory). Passing the PEM
+// over the process's stdin works identically for both backends, keeps the key
+// off the command line, and never writes it to a disk the target could reach.
+type TLSInterceptCA struct {
+	CertPEM []byte
+	KeyPEM  []byte
+	// LeafValidity, when >0, overrides how long the per-SNI certificates the
+	// proxy mints stay valid. Always clamped to the CA's own expiry by the
+	// proxy. Zero keeps the proxy's built-in default.
+	LeafValidity time.Duration
+}
+
+// pemStream is what the proxy reads from stdin: one PEM stream carrying both
+// halves. Order is irrelevant to the parser on the other side.
+func (c *TLSInterceptCA) pemStream() []byte {
+	out := make([]byte, 0, len(c.CertPEM)+len(c.KeyPEM)+1)
+	out = append(out, c.CertPEM...)
+	if len(c.CertPEM) > 0 && c.CertPEM[len(c.CertPEM)-1] != '\n' {
+		out = append(out, '\n')
+	}
+	return append(out, c.KeyPEM...)
+}
+
 // Opts configures interception and the injected fault.
 type Opts struct {
 	ExecutionId string
@@ -83,6 +118,10 @@ type Opts struct {
 	ExcludeCIDRs []net.IPNet
 	Ports        []uint16
 	Fault        Fault
+	// TLSInterceptCA, when set, lets an HTTPStatus fault also apply to HTTPS
+	// connections. Nil (the default) means TLS is never decrypted and HTTPS is
+	// spliced through untouched.
+	TLSInterceptCA *TLSInterceptCA
 }
 
 // Proxy is a running transparent-proxy instance.
@@ -104,18 +143,23 @@ type HostStat struct {
 
 // Snapshot mirrors the transparent-proxy metrics JSON emitted on stdout.
 type Snapshot struct {
-	ConnectionsMatched    int64               `json:"connections_matched"`
-	ConnectionsActive     int64               `json:"connections_active"`
-	ConnectionsProxied    int64               `json:"connections_proxied"`
-	ConnectionsAborted    int64               `json:"connections_aborted"`
-	ConnectionsDropped    int64               `json:"connections_dropped"`
-	ConnectionsFaulted    int64               `json:"connections_faulted"`
-	LatencyApplied        int64               `json:"latency_applied"`
-	HTTPResponsesInjected int64               `json:"http_responses_injected"`
-	UpstreamErrors        int64               `json:"upstream_errors"`
-	BytesToUpstream       int64               `json:"bytes_to_upstream"`
-	BytesToClient         int64               `json:"bytes_to_client"`
-	PerHost               map[string]HostStat `json:"per_host,omitempty"`
+	ConnectionsMatched    int64 `json:"connections_matched"`
+	ConnectionsActive     int64 `json:"connections_active"`
+	ConnectionsProxied    int64 `json:"connections_proxied"`
+	ConnectionsAborted    int64 `json:"connections_aborted"`
+	ConnectionsDropped    int64 `json:"connections_dropped"`
+	ConnectionsFaulted    int64 `json:"connections_faulted"`
+	LatencyApplied        int64 `json:"latency_applied"`
+	HTTPResponsesInjected int64 `json:"http_responses_injected"`
+	// TLSInterceptRejected counts HTTPS connections on which the client refused
+	// the minted certificate. A non-zero value is the canonical "the CA is not in
+	// the target's truststore (or the client pins certificates)" signal — the
+	// fault never applied, so these are deliberately not counted as faulted.
+	TLSInterceptRejected int64               `json:"tls_intercept_rejected"`
+	UpstreamErrors       int64               `json:"upstream_errors"`
+	BytesToUpstream      int64               `json:"bytes_to_upstream"`
+	BytesToClient        int64               `json:"bytes_to_client"`
+	PerHost              map[string]HostStat `json:"per_host,omitempty"`
 }
 
 // SortedHosts returns the per-host keys in a stable order.
@@ -226,7 +270,38 @@ func (o Opts) startArgs() []string {
 	if len(o.Fault.Hosts) > 0 {
 		args = append(args, "--fault-hosts", strings.Join(o.Fault.Hosts, ","))
 	}
+	// Start-only: --revert reconstructs the interception rules, which do not
+	// depend on the CA. The PEM itself goes over stdin, never argv.
+	//
+	// Gated on the same condition as the payload: telling the proxy to read its
+	// CA from stdin while writing nothing there would leave it reading an empty
+	// stream, which is a far more confusing failure than not enabling it.
+	if _, ok := o.interceptCAPayload(); ok {
+		args = append(args, "--tls-ca-stdin")
+		if o.TLSInterceptCA.LeafValidity > 0 {
+			args = append(args, "--tls-leaf-validity", o.TLSInterceptCA.LeafValidity.String())
+		}
+	}
 	return args
+}
+
+// interceptCAPayload returns the PEM to hand the proxy on stdin, and whether a
+// usable CA was configured at all. A half-populated CA counts as unusable: the
+// proxy needs both halves, and silently sending one produces a startup failure
+// that reads like a certificate problem.
+func (o Opts) interceptCAPayload() ([]byte, bool) {
+	ca := o.TLSInterceptCA
+	if ca == nil || len(ca.CertPEM) == 0 || len(ca.KeyPEM) == 0 {
+		return nil, false
+	}
+	return ca.pemStream(), true
+}
+
+// stdinPayload is what gets written to the proxy's stdin at start: the
+// interception CA, or nothing when HTTPS is not being decrypted.
+func (o Opts) stdinPayload() []byte {
+	payload, _ := o.interceptCAPayload()
+	return payload
 }
 
 // sortedKeys returns a map's keys in a deterministic order so the built argv is
@@ -326,12 +401,29 @@ func (b *processBase) waitExited() {
 	<-b.done
 }
 
-func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
+// startAndMonitor starts cmd and watches it. stdin, when non-empty, is written
+// to the process and the pipe then closed — this is how the interception CA is
+// handed over without touching argv or the filesystem.
+func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string, stdin []byte) error {
 	logger := log.With().Str("id", logId).Logger()
+	var stdinPipe io.WriteCloser
+	if len(stdin) > 0 {
+		w, err := cmd.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to pipe transparent-proxy stdin: %w", err)
+		}
+		stdinPipe = w
+	}
 	// stdout carries the JSON metrics stream (scraped for statistics); stderr
 	// carries the proxy's structured logs.
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		// Unreachable in practice (StdoutPipe only fails when cmd.Stdout is
+		// already set, and cmd is always freshly built), but returning here
+		// without closing the stdin pipe would strand its write end.
+		if stdinPipe != nil {
+			_ = stdinPipe.Close()
+		}
 		return fmt.Errorf("failed to pipe transparent-proxy stdout: %w", err)
 	}
 	cmd.Stderr = &logWriter{logger: logger}
@@ -339,6 +431,17 @@ func (b *processBase) startAndMonitor(cmd *exec.Cmd, logId string) error {
 		return fmt.Errorf("failed to start transparent-proxy: %w", err)
 	}
 	b.started.Store(true)
+	// Only after a successful Start. On the error paths above os/exec never
+	// closes the child end of the pipe, so writing there would leak a descriptor
+	// and leave a copy of the CA key resident for a process that never ran.
+	if stdinPipe != nil {
+		go func() {
+			defer func() { _ = stdinPipe.Close() }()
+			if _, werr := stdinPipe.Write(stdin); werr != nil {
+				logger.Warn().Err(werr).Msg("failed to write CA to transparent-proxy stdin")
+			}
+		}()
+	}
 	scanDone := make(chan struct{})
 	go func() {
 		defer close(scanDone)
@@ -387,7 +490,7 @@ func newNetnsProcess(targetProcess ociruntime.LinuxProcessInfo, opts Opts) (Prox
 
 func (p *netnsProxy) Start() error {
 	log.Trace().Str("cmd", p.opts.String()).Msg("starting transparent-proxy via ip netns exec")
-	return p.startAndMonitor(p.cmd, "transparent-proxy")
+	return p.startAndMonitor(p.cmd, "transparent-proxy", p.opts.stdinPayload())
 }
 
 func (p *netnsProxy) Stop() error {
@@ -463,7 +566,7 @@ func (d *runcProxy) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to create run command: %w", err)
 	}
-	return d.startAndMonitor(cmd, d.bundle.ContainerId())
+	return d.startAndMonitor(cmd, d.bundle.ContainerId(), d.opts.stdinPayload())
 }
 
 func (d *runcProxy) Stop() error {

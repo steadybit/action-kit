@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustCIDR(t *testing.T, s string) net.IPNet {
@@ -86,6 +87,44 @@ func TestStartArgs_probability(t *testing.T) {
 		"nil must omit the flag so the proxy default applies")
 }
 
+func TestStartArgs_tlsInterceptCA(t *testing.T) {
+	o := sampleOpts(t)
+
+	// Unset: TLS is never decrypted, so the flags must be absent entirely.
+	got := strings.Join(o.startArgs(), " ")
+	assert.NotContains(t, got, "--tls-ca")
+
+	assert.Nil(t, o.stdinPayload())
+
+	o.TLSInterceptCA = &TLSInterceptCA{CertPEM: []byte("CERT-PEM"), KeyPEM: []byte("KEY-PEM")}
+	got = strings.Join(o.startArgs(), " ")
+	assert.Contains(t, got, "--tls-ca-stdin")
+	// The key must never reach the command line.
+	assert.NotContains(t, got, "CERT-PEM")
+	assert.NotContains(t, got, "KEY-PEM")
+
+	// Both halves are handed over on stdin as one PEM stream.
+	payload := string(o.stdinPayload())
+	assert.Contains(t, payload, "CERT-PEM")
+	assert.Contains(t, payload, "KEY-PEM")
+
+	// Revert only reconstructs interception rules, which do not depend on the CA.
+	assert.NotContains(t, strings.Join(o.revertArgs(), " "), "--tls-ca")
+}
+
+func TestSnapshot_tlsInterceptRejected(t *testing.T) {
+	// The rejected counter must survive the stdout round-trip, since it is the
+	// signal that the CA is missing from the target's truststore.
+	var c metricsCollector
+	c.collectFromReader(strings.NewReader(
+		`{"connections_matched":2,"connections_faulted":0,"tls_intercept_rejected":2}`+"\n"), zerolog.Nop())
+
+	snap, ok := c.snapshot()
+	require.True(t, ok)
+	assert.Equal(t, int64(2), snap.TLSInterceptRejected)
+	assert.Equal(t, int64(0), snap.ConnectionsFaulted)
+}
+
 func TestRevertArgs(t *testing.T) {
 	got := strings.Join(sampleOpts(t).revertArgs(), " ")
 	// Revert must reproduce the same chain identity (exec-id) and filter so the
@@ -154,4 +193,32 @@ func TestStartArgs_MetricsStdoutAndNoFlush(t *testing.T) {
 	if !strings.Contains(args, "--no-flush") {
 		t.Errorf("missing no-flush flag: %s", args)
 	}
+}
+
+// A half-populated CA is unusable: the proxy needs both halves. Telling it to
+// read the CA from stdin while writing nothing there would leave it reading an
+// empty stream — a failure that reads like a certificate problem rather than a
+// configuration one.
+func TestStartArgs_tlsInterceptCA_halfPopulated(t *testing.T) {
+	for _, ca := range []*TLSInterceptCA{
+		{CertPEM: []byte("CERT-ONLY")},
+		{KeyPEM: []byte("KEY-ONLY")},
+		{},
+	} {
+		o := sampleOpts(t)
+		o.TLSInterceptCA = ca
+		assert.NotContains(t, strings.Join(o.startArgs(), " "), "--tls-ca-stdin",
+			"the flag must not be set without a complete CA")
+		assert.Nil(t, o.stdinPayload())
+	}
+}
+
+func TestStartArgs_tlsLeafValidity(t *testing.T) {
+	o := sampleOpts(t)
+	o.TLSInterceptCA = &TLSInterceptCA{CertPEM: []byte("C"), KeyPEM: []byte("K")}
+	// Unset: the proxy's own default applies, so the flag is omitted.
+	assert.NotContains(t, strings.Join(o.startArgs(), " "), "--tls-leaf-validity")
+
+	o.TLSInterceptCA.LeafValidity = 2 * time.Hour
+	assert.Contains(t, strings.Join(o.startArgs(), " "), "--tls-leaf-validity 2h0m0s")
 }
