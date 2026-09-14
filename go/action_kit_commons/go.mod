@@ -1,6 +1,6 @@
 module github.com/steadybit/action-kit/go/action_kit_commons
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/florianl/go-tc v0.4.8
@@ -11,7 +11,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	golang.org/x/sys v0.47.0
 )
 
