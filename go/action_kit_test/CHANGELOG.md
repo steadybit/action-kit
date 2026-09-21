@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.12
+
+- fix: give the nginx fixtures a 5s termination grace period — `kubectl delete pod` blocks until the pod is
+  really gone, and these pods intermittently ignore their stop signal and are only force-killed at the 30s
+  default deadline, stalling any e2e test that deletes a pod and then asserts on what follows
+
 ## 1.4.11
 
 - fix: report why a poll timed out instead of rendering `last error: %!w(<nil>)` — `PollForTarget` and
