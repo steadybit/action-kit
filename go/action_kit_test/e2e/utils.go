@@ -113,10 +113,14 @@ func WaitForContainerStatusUsingContainerEngine(m *Minikube, containerId string,
 	defer cancel()
 
 	var lastError error
+	lastStatus := "<none observed>"
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("container %s did not reach status %s. last error %w", containerId, wantedStatus, lastError)
+			if lastError != nil {
+				return fmt.Errorf("container %s did not reach status %s. last error: %w", containerId, wantedStatus, lastError)
+			}
+			return fmt.Errorf("container %s did not reach status %s. last observed status: %s", containerId, wantedStatus, lastStatus)
 		case <-time.After(200 * time.Millisecond):
 			status, err := getContainerStatusUsingContainerEngine(m, containerId)
 			if err != nil {
@@ -125,6 +129,8 @@ func WaitForContainerStatusUsingContainerEngine(m *Minikube, containerId string,
 				if status == wantedStatus {
 					return nil
 				}
+				lastError = nil
+				lastStatus = status
 			}
 		}
 	}
@@ -163,10 +169,11 @@ func getContainerStatusUsingContainerEngine(m *Minikube, containerId string) (st
 
 func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
 	var lastErr error
+	lastCount := -1
 	for {
 		select {
 		case <-ctx.Done():
-			return discovery_kit_api.Target{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
+			return discovery_kit_api.Target{}, pollTimeoutError("target", targetId, lastCount, lastErr)
 		case <-time.After(200 * time.Millisecond):
 			result, err := e.DiscoverTargets(targetId)
 			if err != nil {
@@ -178,16 +185,33 @@ func PollForTarget(ctx context.Context, e *Extension, targetId string, predicate
 					return target, nil
 				}
 			}
+			lastErr = nil
+			lastCount = len(result)
 		}
 	}
 }
 
+// pollTimeoutError explains why a poll ran out of time. Discovery failing and
+// discovery succeeding while nothing matches the predicate are different
+// failures, and only the first has an error to wrap — wrapping a nil one
+// rendered the useless "last error: %!w(<nil>)".
+func pollTimeoutError(kind, targetId string, lastCount int, lastErr error) error {
+	if lastErr != nil {
+		return fmt.Errorf("timed out waiting for %s %s. last discovery error: %w", kind, targetId, lastErr)
+	}
+	if lastCount < 0 {
+		return fmt.Errorf("timed out waiting for %s %s: discovery never returned", kind, targetId)
+	}
+	return fmt.Errorf("timed out waiting for %s %s: discovery returned %d result(s), none matched the predicate", kind, targetId, lastCount)
+}
+
 func PollForEnrichmentData(ctx context.Context, e *Extension, targetId string, predicate func(target discovery_kit_api.EnrichmentData) bool) (discovery_kit_api.EnrichmentData, error) {
 	var lastErr error
+	lastCount := -1
 	for {
 		select {
 		case <-ctx.Done():
-			return discovery_kit_api.EnrichmentData{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
+			return discovery_kit_api.EnrichmentData{}, pollTimeoutError("enrichment data", targetId, lastCount, lastErr)
 		case <-time.After(200 * time.Millisecond):
 			result, err := e.DiscoverEnrichmentData(targetId)
 			if err != nil {
@@ -199,6 +223,8 @@ func PollForEnrichmentData(ctx context.Context, e *Extension, targetId string, p
 					return enrichmentData, nil
 				}
 			}
+			lastErr = nil
+			lastCount = len(result)
 		}
 	}
 }
