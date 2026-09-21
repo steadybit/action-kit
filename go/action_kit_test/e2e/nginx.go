@@ -37,6 +37,9 @@ func (n *Nginx) Deploy(podName string, opts ...func(c *acorev1.PodApplyConfigura
 		},
 		Spec: &acorev1.PodSpecApplyConfiguration{
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
+			// See NginxDeployment: the 30s default grace period turns an
+			// intermittently unresponsive stop signal into a 30s stall.
+			TerminationGracePeriodSeconds: extutil.Ptr(int64(5)),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
 					Name:  new("nginx"),

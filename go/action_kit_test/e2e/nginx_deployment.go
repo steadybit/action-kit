@@ -49,6 +49,12 @@ func (n *NginxDeployment) Deploy(deploymentName string) error {
 					},
 				},
 				Spec: corev1.PodSpec{
+					// kubectl delete pod blocks until the pod is really gone, and the
+					// default grace period is 30s. These pods intermittently fail to
+					// exit on their stop signal and are only force-killed at the
+					// deadline, which stalls e2e tests that delete a pod and then
+					// assert on what follows. Nothing here needs a graceful drain.
+					TerminationGracePeriodSeconds: extutil.Ptr(int64(5)),
 					Containers: []corev1.Container{
 						{
 							Name:  "nginx",
