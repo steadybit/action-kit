@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.11
+
+- fix: report why a poll timed out instead of rendering `last error: %!w(<nil>)` — `PollForTarget` and
+  `PollForEnrichmentData` now distinguish a failing discovery from one that returned results none of which
+  matched the predicate, and name the target id; `WaitForContainerStatusUsingContainerEngine` reports the
+  last observed status
+- Update dependencies (notably k8s.io/client-go 0.36.4 → 0.37.0 and extension-kit 1.10.4 → 1.11.2)
+
 ## 1.4.10
 
 - expose an action's artifacts to e2e tests via `ActionExecution.Artifacts()`
