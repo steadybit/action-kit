@@ -12,13 +12,16 @@ import (
 	"sync"
 )
 
-var isCapSysPtraceSet = hasCap(unix.CAP_SYS_PTRACE)
+// isCapSysPtraceSet is evaluated on first use, not at package initialization: extensions whose
+// binary carries its file capabilities without the effective bit (setcap ...+ip) only make them
+// effective in main(), after the package variables are initialized.
+var isCapSysPtraceSet = sync.OnceValue(func() bool { return hasCap(unix.CAP_SYS_PTRACE) })
 var logWarning = sync.OnceFunc(func() {
 	log.Warn().Msg("CAP_SYS_PTRACE capability is not set. Using fallback with reduced performance.")
 })
 
 func executeReadlinkInProc(ctx context.Context, nsPaths ...string) ([]string, error) {
-	if isCapSysPtraceSet {
+	if isCapSysPtraceSet() {
 		return executeReadlinkUsingSyscall(ctx, nsPaths...)
 	} else {
 		logWarning()
