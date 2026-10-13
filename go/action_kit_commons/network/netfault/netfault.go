@@ -175,6 +175,11 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if mode == modeDelete {
+		if otherActiveBlockLocalhost(netNsID, opts) {
+			// reverting an attack rejected at start: the running one still needs pref 0 removed
+			ipCommandsV4 = slices.DeleteFunc(ipCommandsV4, isRestoreDefaultLocalRuleCmd)
+			ipCommandsV6 = slices.DeleteFunc(ipCommandsV6, isRestoreDefaultLocalRuleCmd)
+		}
 		ipCommandsV4 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV4, ipCommandsV4)
 		ipCommandsV6 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV6, ipCommandsV6)
 	}
@@ -484,6 +489,20 @@ func pushActiveNetfault(netNsId string, opts Opts) error {
 
 	activeNetfault[netNsId] = append(activeNetfault[netNsId], opts)
 	return nil
+}
+
+// otherActiveBlockLocalhost reports whether another attack than opts is active
+// in the namespace and has moved the default local rule aside.
+func otherActiveBlockLocalhost(netNsId string, opts Opts) bool {
+	activeNetfaultLock.Lock()
+	defer activeNetfaultLock.Unlock()
+
+	for _, a := range activeNetfault[netNsId] {
+		if b, ok := a.(*BlackholeOpts); ok && b.BlockLocalhost && !reflect.DeepEqual(opts, a) {
+			return true
+		}
+	}
+	return false
 }
 
 func popActiveNetfault(id string, opts Opts) {

@@ -108,7 +108,11 @@ func preflightLocalTableRule(ctx context.Context, runner CommandRunner, opts Opt
 	if ipv6Supported() {
 		families = append(families, familyV6)
 	}
+	filter := optimizeFilter(o.Filter)
 	for _, fam := range families {
+		if !hasIncludeForFamily(filter, fam) {
+			continue
+		}
 		out, err := executeIpCommands(ctx, runner, []string{"rule show pref 0"}, ipFamilyFlag, string(fam))
 		if err != nil {
 			return fmt.Errorf("failed to inspect ip rules: %w", err)
@@ -136,7 +140,7 @@ func hasDefaultLocalRule(out string) bool {
 // start before removing it. The kernel accepts a duplicate pref 0 rule, so the
 // re-add must not run blindly.
 func skipRestoreIfDefaultLocalRulePresent(ctx context.Context, runner CommandRunner, family family, cmds []string) []string {
-	idx := slices.Index(cmds, restoreDefaultLocalRuleCmd)
+	idx := slices.IndexFunc(cmds, isRestoreDefaultLocalRuleCmd)
 	if idx < 0 {
 		return cmds
 	}
@@ -149,4 +153,8 @@ func skipRestoreIfDefaultLocalRulePresent(ctx context.Context, runner CommandRun
 		return cmds
 	}
 	return slices.Delete(slices.Clone(cmds), idx, idx+1)
+}
+
+func isRestoreDefaultLocalRuleCmd(cmd string) bool {
+	return cmd == restoreDefaultLocalRuleCmd
 }

@@ -45,7 +45,8 @@ func (o *BlackholeOpts) doesConflictWith(opts Opts) bool {
 		return true
 	}
 
-	if o.BlockLocalhost != other.BlockLocalhost {
+	// only one attack can move the default local rule aside and restore it
+	if o.BlockLocalhost || other.BlockLocalhost {
 		return true
 	}
 
@@ -89,19 +90,20 @@ func (o *BlackholeOpts) ipCommands(family family, mode mode) ([]string, error) {
 			continue
 		}
 
+		cmds = append(cmds, fmt.Sprintf("rule %s to %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("dport", portRange)))
+		cmds = append(cmds, fmt.Sprintf("rule %s from %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("sport", portRange)))
 		if o.BlockLocalhost {
 			// the local table is no longer consulted first, so excluded traffic
 			// addressed to this host must be resolved there before falling
-			// through to the main table.
+			// through to the main table. Added after the main table rules, so
+			// they get a lower preference and are evaluated first.
 			cmds = append(cmds, fmt.Sprintf("rule %s to %s%s%s table local", mode, net.String(), ipprotoSelector, portSelector("dport", portRange)))
 			cmds = append(cmds, fmt.Sprintf("rule %s from %s%s%s table local", mode, net.String(), ipprotoSelector, portSelector("sport", portRange)))
 		}
-		cmds = append(cmds, fmt.Sprintf("rule %s to %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("dport", portRange)))
-		cmds = append(cmds, fmt.Sprintf("rule %s from %s%s%s table main", mode, net.String(), ipprotoSelector, portSelector("sport", portRange)))
 	}
 	reorderForMode(cmds, mode)
 
-	if o.BlockLocalhost {
+	if o.BlockLocalhost && hasIncludeForFamily(filter, family) {
 		cmds = wrapWithLocalTableRules(cmds, family, mode)
 	}
 	return cmds, nil
@@ -137,6 +139,17 @@ func wrapWithLocalTableRules(cmds []string, family family, mode mode) []string {
 // restoreDefaultLocalRuleCmd re-adds the kernel's default local rule on revert.
 // Skipped by the revert when the rule is still present.
 const restoreDefaultLocalRuleCmd = "rule add pref 0 lookup local"
+
+// hasIncludeForFamily reports whether the filter blocks any traffic of the
+// family. The default local rule of a family without includes is left alone.
+func hasIncludeForFamily(filter Filter, family family) bool {
+	for _, nwp := range filter.Include {
+		if f, err := getFamily(nwp.Net); err == nil && f == family {
+			return true
+		}
+	}
+	return false
+}
 
 func loopbackNet(family family) string {
 	if family == familyV6 {

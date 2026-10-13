@@ -9,6 +9,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -265,6 +266,7 @@ func TestPreflightCheck_StrictMode(t *testing.T) {
 }
 
 func TestPreflightCheck_BlockLocalhost(t *testing.T) {
+	anyFilter := Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)}
 	ipv6Supported = func() bool { return false }
 	defer func() { ipv6Supported = defaultIpv6Supported }()
 
@@ -274,10 +276,11 @@ func TestPreflightCheck_BlockLocalhost(t *testing.T) {
 		stdout  string
 		wantErr bool
 	}{
-		{name: "default local rule present", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "0:\tfrom all lookup local\n"},
-		{name: "default local rule missing", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "300:\tfrom all lookup local\n", wantErr: true},
-		{name: "default local rule moved by someone else", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "", wantErr: true},
+		{name: "default local rule present", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "0:\tfrom all lookup local\n"},
+		{name: "default local rule missing", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "300:\tfrom all lookup local\n", wantErr: true},
+		{name: "default local rule moved by someone else", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "", wantErr: true},
 		{name: "not requested", opts: &BlackholeOpts{}, stdout: ""},
+		{name: "family without includes not checked", opts: &BlackholeOpts{BlockLocalhost: true, Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("::1/128", "*")}}}, stdout: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
