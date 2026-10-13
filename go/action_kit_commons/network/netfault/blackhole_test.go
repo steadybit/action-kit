@@ -5,7 +5,9 @@
 package netfault
 
 import (
+	"context"
 	"net"
+	"slices"
 	"testing"
 	"testing/iotest"
 
@@ -113,6 +115,78 @@ rule del blackhole to 2001:db8::5/128
 `),
 			wantErr: false,
 		},
+		{
+			name: "blackhole including localhost ipv4 only leaves ipv6 rules alone",
+			opts: BlackholeOpts{
+				BlockLocalhost: true,
+				Filter: Filter{
+					Include: []network.NetWithPortRange{mustParseNetWithPortRange("127.0.0.1/32", "9999")},
+				},
+			},
+			wantAddV4: []byte(`rule add to 127.0.0.0/8 lookup local
+rule add blackhole to 127.0.0.1/32 dport 9999
+rule add blackhole from 127.0.0.1/32 sport 9999
+rule add not to 127.0.0.0/8 lookup local
+rule del pref 0 lookup local
+`),
+			wantDelV4: []byte(`rule add pref 0 lookup local
+rule del not to 127.0.0.0/8 lookup local
+rule del blackhole from 127.0.0.1/32 sport 9999
+rule del blackhole to 127.0.0.1/32 dport 9999
+rule del to 127.0.0.0/8 lookup local
+`),
+			wantAddV6: []byte("\n"),
+			wantDelV6: []byte("\n"),
+			wantErr:   false,
+		},
+		{
+			name: "blackhole including localhost",
+			opts: BlackholeOpts{
+				BlockLocalhost: true,
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("127.0.0.0/8", "*"),
+						mustParseNetWithPortRange("::1/128", "9999"),
+					},
+					Exclude: []network.NetWithPortRange{
+						mustParseNetWithPortRange("127.0.0.1/32", "8080"),
+					},
+				},
+			},
+			wantAddV4: []byte(`rule add to 127.0.0.0/8 lookup local
+rule add blackhole to 127.0.0.0/8
+rule add blackhole from 127.0.0.0/8
+rule add to 127.0.0.1/32 dport 8080 table main
+rule add from 127.0.0.1/32 sport 8080 table main
+rule add to 127.0.0.1/32 dport 8080 table local
+rule add from 127.0.0.1/32 sport 8080 table local
+rule add not to 127.0.0.0/8 lookup local
+rule del pref 0 lookup local
+`),
+			wantDelV4: []byte(`rule add pref 0 lookup local
+rule del not to 127.0.0.0/8 lookup local
+rule del from 127.0.0.1/32 sport 8080 table local
+rule del to 127.0.0.1/32 dport 8080 table local
+rule del from 127.0.0.1/32 sport 8080 table main
+rule del to 127.0.0.1/32 dport 8080 table main
+rule del blackhole from 127.0.0.0/8
+rule del blackhole to 127.0.0.0/8
+rule del to 127.0.0.0/8 lookup local
+`),
+			wantAddV6: []byte(`rule add to ::1/128 lookup local
+rule add blackhole to ::1/128 dport 9999
+rule add blackhole from ::1/128 sport 9999
+rule add not to ::1/128 lookup local
+rule del pref 0 lookup local
+`),
+			wantDelV6: []byte(`rule add pref 0 lookup local
+rule del not to ::1/128 lookup local
+rule del blackhole from ::1/128 sport 9999
+rule del blackhole to ::1/128 dport 9999
+rule del to ::1/128 lookup local
+`),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,4 +226,48 @@ rule del blackhole to 2001:db8::5/128
 			assert.NoError(t, iotest.TestReader(toReader(gotDelV6), tt.wantDelV6))
 		})
 	}
+}
+
+func TestBlackholeOpts_doesConflictWith(t *testing.T) {
+	filter := Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)}
+
+	assert.False(t, (&BlackholeOpts{Filter: filter}).doesConflictWith(&BlackholeOpts{Filter: filter}), "identical opts should not conflict")
+	assert.True(t, (&BlackholeOpts{Filter: filter, BlockLocalhost: true}).doesConflictWith(&BlackholeOpts{Filter: filter}), "localhost and non-localhost should conflict")
+	assert.True(t, (&BlackholeOpts{Filter: filter}).doesConflictWith(&BlackholeOpts{Filter: filter, BlockLocalhost: true}), "non-localhost and localhost should conflict")
+	assert.True(t, (&BlackholeOpts{Filter: filter, BlockLocalhost: true}).doesConflictWith(&BlackholeOpts{Filter: filter, BlockLocalhost: true}), "two localhost attacks should conflict")
+}
+
+func TestBlockLocalhost_RevertOfRejectedAttackKeepsRunningOne(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	filter := Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("127.0.0.0/8", "9999")}}
+	running := &BlackholeOpts{Filter: filter, BlockLocalhost: true, ExecutionContext: ExecutionContext{TargetExecutionId: "running"}}
+	rejected := &BlackholeOpts{Filter: filter, BlockLocalhost: true, ExecutionContext: ExecutionContext{TargetExecutionId: "rejected"}}
+	ns := "localhost-exclusive"
+
+	_, err := Apply(context.Background(), &fakeRunner{netNsId: ns}, running)
+	assert.NoError(t, err)
+
+	_, err = Apply(context.Background(), &fakeRunner{netNsId: ns}, rejected)
+	assert.Error(t, err, "second localhost attack must be rejected")
+
+	// pref 0 is absent (moved by the running attack)
+	r := &fakeRunner{netNsId: ns}
+	assert.NoError(t, Revert(context.Background(), r, rejected, QdiscSnapshot{}))
+	assert.False(t, revertRestoredDefaultLocalRule(r), "must not restore pref 0 while another attack relies on it")
+
+	r = &fakeRunner{netNsId: ns}
+	assert.NoError(t, Revert(context.Background(), r, running, QdiscSnapshot{}))
+	assert.True(t, revertRestoredDefaultLocalRule(r), "last attack must restore pref 0")
+	assert.False(t, hasActiveNetfault(ns))
+}
+
+func revertRestoredDefaultLocalRule(r *fakeRunner) bool {
+	for _, c := range r.calls {
+		if slices.Contains(c.cmds, restoreDefaultLocalRuleCmd) {
+			return true
+		}
+	}
+	return false
 }

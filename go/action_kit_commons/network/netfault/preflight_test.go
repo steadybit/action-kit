@@ -9,6 +9,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -262,4 +263,53 @@ func TestPreflightCheck_StrictMode(t *testing.T) {
 			assert.Equal(t, tc.wantKind, e.Kind)
 		})
 	}
+}
+
+func TestPreflightCheck_BlockLocalhost(t *testing.T) {
+	anyFilter := Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)}
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	tests := []struct {
+		name    string
+		opts    *BlackholeOpts
+		stdout  string
+		wantErr bool
+	}{
+		{name: "default local rule present", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "0:\tfrom all lookup local\n"},
+		{name: "default local rule missing", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "300:\tfrom all lookup local\n", wantErr: true},
+		{name: "default local rule moved by someone else", opts: &BlackholeOpts{BlockLocalhost: true, Filter: anyFilter}, stdout: "", wantErr: true},
+		{name: "not requested", opts: &BlackholeOpts{}, stdout: ""},
+		{name: "family without includes not checked", opts: &BlackholeOpts{BlockLocalhost: true, Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("::1/128", "*")}}}, stdout: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &fakeRunner{netNsId: "localhost-" + tt.name, stdout: tt.stdout}
+			err := PreflightCheck(context.Background(), r, tt.opts)
+			if tt.wantErr {
+				var target *ErrNoDefaultLocalRule
+				assert.ErrorAs(t, err, &target)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestSkipRestoreIfDefaultLocalRulePresent(t *testing.T) {
+	cmds := []string{restoreDefaultLocalRuleCmd, "rule del not to 127.0.0.0/8 lookup local"}
+
+	present := &fakeRunner{stdout: "0:\tfrom all lookup local\n"}
+	assert.Equal(t, cmds[1:], skipRestoreIfDefaultLocalRulePresent(context.Background(), present, familyV4, cmds))
+	assert.Len(t, cmds, 2, "input must not be modified")
+
+	missing := &fakeRunner{stdout: ""}
+	assert.Equal(t, cmds, skipRestoreIfDefaultLocalRulePresent(context.Background(), missing, familyV4, cmds))
+
+	failing := &fakeRunner{err: assert.AnError}
+	assert.Equal(t, cmds, skipRestoreIfDefaultLocalRulePresent(context.Background(), failing, familyV4, cmds))
+
+	other := &fakeRunner{stdout: "0:\tfrom all lookup local\n"}
+	assert.Equal(t, []string{"rule del blackhole to 0.0.0.0/0"}, skipRestoreIfDefaultLocalRulePresent(context.Background(), other, familyV4, []string{"rule del blackhole to 0.0.0.0/0"}))
+	assert.Empty(t, other.calls, "no lookup without a restore command")
 }

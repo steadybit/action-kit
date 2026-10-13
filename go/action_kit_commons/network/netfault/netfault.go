@@ -95,6 +95,10 @@ func (e *ErrUserRootQdisc) Error() string {
 // namespace the existing root qdisc is ours, so the check is skipped and the
 // apply-time conflict detection decides whether the attacks may coexist.
 func PreflightCheck(ctx context.Context, runner CommandRunner, opts Opts) error {
+	if err := preflightLocalTableRule(ctx, runner, opts); err != nil {
+		return err
+	}
+
 	p, ok := opts.(tcCommandProvider)
 	if !ok {
 		return nil
@@ -168,6 +172,16 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 			return QdiscSnapshot{}, err
 		}
 		snapshot = captureSnapshotForApply(runner, netNsID, opts)
+	}
+
+	if mode == modeDelete {
+		if otherActiveBlockLocalhost(netNsID, opts) {
+			// reverting an attack rejected at start: the running one still needs pref 0 removed
+			ipCommandsV4 = slices.DeleteFunc(ipCommandsV4, isRestoreDefaultLocalRuleCmd)
+			ipCommandsV6 = slices.DeleteFunc(ipCommandsV6, isRestoreDefaultLocalRuleCmd)
+		}
+		ipCommandsV4 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV4, ipCommandsV4)
+		ipCommandsV6 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV6, ipCommandsV6)
 	}
 
 	logBeforeAfterRules(ctx, runner, ipCommandsV4, ipCommandsV6, tcCommands, "before")
@@ -475,6 +489,20 @@ func pushActiveNetfault(netNsId string, opts Opts) error {
 
 	activeNetfault[netNsId] = append(activeNetfault[netNsId], opts)
 	return nil
+}
+
+// otherActiveBlockLocalhost reports whether another attack than opts is active
+// in the namespace and has moved the default local rule aside.
+func otherActiveBlockLocalhost(netNsId string, opts Opts) bool {
+	activeNetfaultLock.Lock()
+	defer activeNetfaultLock.Unlock()
+
+	for _, a := range activeNetfault[netNsId] {
+		if b, ok := a.(*BlackholeOpts); ok && b.BlockLocalhost && !reflect.DeepEqual(opts, a) {
+			return true
+		}
+	}
+	return false
 }
 
 func popActiveNetfault(id string, opts Opts) {

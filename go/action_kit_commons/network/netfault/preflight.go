@@ -7,7 +7,10 @@ package netfault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Kinds the Linux kernel re-attaches automatically after `tc qdisc del root`.
@@ -75,4 +78,83 @@ func parseRootQdiscKinds(out string) map[string]string {
 		kinds[fields[4]] = fields[1]
 	}
 	return kinds
+}
+
+// ErrNoDefaultLocalRule reports that the network namespace does not carry the
+// kernel's default `pref 0 lookup local` routing rule, which blocking localhost
+// traffic needs to move aside (and to restore afterwards).
+type ErrNoDefaultLocalRule struct {
+	Family string
+}
+
+func (e *ErrNoDefaultLocalRule) Error() string {
+	return fmt.Sprintf("blocking localhost traffic requires the default routing rule '0: from all lookup local' (%s), but it was not found. The routing rules seem to be customized; localhost traffic cannot be blocked safely.", e.Family)
+}
+
+// preflightLocalTableRule verifies the default `pref 0 lookup local` rule is
+// present for every family a BlockLocalhost blackhole will touch. Skipped when
+// a steadybit attack is already active in the namespace: the rule may already
+// have been moved by it and the apply-time conflict detection decides.
+func preflightLocalTableRule(ctx context.Context, runner CommandRunner, opts Opts) error {
+	o, ok := opts.(*BlackholeOpts)
+	if !ok || !o.BlockLocalhost {
+		return nil
+	}
+	if hasActiveNetfault(runner.id()) {
+		return nil
+	}
+
+	families := []family{familyV4}
+	if ipv6Supported() {
+		families = append(families, familyV6)
+	}
+	filter := optimizeFilter(o.Filter)
+	for _, fam := range families {
+		if !hasIncludeForFamily(filter, fam) {
+			continue
+		}
+		out, err := executeIpCommands(ctx, runner, []string{"rule show pref 0"}, ipFamilyFlag, string(fam))
+		if err != nil {
+			return fmt.Errorf("failed to inspect ip rules: %w", err)
+		}
+		if !hasDefaultLocalRule(out) {
+			return &ErrNoDefaultLocalRule{Family: string(fam)}
+		}
+	}
+	return nil
+}
+
+// hasDefaultLocalRule reports whether `ip rule show pref 0` output contains the
+// unconditional local table lookup (`0:	from all lookup local`).
+func hasDefaultLocalRule(out string) bool {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Join(strings.Fields(line), " ") == "0: from all lookup local" {
+			return true
+		}
+	}
+	return false
+}
+
+// skipRestoreIfDefaultLocalRulePresent drops the revert's re-add of the default
+// local rule when that rule is still present, e.g. because the attack failed to
+// start before removing it. The kernel accepts a duplicate pref 0 rule, so the
+// re-add must not run blindly.
+func skipRestoreIfDefaultLocalRulePresent(ctx context.Context, runner CommandRunner, family family, cmds []string) []string {
+	idx := slices.IndexFunc(cmds, isRestoreDefaultLocalRuleCmd)
+	if idx < 0 {
+		return cmds
+	}
+	out, err := executeIpCommands(ctx, runner, []string{"rule show pref 0"}, ipFamilyFlag, string(family))
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to inspect ip rules; restoring the default local rule anyway")
+		return cmds
+	}
+	if !hasDefaultLocalRule(out) {
+		return cmds
+	}
+	return slices.Delete(slices.Clone(cmds), idx, idx+1)
+}
+
+func isRestoreDefaultLocalRuleCmd(cmd string) bool {
+	return cmd == restoreDefaultLocalRuleCmd
 }
