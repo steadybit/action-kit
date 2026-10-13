@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.14.0
+
+- feat(netfault): add `BlackholeOpts.BlockLocalhost` to also blackhole loopback traffic. The kernel's default `pref 0 lookup local` rule resolves loopback traffic before any blackhole rule is evaluated; when enabled, it is replaced for the attack's duration by a `not to <loopback> lookup local` rule above and a `to <loopback> lookup local` rule below the blackhole rules, so only matching loopback traffic is blocked and non-loopback traffic is resolved exactly as before. Revert re-adds the default rule only when it is missing. The preflight refuses the option when the default `pref 0` rule is absent.
+- chore(deps): bump `golang.org/x/sys` and `golang.org/x/sync`
+
+## 1.13.0
+
+- feat(proxyfault): add `Opts.TLSInterceptCA`, a customer-supplied CA that lets an `HTTPStatus` fault also apply to HTTPS dependencies, not just cleartext HTTP. The proxy terminates the matched TLS connection with a certificate minted for its SNI and synthesizes the response. `nil` (the default) leaves HTTPS untouched. The CA is passed on the proxy's stdin, so the key never reaches `argv` or disk.
+
+  **Requires transparent-proxy >= v1.1.0** — older binaries reject `--tls-ca-stdin`. Bump `TRANSPARENT_PROXY_VERSION` in the same change.
+
+- feat(proxyfault): `Snapshot` gains `tls_intercept_rejected` — HTTPS connections whose client refused the minted certificate, i.e. the CA is not in the target's truststore. Not counted as faulted, so a failed interception is visible rather than silent.
+
 ## 1.12.0
 
 - feat(proxyfault): add `network/proxyfault`, which launches and manages the steadybit `transparent-proxy` binary inside a target's network namespace (runc sidecar or `ip netns exec`), mirroring `dnsinject`. The proxy self-manages its iptables interception and injects network faults (latency, connection reset, HTTP status) against a target's dependencies; `Revert` provides idempotent out-of-band teardown for the case where the proxy was killed before its own cleanup ran. The proxy is run as an external binary (located via `STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH`), so this package has no build dependency on the transparent-proxy module.
