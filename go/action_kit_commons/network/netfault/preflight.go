@@ -7,7 +7,10 @@ package netfault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Kinds the Linux kernel re-attaches automatically after `tc qdisc del root`.
@@ -126,4 +129,24 @@ func hasDefaultLocalRule(out string) bool {
 		}
 	}
 	return false
+}
+
+// skipRestoreIfDefaultLocalRulePresent drops the revert's re-add of the default
+// local rule when that rule is still present, e.g. because the attack failed to
+// start before removing it. The kernel accepts a duplicate pref 0 rule, so the
+// re-add must not run blindly.
+func skipRestoreIfDefaultLocalRulePresent(ctx context.Context, runner CommandRunner, family family, cmds []string) []string {
+	idx := slices.Index(cmds, restoreDefaultLocalRuleCmd)
+	if idx < 0 {
+		return cmds
+	}
+	out, err := executeIpCommands(ctx, runner, []string{"rule show pref 0"}, ipFamilyFlag, string(family))
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to inspect ip rules; restoring the default local rule anyway")
+		return cmds
+	}
+	if !hasDefaultLocalRule(out) {
+		return cmds
+	}
+	return slices.Delete(slices.Clone(cmds), idx, idx+1)
 }

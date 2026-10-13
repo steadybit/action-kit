@@ -292,3 +292,21 @@ func TestPreflightCheck_BlockLocalhost(t *testing.T) {
 		})
 	}
 }
+
+func TestSkipRestoreIfDefaultLocalRulePresent(t *testing.T) {
+	cmds := []string{restoreDefaultLocalRuleCmd, "rule del not to 127.0.0.0/8 lookup local"}
+
+	present := &fakeRunner{stdout: "0:\tfrom all lookup local\n"}
+	assert.Equal(t, cmds[1:], skipRestoreIfDefaultLocalRulePresent(context.Background(), present, familyV4, cmds))
+	assert.Len(t, cmds, 2, "input must not be modified")
+
+	missing := &fakeRunner{stdout: ""}
+	assert.Equal(t, cmds, skipRestoreIfDefaultLocalRulePresent(context.Background(), missing, familyV4, cmds))
+
+	failing := &fakeRunner{err: assert.AnError}
+	assert.Equal(t, cmds, skipRestoreIfDefaultLocalRulePresent(context.Background(), failing, familyV4, cmds))
+
+	other := &fakeRunner{stdout: "0:\tfrom all lookup local\n"}
+	assert.Equal(t, []string{"rule del blackhole to 0.0.0.0/0"}, skipRestoreIfDefaultLocalRulePresent(context.Background(), other, familyV4, []string{"rule del blackhole to 0.0.0.0/0"}))
+	assert.Empty(t, other.calls, "no lookup without a restore command")
+}

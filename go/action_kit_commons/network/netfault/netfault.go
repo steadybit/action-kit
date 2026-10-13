@@ -174,6 +174,11 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 		snapshot = captureSnapshotForApply(runner, netNsID, opts)
 	}
 
+	if mode == modeDelete {
+		ipCommandsV4 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV4, ipCommandsV4)
+		ipCommandsV6 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV6, ipCommandsV6)
+	}
+
 	logBeforeAfterRules(ctx, runner, ipCommandsV4, ipCommandsV6, tcCommands, "before")
 
 	if scriptErr := runIptablesScripts(ctx, runner, opts, mode, &err); scriptErr != nil {

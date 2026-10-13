@@ -129,10 +129,14 @@ func wrapWithLocalTableRules(cmds []string, family family, mode mode) []string {
 		return append(result, fmt.Sprintf("rule add %s", above), "rule del pref 0 lookup local")
 	}
 
-	result := []string{"rule add pref 0 lookup local", fmt.Sprintf("rule del %s", above)}
+	result := []string{restoreDefaultLocalRuleCmd, fmt.Sprintf("rule del %s", above)}
 	result = append(result, cmds...)
 	return append(result, fmt.Sprintf("rule del %s", below))
 }
+
+// restoreDefaultLocalRuleCmd re-adds the kernel's default local rule on revert.
+// Skipped by the revert when the rule is still present.
+const restoreDefaultLocalRuleCmd = "rule add pref 0 lookup local"
 
 func loopbackNet(family family) string {
 	if family == familyV6 {
