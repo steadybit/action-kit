@@ -263,3 +263,32 @@ func TestPreflightCheck_StrictMode(t *testing.T) {
 		})
 	}
 }
+
+func TestPreflightCheck_BlockLocalhost(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	tests := []struct {
+		name    string
+		opts    *BlackholeOpts
+		stdout  string
+		wantErr bool
+	}{
+		{name: "default local rule present", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "0:\tfrom all lookup local\n"},
+		{name: "default local rule missing", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "300:\tfrom all lookup local\n", wantErr: true},
+		{name: "default local rule moved by someone else", opts: &BlackholeOpts{BlockLocalhost: true}, stdout: "", wantErr: true},
+		{name: "not requested", opts: &BlackholeOpts{}, stdout: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &fakeRunner{netNsId: "localhost-" + tt.name, stdout: tt.stdout}
+			err := PreflightCheck(context.Background(), r, tt.opts)
+			if tt.wantErr {
+				var target *ErrNoDefaultLocalRule
+				assert.ErrorAs(t, err, &target)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

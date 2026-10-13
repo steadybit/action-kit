@@ -95,6 +95,10 @@ func (e *ErrUserRootQdisc) Error() string {
 // namespace the existing root qdisc is ours, so the check is skipped and the
 // apply-time conflict detection decides whether the attacks may coexist.
 func PreflightCheck(ctx context.Context, runner CommandRunner, opts Opts) error {
+	if err := preflightLocalTableRule(ctx, runner, opts); err != nil {
+		return err
+	}
+
 	p, ok := opts.(tcCommandProvider)
 	if !ok {
 		return nil

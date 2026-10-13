@@ -113,6 +113,54 @@ rule del blackhole to 2001:db8::5/128
 `),
 			wantErr: false,
 		},
+		{
+			name: "blackhole including localhost",
+			opts: BlackholeOpts{
+				BlockLocalhost: true,
+				Filter: Filter{
+					Include: []network.NetWithPortRange{
+						mustParseNetWithPortRange("127.0.0.0/8", "*"),
+						mustParseNetWithPortRange("::1/128", "9999"),
+					},
+					Exclude: []network.NetWithPortRange{
+						mustParseNetWithPortRange("127.0.0.1/32", "8080"),
+					},
+				},
+			},
+			wantAddV4: []byte(`rule add to 127.0.0.0/8 lookup local
+rule add blackhole to 127.0.0.0/8
+rule add blackhole from 127.0.0.0/8
+rule add to 127.0.0.1/32 dport 8080 table local
+rule add from 127.0.0.1/32 sport 8080 table local
+rule add to 127.0.0.1/32 dport 8080 table main
+rule add from 127.0.0.1/32 sport 8080 table main
+rule add not to 127.0.0.0/8 lookup local
+rule del pref 0 lookup local
+`),
+			wantDelV4: []byte(`rule add pref 0 lookup local
+rule del not to 127.0.0.0/8 lookup local
+rule del from 127.0.0.1/32 sport 8080 table main
+rule del to 127.0.0.1/32 dport 8080 table main
+rule del from 127.0.0.1/32 sport 8080 table local
+rule del to 127.0.0.1/32 dport 8080 table local
+rule del blackhole from 127.0.0.0/8
+rule del blackhole to 127.0.0.0/8
+rule del to 127.0.0.0/8 lookup local
+`),
+			wantAddV6: []byte(`rule add to ::1/128 lookup local
+rule add blackhole to ::1/128 dport 9999
+rule add blackhole from ::1/128 sport 9999
+rule add not to ::1/128 lookup local
+rule del pref 0 lookup local
+`),
+			wantDelV6: []byte(`rule add pref 0 lookup local
+rule del not to ::1/128 lookup local
+rule del blackhole from ::1/128 sport 9999
+rule del blackhole to ::1/128 dport 9999
+rule del to ::1/128 lookup local
+`),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
