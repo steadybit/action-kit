@@ -175,10 +175,11 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if mode == modeDelete {
-		if otherActiveBlockLocalhost(netNsID, opts) {
-			// reverting an attack rejected at start: the running one still needs pref 0 removed
-			ipCommandsV4 = slices.DeleteFunc(ipCommandsV4, isRestoreDefaultLocalRuleCmd)
-			ipCommandsV6 = slices.DeleteFunc(ipCommandsV6, isRestoreDefaultLocalRuleCmd)
+		if wasRejectedAtStart(netNsID, opts) {
+			// its rules were never applied; running its delete commands would remove
+			// the rules of the attack that is still active and caused the rejection
+			log.Info().Str("netNs", netNsID).Str("opts", opts.String()).Msg("skipping revert of a network attack that was rejected at start")
+			return QdiscSnapshot{}, nil
 		}
 		ipCommandsV4 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV4, ipCommandsV4)
 		ipCommandsV6 = skipRestoreIfDefaultLocalRulePresent(ctx, runner, familyV6, ipCommandsV6)
@@ -491,18 +492,23 @@ func pushActiveNetfault(netNsId string, opts Opts) error {
 	return nil
 }
 
-// otherActiveBlockLocalhost reports whether another attack than opts is active
-// in the namespace and has moved the default local rule aside.
-func otherActiveBlockLocalhost(netNsId string, opts Opts) bool {
+// wasRejectedAtStart reports whether opts is not an active attack in the namespace
+// while a conflicting one is: Apply refused it before running any command. After an
+// extension restart nothing is active, so a regular revert still runs.
+func wasRejectedAtStart(netNsId string, opts Opts) bool {
 	activeNetfaultLock.Lock()
 	defer activeNetfaultLock.Unlock()
 
+	conflicting := false
 	for _, a := range activeNetfault[netNsId] {
-		if b, ok := a.(*BlackholeOpts); ok && b.BlockLocalhost && !reflect.DeepEqual(opts, a) {
-			return true
+		if reflect.DeepEqual(opts, a) {
+			return false
+		}
+		if opts.doesConflictWith(a) {
+			conflicting = true
 		}
 	}
-	return false
+	return conflicting
 }
 
 func popActiveNetfault(id string, opts Opts) {

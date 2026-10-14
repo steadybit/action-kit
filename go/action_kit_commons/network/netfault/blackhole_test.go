@@ -10,6 +10,7 @@ import (
 	"slices"
 	"testing"
 	"testing/iotest"
+	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
@@ -252,10 +253,10 @@ func TestBlockLocalhost_RevertOfRejectedAttackKeepsRunningOne(t *testing.T) {
 	_, err = Apply(context.Background(), &fakeRunner{netNsId: ns}, rejected)
 	assert.Error(t, err, "second localhost attack must be rejected")
 
-	// pref 0 is absent (moved by the running attack)
+	// the rejected attack never applied anything, its revert must not touch the running one's rules
 	r := &fakeRunner{netNsId: ns}
 	assert.NoError(t, Revert(context.Background(), r, rejected, QdiscSnapshot{}))
-	assert.False(t, revertRestoredDefaultLocalRule(r), "must not restore pref 0 while another attack relies on it")
+	assert.Empty(t, r.calls, "revert of a rejected attack must not run any command")
 
 	r = &fakeRunner{netNsId: ns}
 	assert.NoError(t, Revert(context.Background(), r, running, QdiscSnapshot{}))
@@ -270,4 +271,40 @@ func revertRestoredDefaultLocalRule(r *fakeRunner) bool {
 		}
 	}
 	return false
+}
+
+func TestRevert_OfAttackRejectedByOtherTypeRunsNothing(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	ns := "rejected-other-type"
+	running := &BlackholeOpts{Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("10.0.0.0/8", "*")}}}
+	rejected := &DelayOpts{
+		Filter:     Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("0.0.0.0/0", "*")}},
+		Delay:      100 * time.Millisecond,
+		Interfaces: []string{"eth0"},
+	}
+
+	_, err := Apply(context.Background(), &fakeRunner{netNsId: ns}, running)
+	assert.NoError(t, err)
+	_, err = Apply(context.Background(), &fakeRunner{netNsId: ns}, rejected)
+	assert.Error(t, err, "delay must be rejected while a blackhole is running")
+
+	r := &fakeRunner{netNsId: ns}
+	assert.NoError(t, Revert(context.Background(), r, rejected, QdiscSnapshot{}))
+	assert.Empty(t, r.calls, "must not delete the running attack's rules or qdiscs")
+
+	assert.NoError(t, Revert(context.Background(), &fakeRunner{netNsId: ns}, running, QdiscSnapshot{}))
+	assert.False(t, hasActiveNetfault(ns))
+}
+
+func TestRevert_WithoutActiveAttacksStillRuns(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	// e.g. after an extension restart nothing is tracked as active
+	opts := &BlackholeOpts{Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("10.0.0.0/8", "*")}}}
+	r := &fakeRunner{netNsId: "restarted"}
+	assert.NoError(t, Revert(context.Background(), r, opts, QdiscSnapshot{}))
+	assert.NotEmpty(t, r.calls, "a regular revert must run its delete commands")
 }
