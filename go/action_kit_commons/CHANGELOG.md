@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.1
+
+- fix(netfault): skip the revert of an attack that was rejected at start because it conflicts with an attack already running in the same network namespace. Previously the agent's stop still ran the delete commands, which match rules by selector and therefore removed the running attack's rules (e.g. a second identical Block Localhost attack disabled the first one; a rejected delay deleted the running attack's root qdisc). After an extension restart nothing is active, so regular reverts still run. Replaces the BlockLocalhost-specific `pref 0` guard.
+- chore(deps): bump `golang.org/x/sys` to v0.49.0 and `golang.org/x/sync` to v0.24.0
+
 ## 1.14.0
 
 - feat(netfault): add `BlackholeOpts.BlockLocalhost` to also blackhole loopback traffic. The kernel's default `pref 0 lookup local` rule resolves loopback traffic before any blackhole rule is evaluated; when enabled, it is replaced for the attack's duration by a `not to <loopback> lookup local` rule above and a `to <loopback> lookup local` rule below the blackhole rules, so only matching loopback traffic is blocked and non-loopback traffic is resolved exactly as before. Revert re-adds the default rule only when it is missing. The preflight refuses the option when the default `pref 0` rule is absent.
