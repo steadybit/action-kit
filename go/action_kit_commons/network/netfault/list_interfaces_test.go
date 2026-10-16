@@ -133,6 +133,10 @@ func (m mockRunner) netNsPath() string {
 	return ""
 }
 
+func (m mockRunner) netNsExists(_ context.Context) error {
+	return nil
+}
+
 type mockResponse struct {
 	stdout string
 	err    error
@@ -157,4 +161,8 @@ func (m *mockRunnerMulti) id() string {
 
 func (m *mockRunnerMulti) netNsPath() string {
 	return ""
+}
+
+func (m *mockRunnerMulti) netNsExists(_ context.Context) error {
+	return nil
 }

@@ -5,6 +5,7 @@ package netfault
 
 import (
 	"context"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
@@ -281,4 +283,19 @@ func toString(s []network.NetWithPortRange) string {
 		sb.WriteString("\n")
 	}
 	return sb.String()
+}
+
+func TestRevert_OfGoneNamespaceRunsNothing(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	ns := "gone"
+	opts := &BlackholeOpts{Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("10.0.0.0/8", "*")}}}
+	_, err := Apply(context.Background(), &fakeRunner{netNsId: ns}, opts)
+	require.NoError(t, err)
+
+	r := &fakeRunner{netNsId: ns, netNsGone: os.ErrNotExist}
+	assert.NoError(t, Revert(context.Background(), r, opts, QdiscSnapshot{}))
+	assert.Empty(t, r.calls, "must not run commands in a gone namespace")
+	assert.False(t, hasActiveNetfault(ns), "a new namespace reusing the id must not inherit the attack")
 }

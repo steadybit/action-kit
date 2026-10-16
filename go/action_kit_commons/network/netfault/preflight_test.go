@@ -104,10 +104,11 @@ qdisc mq 0: dev eth0 root`,
 // fakeRunner is a CommandRunner that returns canned stdout for any command,
 // optionally erroring. Used by the netfault, preflight and Apply tests.
 type fakeRunner struct {
-	netNsId string
-	stdout  string
-	err     error
-	calls   []recordedCall
+	netNsId   string
+	stdout    string
+	err       error
+	netNsGone error
+	calls     []recordedCall
 }
 
 type recordedCall struct {
@@ -129,6 +130,10 @@ func (f *fakeRunner) id() string {
 
 func (f *fakeRunner) netNsPath() string {
 	return ""
+}
+
+func (f *fakeRunner) netNsExists(_ context.Context) error {
+	return f.netNsGone
 }
 
 func TestPreflightCheck(t *testing.T) {
