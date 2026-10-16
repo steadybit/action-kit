@@ -6,8 +6,10 @@ package ociruntime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -200,6 +202,53 @@ func Test_parseProcCgroupFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := parseProcCgroupFile(tt.content)
 			assert.Equalf(t, tt.want, got, "parseProcCgroupFile(%v bytes)", len(tt.content))
+		})
+	}
+}
+
+func Test_readInodesError(t *testing.T) {
+	exitErr := func(code int) error {
+		return exec.Command("sh", "-c", fmt.Sprintf("exit %d", code)).Run()
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		stderr   string
+		notExist bool
+	}{
+		{
+			name:     "missing file",
+			err:      exitErr(1),
+			stderr:   "stat: cannot statx '/proc/65432/ns/net': No such file or directory\n",
+			notExist: true,
+		},
+		{
+			name:   "nsenter not permitted",
+			err:    exitErr(1),
+			stderr: "nsenter: reassociate to namespaces failed: Operation not permitted\n",
+		},
+		{
+			name:   "stat permission denied",
+			err:    exitErr(1),
+			stderr: "stat: cannot statx '/proc/1/ns/net': Permission denied\n",
+		},
+		{
+			name:   "other exit code",
+			err:    exitErr(2),
+			stderr: "No such file or directory",
+		},
+		{
+			name: "not started",
+			err:  exec.ErrNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := readInodesError(tt.err, tt.stderr)
+			assert.Error(t, err)
+			assert.Equal(t, tt.notExist, errors.Is(err, os.ErrNotExist))
 		})
 	}
 }
