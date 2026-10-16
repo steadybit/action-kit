@@ -249,11 +249,26 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.0.56/29", "8086-8088"),
 			},
 		},
+		{
+			name: "must condense unsorted input",
+			nwps: []network.NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.2/32", "80"),
+				mustParseNetWithPortRange("10.0.0.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			},
+			limit: 2,
+			want: []network.NetWithPortRange{
+				mustParseNetWithPortRange("10.0.0.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.0/30", "80"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			input := slices.Clone(tt.nwps)
 			result := CondenseNetWithPortRange(tt.nwps, tt.limit)
 			assert.Equalf(t, toString(tt.want), toString(result), "CondenseNetWithPortRange(%v, %v)", tt.nwps, tt.limit)
+			assert.Equal(t, input, tt.nwps, "must not modify its input")
 		})
 	}
 }

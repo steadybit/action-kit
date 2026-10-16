@@ -592,9 +592,8 @@ func CondenseNetWithPortRange(nwps []network.NetWithPortRange, limit int) []netw
 		return nwps
 	}
 
-	result := make([]network.NetWithPortRange, len(nwps))
-	copy(result, nwps)
-	slices.SortFunc(nwps, network.NetWithPortRange.Compare)
+	result := slices.Clone(nwps)
+	slices.SortFunc(result, network.NetWithPortRange.Compare)
 
 	var candidates []network.NetWithPortRange
 	for i := 0; i < len(result)-1; i++ {
