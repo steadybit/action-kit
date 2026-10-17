@@ -5,6 +5,8 @@
 package netfault
 
 import (
+	"context"
+	"encoding/json"
 	"net"
 	"testing"
 
@@ -493,4 +495,39 @@ func TestTcpResetOpts_String(t *testing.T) {
 			Filter:         Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRangeAny)},
 		}).String(),
 	)
+}
+
+// Extensions persist the opts as JSON in the action state and decode them
+// separately for Apply (start) and Revert (stop), so Revert never sees the
+// instance Apply registered as active.
+func TestTcpResetOpts_RevertWithOptsDecodedFromState(t *testing.T) {
+	ipv6Supported = func() bool { return true }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	ns := "tcp-reset-decoded-state"
+	state, err := json.Marshal(&TcpResetOpts{
+		// IPv6 before IPv4 is the order the extensions sort 4-byte IPv4 addresses into;
+		// after decoding they are 16-byte and sort first, which is what used to reorder the filter
+		Filter: Filter{Include: []network.NetWithPortRange{
+			mustParseNetWithPortRange("2a00:1450:4001:c0f::64/128", "*"),
+			mustParseNetWithPortRange("142.251.14.100/32", "*"),
+		}},
+		ExecutionContext: testExecCtx,
+		Interfaces:       []string{"eth0"},
+		Prepend:          true,
+	})
+	require.NoError(t, err)
+	decode := func() *TcpResetOpts {
+		var opts TcpResetOpts
+		require.NoError(t, json.Unmarshal(state, &opts))
+		return &opts
+	}
+
+	_, err = Apply(context.Background(), &fakeRunner{netNsId: ns}, decode())
+	require.NoError(t, err)
+
+	r := &fakeRunner{netNsId: ns}
+	require.NoError(t, Revert(context.Background(), r, decode(), QdiscSnapshot{}))
+	assert.NotEmpty(t, r.calls, "revert must delete the iptables rules")
+	assert.False(t, hasActiveNetfault(ns), "revert must remove the attack from the active ones")
 }

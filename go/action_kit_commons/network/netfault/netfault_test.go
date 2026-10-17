@@ -5,6 +5,7 @@ package netfault
 
 import (
 	"context"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApply_Order_IptablesBeforeTcWhenTcpPshOnly(t *testing.T) {
@@ -249,11 +251,26 @@ func TestCondenseNetWithPortRange(t *testing.T) {
 				mustParseNetWithPortRange("192.168.0.56/29", "8086-8088"),
 			},
 		},
+		{
+			name: "must condense unsorted input",
+			nwps: []network.NetWithPortRange{
+				mustParseNetWithPortRange("192.168.2.2/32", "80"),
+				mustParseNetWithPortRange("10.0.0.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.1/32", "80"),
+			},
+			limit: 2,
+			want: []network.NetWithPortRange{
+				mustParseNetWithPortRange("10.0.0.1/32", "80"),
+				mustParseNetWithPortRange("192.168.2.0/30", "80"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			input := slices.Clone(tt.nwps)
 			result := CondenseNetWithPortRange(tt.nwps, tt.limit)
 			assert.Equalf(t, toString(tt.want), toString(result), "CondenseNetWithPortRange(%v, %v)", tt.nwps, tt.limit)
+			assert.Equal(t, input, tt.nwps, "must not modify its input")
 		})
 	}
 }
@@ -266,4 +283,19 @@ func toString(s []network.NetWithPortRange) string {
 		sb.WriteString("\n")
 	}
 	return sb.String()
+}
+
+func TestRevert_OfGoneNamespaceRunsNothing(t *testing.T) {
+	ipv6Supported = func() bool { return false }
+	defer func() { ipv6Supported = defaultIpv6Supported }()
+
+	ns := "gone"
+	opts := &BlackholeOpts{Filter: Filter{Include: []network.NetWithPortRange{mustParseNetWithPortRange("10.0.0.0/8", "*")}}}
+	_, err := Apply(context.Background(), &fakeRunner{netNsId: ns}, opts)
+	require.NoError(t, err)
+
+	r := &fakeRunner{netNsId: ns, netNsGone: os.ErrNotExist}
+	assert.NoError(t, Revert(context.Background(), r, opts, QdiscSnapshot{}))
+	assert.Empty(t, r.calls, "must not run commands in a gone namespace")
+	assert.False(t, hasActiveNetfault(ns), "a new namespace reusing the id must not inherit the attack")
 }

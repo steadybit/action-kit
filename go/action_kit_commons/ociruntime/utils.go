@@ -117,6 +117,17 @@ func listNamespaces(ctx context.Context, pid int, types ...specs.LinuxNamespaceT
 	return namespaces, nil
 }
 
+// readInodesError maps a failed `nsenter ... stat` to os.ErrNotExist only when
+// stat reported a missing file. nsenter and stat exit with 1 on any failure, and
+// e.g. a denied setns must not be mistaken for a namespace that is gone.
+func readInodesError(err error, stderr string) error {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) && exitError.ExitCode() == 1 && strings.Contains(stderr, "No such file or directory") {
+		return os.ErrNotExist
+	}
+	return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr))
+}
+
 func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 	var sout, serr bytes.Buffer
 	args := []string{"-t", "1", "-m", "-n", "--", "stat", "-L", "-c", "%i"}
@@ -133,14 +144,7 @@ func executeReadInodes(ctx context.Context, paths ...string) ([]uint64, error) {
 
 	if err != nil {
 		log.Trace().Err(err).Msgf("failed to read inode(s) of %s", paths)
-		var exitError *exec.ExitError
-		if errors.As(err, &exitError) {
-			exitCode := exitError.ExitCode()
-			if exitCode == 1 { // file does not exist
-				return nil, os.ErrNotExist
-			}
-		}
-		return nil, err
+		return nil, readInodesError(err, serr.String())
 	}
 
 	var inodes []uint64

@@ -48,6 +48,9 @@ type CommandRunner interface {
 	// runner operates on (e.g. /proc/<pid>/ns/net or /var/run/netns/<name>).
 	// Used by the snapshot layer to open the netns via RTNETLINK.
 	netNsPath() string
+	// netNsExists returns an error when the network namespace is gone, e.g.
+	// because the target container exited.
+	netNsExists(ctx context.Context) error
 }
 
 // Apply installs the attack and returns a QdiscSnapshot describing the
@@ -175,6 +178,12 @@ func generateAndRunCommands(ctx context.Context, runner CommandRunner, opts Opts
 	}
 
 	if mode == modeDelete {
+		if nsErr := runner.netNsExists(ctx); nsErr != nil {
+			// nothing left to revert, but the namespace id may be reused by a new namespace
+			log.Info().Err(nsErr).Str("netNs", netNsID).Msg("skipping revert of a network attack, its network namespace is gone")
+			popActiveNetfault(netNsID, opts)
+			return QdiscSnapshot{}, nil
+		}
 		if wasRejectedAtStart(netNsID, opts) {
 			// its rules were never applied; running its delete commands would remove
 			// the rules of the attack that is still active and caused the rejection
@@ -592,9 +601,8 @@ func CondenseNetWithPortRange(nwps []network.NetWithPortRange, limit int) []netw
 		return nwps
 	}
 
-	result := make([]network.NetWithPortRange, len(nwps))
-	copy(result, nwps)
-	slices.SortFunc(nwps, network.NetWithPortRange.Compare)
+	result := slices.Clone(nwps)
+	slices.SortFunc(result, network.NetWithPortRange.Compare)
 
 	var candidates []network.NetWithPortRange
 	for i := 0; i < len(result)-1; i++ {
