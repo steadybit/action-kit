@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14.2
+
+- fix(netfault): a TCP reset with mixed IPv4/IPv6 includes was not reverted. The filter of the attack registered as active was sorted in place after the registration, so the opts decoded on stop no longer matched it: the revert was skipped as "rejected at start", leaving the iptables rules on the host, and the attack stayed registered, rejecting every following network attack in that network namespace.
+- fix(netfault): `Revert` checks whether the network namespace still exists. If it is gone, the attack is only dropped from the active ones; previously callers skipped the revert and left it registered, so a later namespace reusing the id rejected its first attack.
+- fix(netfault): `CondenseNetWithPortRange` sorted the caller's slice instead of its copy.
+- fix(ociruntime): `NamespacesExists` only reports a namespace as gone when `stat` reports a missing file (in the C locale); any other `nsenter`/`stat` failure is returned as an error.
+- fix(diskfill): `df` and `rm` run in the C locale. With a host installation on a non-English system fill disk failed with `failed to parse 1k-blocks of df output`.
+
 ## 1.14.1
 
 - fix(netfault): skip the revert of an attack that was rejected at start because it conflicts with an attack already running in the same network namespace. Previously the agent's stop still ran the delete commands, which match rules by selector and therefore removed the running attack's rules (e.g. a second identical Block Localhost attack disabled the first one; a rejected delay deleted the running attack's root qdisc). After an extension restart nothing is active, so regular reverts still run. Replaces the BlockLocalhost-specific `pref 0` guard.
