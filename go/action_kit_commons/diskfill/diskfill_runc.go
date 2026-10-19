@@ -103,7 +103,7 @@ func (df *diskfillRunc) Stop() error {
 	var deleteFileErr error
 	if !df.Noop() {
 
-		if out, err := utils.RootCommandContext(ctx, "rm", df.pathToRemove).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
+		if out, err := withCLocale(utils.RootCommandContext(ctx, "rm", df.pathToRemove)).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
 			log.Error().Err(err).Msgf("failed to remove file %s", out)
 			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", df.pathToRemove, out)
 		} else {
@@ -161,6 +161,7 @@ func createBundle(ctx context.Context, r ociruntime.OciRuntime, sidecar SidecarO
 			"com.steadybit.sidecar": "true",
 		}),
 		ociruntime.WithCopyEnviron(),
+		withCLocaleEnv,
 		ociruntime.WithProcessArgs(processArgs...),
 		ociruntime.WithProcessCwd("/tmp"),
 		ociruntime.WithCgroupPath(sidecar.TargetProcess.CGroupPath, containerId),

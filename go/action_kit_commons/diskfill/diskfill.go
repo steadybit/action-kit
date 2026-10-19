@@ -7,11 +7,17 @@ package diskfill
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_commons/ociruntime"
 	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"path/filepath"
 )
 
 type Diskfill interface {
@@ -158,4 +164,18 @@ func fallocateArgs(writeKBytes int64, file string) []string {
 		fmt.Sprintf("%dKiB", writeKBytes),
 		file,
 	}
+}
+
+// withCLocale makes the command print untranslated messages and headers, which
+// this package parses. With a host installation the extension inherits the
+// host's locale.
+func withCLocale(cmd *exec.Cmd) *exec.Cmd {
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	return cmd
+}
+
+func withCLocaleEnv(spec *specs.Spec) {
+	spec.Process.Env = append(slices.DeleteFunc(spec.Process.Env, func(e string) bool {
+		return strings.HasPrefix(e, "LC_ALL=")
+	}), "LC_ALL=C")
 }
