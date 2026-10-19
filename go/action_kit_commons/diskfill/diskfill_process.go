@@ -87,7 +87,7 @@ func (df *diskfillProcess) Stop() error {
 
 	var deleteFileErr error
 	if !df.Noop() {
-		if out, err := utils.RootCommandContext(ctx, "rm", df.pathToRemove).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
+		if out, err := withCLocale(utils.RootCommandContext(ctx, "rm", df.pathToRemove)).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
 			log.Error().Err(err).Msgf("failed to remove file %s", out)
 			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", df.pathToRemove, out)
 		} else {

@@ -45,6 +45,10 @@ func (p processRunner) id() string {
 	return "host"
 }
 
+func (p processRunner) netNsExists(_ context.Context) error {
+	return nil
+}
+
 // netNsPath returns the calling process's own network namespace path. The
 // processRunner runs commands directly in the extension process's netns, so
 // snapshot/restore operates on the same netns.

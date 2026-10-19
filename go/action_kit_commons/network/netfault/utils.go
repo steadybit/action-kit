@@ -236,6 +236,7 @@ func writeStringForFilters(sb *strings.Builder, f Filter) {
 }
 
 func deduplicateNetWithPortRange(nwps []network.NetWithPortRange) []network.NetWithPortRange {
+	nwps = slices.Clone(nwps)
 	slices.SortFunc(nwps, network.NetWithPortRange.Compare)
 
 	var deduplicated []network.NetWithPortRange

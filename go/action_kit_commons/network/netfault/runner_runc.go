@@ -60,6 +60,10 @@ func (r *runcRunner) id() string {
 	return ""
 }
 
+func (r *runcRunner) netNsExists(ctx context.Context) error {
+	return ociruntime.NamespacesExists(ctx, r.sidecar.TargetProcess.Namespaces, specs.NetworkNamespace)
+}
+
 // netNsPath returns the path to the target process's network namespace
 // (e.g. /proc/<pid>/ns/net or /var/run/netns/<name>). Empty string if the
 // target has no network namespace registered. Used by the snapshot layer to

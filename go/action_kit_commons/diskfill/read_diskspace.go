@@ -64,7 +64,7 @@ func readDiskUsageRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar Sid
 }
 
 func readDiskUsageProcess(ctx context.Context, path string) (*DiskUsage, error) {
-	cmd := utils.RootCommandContext(ctx, "df", "-Pk", path)
+	cmd := withCLocale(utils.RootCommandContext(ctx, "df", "-Pk", path))
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
