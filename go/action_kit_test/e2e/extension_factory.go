@@ -8,6 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"os/exec"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -128,38 +130,17 @@ func (h *HelmExtensionFactory) connect(ctx context.Context, minikube *Minikube) 
 	}
 
 	start := time.Now()
-	waitCtx, waitCancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer waitCancel()
-	var pods []corev1.Pod
-	for {
-		select {
-		case <-waitCtx.Done():
-			return 0, nil, fmt.Errorf("extension pods did not start in time")
-		case <-time.After(1 * time.Second):
-		}
-
-		var err error
-		pods, err = minikube.ListPods(waitCtx, "default", podLabelSelector)
-		if err != nil {
-			return 0, nil, err
-		}
-
-		if len(pods) > 0 {
-			break
-		}
-	}
-	log.Info().TimeDiff("duration", time.Now(), start).Int("pods", len(pods)).Msg("pods for extension created")
-
-	start = time.Now()
-	for _, pod := range pods {
-		if err := minikube.WaitForPodReady(pod.GetObjectMeta(), 3*time.Minute); err != nil {
+	pods, err := waitForStableReadyPods(minikube, podLabelSelector, 3*time.Minute)
+	if err != nil {
+		for _, pod := range pods {
 			minikube.TailLog(ctx, pod.GetObjectMeta())
-			return 0, nil, err
-		} else {
-			go minikube.TailLog(ctx, pod.GetObjectMeta())
 		}
+		return 0, nil, err
 	}
-	log.Info().TimeDiff("duration", time.Now(), start).Msg("extension pods are in running state")
+	for _, pod := range pods {
+		go minikube.TailLog(ctx, pod.GetObjectMeta())
+	}
+	log.Info().TimeDiff("duration", time.Now(), start).Int("pods", len(pods)).Msg("extension pods are in running state")
 
 	localPort, err := minikube.PortForward(pods[0].GetObjectMeta(), h.Port, ctx.Done())
 	if err != nil {
@@ -168,4 +149,80 @@ func (h *HelmExtensionFactory) connect(ctx context.Context, minikube *Minikube) 
 	log.Info().TimeDiff("duration", time.Now(), start).Msgf("extension started. available at %d", localPort)
 
 	return localPort, pods[0].GetObjectMeta(), nil
+}
+
+// waitForStableReadyPods waits until the extension's pods that are not being deleted are all ready, and
+// the same set was seen on two consecutive polls. After a helm upgrade the previous revision's pod is
+// still listed, first ready and then terminating; it must not be picked, nor waited on until it is gone.
+func waitForStableReadyPods(minikube *Minikube, podLabelSelector string, timeout time.Duration) ([]corev1.Pod, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var previous string
+	var pods []corev1.Pod
+	for {
+		select {
+		case <-ctx.Done():
+			return pods, fmt.Errorf("extension pods did not become ready in time. last seen: %s", describePods(pods))
+		case <-time.After(1 * time.Second):
+		}
+
+		listed, err := minikube.ListPods(ctx, "default", podLabelSelector)
+		if err != nil {
+			if ctx.Err() != nil {
+				continue
+			}
+			return nil, err
+		}
+
+		var current string
+		var allReady bool
+		pods, current, allReady = activePods(listed)
+
+		if len(pods) > 0 && allReady && current == previous {
+			return pods, nil
+		}
+		previous = current
+	}
+}
+
+// activePods drops pods that are being deleted and returns the rest, a key identifying that set, and whether
+// all of them are ready.
+func activePods(listed []corev1.Pod) ([]corev1.Pod, string, bool) {
+	var pods []corev1.Pod
+	var names []string
+	allReady := true
+	for _, pod := range listed {
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		pods = append(pods, pod)
+		names = append(names, pod.Name)
+		allReady = allReady && isPodReady(&pod)
+	}
+	sort.Strings(names)
+	return pods, strings.Join(names, ","), allReady
+}
+
+func isPodReady(pod *corev1.Pod) bool {
+	if pod.Status.Phase != corev1.PodRunning {
+		return false
+	}
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func describePods(pods []corev1.Pod) string {
+	if len(pods) == 0 {
+		return "no pods"
+	}
+	var parts []string
+	for _, pod := range pods {
+		parts = append(parts, fmt.Sprintf("%s (phase %s, ready %t)", pod.Name, pod.Status.Phase, isPodReady(&pod)))
+	}
+	return strings.Join(parts, ", ")
 }
