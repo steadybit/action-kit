@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -33,6 +34,9 @@ func runCovered(t *testing.T, binary, arg string) ([]byte, []byte) {
 
 func TestCoverage_accumulates_runs(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "covprog")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	out, err := exec.Command("go", "build", "-cover", "-o", binary, "./testdata/covprog").CombinedOutput()
 	require.NoError(t, err, string(out))
 
