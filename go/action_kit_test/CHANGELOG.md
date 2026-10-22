@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.13
+
+- fix: e2e coverage is merged across all `WithMinikube` runs of a test binary. Each run used to overwrite
+  `e2e-coverage-<runtime>.out`, so with several runs (one minikube per configuration) only the last one reached
+  Sonar, and coverage that the main suite had produced was dropped. The raw data of each run is now kept in a
+  temp directory outside the repository and the report is regenerated from all of them
+- fix: `Extension.Reconfigure` (and `ResetConfig`) works for extensions deployed as a Deployment. After the helm
+  upgrade it used to wait for the previous revision's pod, which was terminating and never became ready again; it
+  now waits until the pods that are not being deleted are all ready and the same set was seen on two consecutive
+  polls
+- chore(deps): `github.com/steadybit/extension-kit` 1.11.2 → 1.12.1, `github.com/getkin/kin-openapi` 0.149.0 →
+  0.151.0, `k8s.io/api`, `k8s.io/apimachinery`, `k8s.io/client-go` 0.37.0 → 0.37.1, `golang.org/x/sync` 0.23.0 →
+  0.24.0, `golang.org/x/text` 0.42.0 → 0.43.0
+
 ## 1.4.12
 
 - fix: give the nginx fixtures a 5s termination grace period — `kubectl delete pod` blocks until the pod is
