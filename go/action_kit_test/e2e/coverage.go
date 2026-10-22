@@ -76,7 +76,8 @@ func addCoverageRun(dir string, meta, counters []byte) error {
 
 // writeCoverageReport merges all runs in dir into one text report.
 func writeCoverageReport(dir, report string) error {
-	out, err := exec.Command("go", "tool", "covdata", "textfmt", "-i", dir, "-o", report).CombinedOutput()
+	// The go toolchain on PATH is the one running this test binary, so PATH is already trusted here.
+	out, err := exec.Command("go", "tool", "covdata", "textfmt", "-i", dir, "-o", report).CombinedOutput() //NOSONAR go:S4036
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, out)
 	}
