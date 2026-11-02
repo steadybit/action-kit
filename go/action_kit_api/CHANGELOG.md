@@ -2,9 +2,9 @@
 
 ## 2.11.0
 
-- Add `section` to `ActionParameter` to group parameters into named, expandable sections
-- Add `parameterSections` to `ActionDescription` to give a section a description
-- Deprecate `advanced` on `ActionParameter` in favor of `section`
+- Add `group` to `ActionParameter` to put parameters into named, expandable groups
+- Add `parameterGroups` to `ActionDescription` to give a group a description
+- Deprecate `advanced` on `ActionParameter` in favor of `group`
 
 ## 2.10.5
 

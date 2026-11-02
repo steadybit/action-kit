@@ -833,15 +833,16 @@ components:
           items:
             $ref: '#/components/schemas/ActionParameter'
           uniqueItems: true
-        parameterSections:
+        parameterGroups:
           type: array
           maxItems: 64
           description: >-
-            Optional details for the sections parameters are grouped into, matched by name to
-            `ActionParameter.section`. A section doesn't need a definition; define one to give
-            it a description.
+            Optional details for the groups parameters are put into, matched by name to
+            `ActionParameter.group`. A group doesn't need a definition; define one to give
+            it a description. If several definitions match the same group, the first one is
+            used.
           items:
-            $ref: '#/components/schemas/ParameterSection'
+            $ref: '#/components/schemas/ParameterGroup'
           uniqueItems: true
         additionalFlags:
           type: array
@@ -876,22 +877,22 @@ components:
         - parameters
         - prepare
         - start
-    ParameterSection:
+    ParameterGroup:
       type: object
-      description: Details for a section that parameters are grouped into.
+      description: Details for a group that parameters are put into.
       properties:
         name:
           type: string
           maxLength: 64
           description: >-
-            The section's name, matched to `ActionParameter.section` with the same rule:
+            The group's name, matched to `ActionParameter.group` with the same rule:
             trimmed, whitespace collapsed, case ignored.
         description:
           type: string
           maxLength: 512
           description: >-
-            Plain text explaining how to use the section's parameters. Shown at the top of the
-            section once it's opened, so the name alone should tell users whether to open it.
+            Plain text explaining how to use the group's parameters. Shown at the top of the
+            group once it's expanded, so the name alone should tell users whether to expand it.
       required:
         - name
         - description
@@ -1022,28 +1023,27 @@ components:
           type: boolean
           description: >-
             Whether this parameter should be placed under the expandable
-            "Additional Settings" section within the user interface. A parameter
-            with `advanced` and without a `section` is shown as if it were at the
-            end of the list with section "Additional Settings".
+            "Additional Settings" group within the user interface. A parameter
+            with `advanced` and without a `group` is shown as if it were at the
+            end of the list in group "Additional Settings".
           deprecated: true
           x-deprecated-reason: >-
-            Use `section`. Keep setting `advanced` together with `section` until
-            platforms without section support are no longer in use, so the
+            Use `group`. Keep setting `advanced` together with `group` until
+            platforms without group support are no longer in use, so the
             parameter stays collapsed there.
-        section:
+        group:
           type: string
           maxLength: 64
           description: >-
-            Name of the expandable section this parameter is shown in, e.g.
-            "Traffic Filter". The name identifies the section and is its title.
-            Section names are compared after trimming, collapsing whitespace and
-            ignoring case; a blank name means no section. Parameters with the
-            same section are grouped, and the section is shown where its first
-            parameter is in the list. Name a section after what users look for
-            in it. To describe a section, add it to the action's
-            `parameterSections`. Platforms that don't support sections ignore
-            this field, so also set `advanced` on parameters that should stay
-            collapsed there.
+            Name of the expandable group this parameter is shown in, e.g.
+            "Traffic Filter". The name identifies the group and is its title.
+            Group names are compared after trimming, collapsing whitespace and
+            ignoring case; a blank name means no group. Parameters with the
+            same group are shown together, at the position of the first of them
+            in the list. Name a group after what users look for in it. To
+            describe a group, add it to the action's `parameterGroups`.
+            Platforms that don't support groups ignore this field, so also set
+            `advanced` on parameters that should stay collapsed there.
         order:
           type: integer
           deprecated: true

@@ -101,7 +101,7 @@ documentation.
         "description": "",
         "required": false,
         "advanced": true,
-        "section": "Rollout Behavior",
+        "group": "Rollout Behavior",
         "order": 0,
         "defaultValue": "false",
         "hint": {
@@ -110,7 +110,7 @@ documentation.
         }
       }
     ],
-    "parameterSections": [
+    "parameterGroups": [
       {
         "name": "Rollout Behavior",
         "description": "Decide whether the action waits for the restarted rollout and how it treats a rollout that is already running."
