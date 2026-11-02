@@ -117,7 +117,16 @@ type Opts struct {
 	IncludeCIDRs []net.IPNet
 	ExcludeCIDRs []net.IPNet
 	Ports        []uint16
-	Fault        Fault
+	// InterceptLoopback also routes traffic to loopback (127.0.0.0/8) through
+	// the proxy, e.g. to sidecars, local databases or a local forward proxy.
+	// Default (false) leaves loopback alone, with or without Ports. Requires
+	// transparent-proxy v1.3.0 or later.
+	InterceptLoopback bool
+	// LoopbackExcludePorts are loopback ports kept out of the capture even with
+	// InterceptLoopback, e.g. the extension's own ports when the target shares
+	// the host network.
+	LoopbackExcludePorts []uint16
+	Fault                Fault
 	// TLSInterceptCA, when set, lets an HTTPStatus fault also apply to HTTPS
 	// connections. Nil (the default) means TLS is never decrypted and HTTPS is
 	// spliced through untouched.
@@ -334,6 +343,12 @@ func (o Opts) interceptArgs() []string {
 	}
 	if o.Mark != 0 {
 		args = append(args, "--mark", strconv.FormatUint(uint64(o.Mark), 10))
+	}
+	if o.InterceptLoopback {
+		args = append(args, "--intercept-loopback")
+		if len(o.LoopbackExcludePorts) > 0 {
+			args = append(args, "--exclude-loopback-ports", joinPorts(o.LoopbackExcludePorts))
+		}
 	}
 	// NoFlush is part of the shared interception args (not just start), so the
 	// out-of-band --revert reconstructs the same flush decision and does not try
