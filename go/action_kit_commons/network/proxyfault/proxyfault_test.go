@@ -149,7 +149,7 @@ func TestRevertArgs(t *testing.T) {
 func TestArgs_OmitOptionalWhenUnset(t *testing.T) {
 	o := Opts{ExecutionId: "e", ProxyPort: 3128, IncludeCIDRs: []net.IPNet{mustCIDR(t, "0.0.0.0/0")}, Ports: []uint16{443}}
 	got := strings.Join(o.startArgs(), " ")
-	for _, absent := range []string{"--exclude-cidrs", "--mark", "--max-duration", "--metrics-addr", "--fault-"} {
+	for _, absent := range []string{"--exclude-cidrs", "--intercept-loopback", "--exclude-loopback-ports", "--mark", "--max-duration", "--metrics-addr", "--fault-"} {
 		assert.NotContains(t, got, absent)
 	}
 }
@@ -180,6 +180,26 @@ func TestMetricsCollector_ParsesLatestFromStdout(t *testing.T) {
 	if hosts := s.SortedHosts(); len(hosts) != 1 || hosts[0] != "api.example.com" {
 		t.Fatalf("sorted hosts = %v", hosts)
 	}
+}
+
+func TestArgs_InterceptLoopback(t *testing.T) {
+	o := sampleOpts(t)
+	o.InterceptLoopback = true
+	o.LoopbackExcludePorts = []uint16{8085, 8081}
+	// Start and revert both carry it, so the revert rebuilds the same filter.
+	for name, args := range map[string][]string{"start": o.startArgs(), "revert": o.revertArgs()} {
+		got := strings.Join(args, " ")
+		assert.Contains(t, got, "--intercept-loopback", name)
+		assert.Contains(t, got, "--exclude-loopback-ports 8085,8081", name)
+	}
+}
+
+func TestArgs_LoopbackExcludePortsNeedInterceptLoopback(t *testing.T) {
+	o := sampleOpts(t)
+	o.LoopbackExcludePorts = []uint16{8085}
+	got := strings.Join(o.startArgs(), " ")
+	assert.NotContains(t, got, "--intercept-loopback")
+	assert.NotContains(t, got, "--exclude-loopback-ports")
 }
 
 func TestStartArgs_MetricsStdoutAndNoFlush(t *testing.T) {
