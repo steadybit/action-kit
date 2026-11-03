@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.11.0
+
+- Add `group` to `ActionParameter` to put parameters into named, expandable groups
+- Add `parameterGroups` to `ActionDescription` to give a group a description
+- Deprecate `advanced` on `ActionParameter` in favor of `group`
+
 ## 2.10.5
 
 - Add target selector query to further narrow down action targets.

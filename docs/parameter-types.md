@@ -22,6 +22,8 @@ Supported parameter types:
 * [`regex`](#regex)
 * [`target-selection`](#target-selection)
 
+Parameters can also be put into expandable [groups](#groups).
+
 ## `boolean`
 
 Either `true` or `false` values. With optional support for `null` when `required=false` and no `defaultValue` is
@@ -682,5 +684,90 @@ to the list of parameters, the target selection will always be rendered at the t
   "name": "-",
   "label": "Filter location",
   "type": "target-selection"
+}
+```
+
+## Groups
+
+Parameters can be put into expandable groups with the `group` field. A group is shown collapsed, with its name as the
+title, so users can tell from the title alone whether they need to expand it.
+
+- Parameters with the same `group` are shown together, at the position of the first of them in the list.
+- The name identifies the group and is its title. Names are compared after trimming, collapsing whitespace and
+  ignoring case. A blank name means no group.
+- Parameters without a `group` are shown directly. The deprecated `advanced: true` without a `group` is shown as if the
+  parameter were at the end of the list in group "Additional Settings", as before.
+- Platforms that don't support groups ignore `group` and show every parameter with `advanced: true` in
+  "Additional Settings" at the bottom. Keep setting `advanced: true` on parameters in a group, so they stay collapsed
+  there.
+
+### Describing a Group
+
+To explain how to fill in a group, add it to the action's `parameterGroups` with a `description`. The description is
+plain text and shown at the top of the group once it's expanded. A group without a definition works just as well; it
+only has no description. If several definitions match the same group, the first one is used.
+
+```json
+"parameterGroups": [
+  {
+    "name": "Traffic Filter",
+    "description": "Limit the attack to specific hosts, IPs or ports. Excludes win over includes."
+  }
+]
+```
+
+### Guidelines
+
+- Name a group after what users look for in it, e.g. "Traffic Filter" rather than "Advanced" or "Options". The
+  description is only visible once the group is expanded, so the name has to tell users whether to expand it.
+- Put several related parameters into a group. A single parameter is better shown directly, or left in
+  "Additional Settings".
+- Keep parameters that define what the action does visible, outside of any group.
+- Put caveats into a parameter's `hint` with type `hint_warning`, not into the group description.
+- Use the same name and description for the same group across actions, ideally from a shared constant.
+
+### From `advanced` to Groups
+
+`advanced` is deprecated in favor of `group`. To migrate an action:
+
+- Put related parameters into a named group, e.g. "Traffic Filter". On platforms with group support, the group is
+  shown where its first parameter is in the list.
+- For the remaining advanced parameters, set `group: "Additional Settings"` and keep them at the end of the parameter
+  list. The action then looks the same on platforms with and without group support.
+- Keep `advanced: true` on all of them until platforms without group support are no longer in use.
+
+### Example
+
+```json
+{
+  "parameters": [
+    {
+      "name": "duration",
+      "label": "Duration",
+      "type": "duration",
+      "defaultValue": "30s",
+      "required": true
+    },
+    {
+      "name": "hostname",
+      "label": "Include Hostnames",
+      "type": "string_array",
+      "advanced": true,
+      "group": "Traffic Filter"
+    },
+    {
+      "name": "port",
+      "label": "Include Ports",
+      "type": "string_array",
+      "advanced": true,
+      "group": "Traffic Filter"
+    }
+  ],
+  "parameterGroups": [
+    {
+      "name": "Traffic Filter",
+      "description": "Limit the attack to specific hosts, IPs or ports. Excludes win over includes."
+    }
+  ]
 }
 ```
