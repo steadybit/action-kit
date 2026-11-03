@@ -148,6 +148,10 @@ type Proxy interface {
 type HostStat struct {
 	Matched int64 `json:"matched"`
 	Faulted int64 `json:"faulted"`
+	// RequestsMatched and RequestsFaulted count cleartext HTTP requests, which
+	// the proxy rolls per request; the fields above count connections.
+	RequestsMatched int64 `json:"requests_matched"`
+	RequestsFaulted int64 `json:"requests_faulted"`
 }
 
 // Snapshot mirrors the transparent-proxy metrics JSON emitted on stdout.
@@ -160,6 +164,13 @@ type Snapshot struct {
 	ConnectionsFaulted    int64 `json:"connections_faulted"`
 	LatencyApplied        int64 `json:"latency_applied"`
 	HTTPResponsesInjected int64 `json:"http_responses_injected"`
+	// RequestsMatched and RequestsFaulted count cleartext HTTP requests. The
+	// proxy rolls the fault per request there, so a keep-alive connection
+	// carrying many requests is one matched and at most one faulted connection;
+	// only these show the share of faulted requests. Zero on proxies that
+	// predate them.
+	RequestsMatched int64 `json:"requests_matched"`
+	RequestsFaulted int64 `json:"requests_faulted"`
 	// TLSInterceptRejected counts HTTPS connections on which the client refused
 	// the minted certificate. A non-zero value is the canonical "the CA is not in
 	// the target's truststore (or the client pins certificates)" signal — the
