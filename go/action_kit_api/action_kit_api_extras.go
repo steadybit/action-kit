@@ -5,6 +5,11 @@ type Widget any
 type LineChartWidgetGroupMatcher any
 type ExecutionModification any
 
+// ParameterGroupAdditionalSettings is the group that platforms with group support show a parameter in when it has
+// the deprecated `advanced` but no `group`. Set it as `group` on such parameters, so that this fallback can be removed
+// together with `advanced`.
+const ParameterGroupAdditionalSettings = "Additional Settings"
+
 const (
 	// Deprecated: Use action_kit_api.ActionParameterTypeBitrate instead.
 	Bitrate ActionParameterType = "bitrate"

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.11.1
+
+- Add the constant `ParameterGroupAdditionalSettings` for the "Additional Settings" group, to name it explicitly on parameters that only had `advanced`
+
 ## 2.11.0
 
 - Add `group` to `ActionParameter` to put parameters into named, expandable groups
