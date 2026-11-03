@@ -732,8 +732,14 @@ only has no description. If several definitions match the same group, the first 
 
 - Put related parameters into a named group, e.g. "Traffic Filter". On platforms with group support, the group is
   shown where its first parameter is in the list.
-- For the remaining advanced parameters, set `group: "Additional Settings"` and keep them at the end of the parameter
-  list. The action then looks the same on platforms with and without group support.
+- For the remaining advanced parameters, set `group: "Additional Settings"`, in Go the constant
+  `action_kit_api.ParameterGroupAdditionalSettings`. Without it, platforms with group support put them into
+  "Additional Settings" through a fallback for `advanced` without a `group`. Naming the group explicitly now means
+  that the extensions in use already carry it once that fallback is removed together with `advanced`.
+- Keep the "Additional Settings" parameters at the end of the list, and give them an `order` after all other
+  parameters. Platforms sort parameters by `order` and show a group where its first parameter is, so an "Additional
+  Settings" parameter sharing the `order` of an earlier parameter would pull the group up to that position. The
+  fallback always put it at the end.
 - Keep `advanced: true` on all of them until platforms without group support are no longer in use.
 
 ### Example
