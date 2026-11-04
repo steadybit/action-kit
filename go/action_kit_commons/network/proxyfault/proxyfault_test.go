@@ -125,6 +125,21 @@ func TestSnapshot_tlsInterceptRejected(t *testing.T) {
 	assert.Equal(t, int64(0), snap.ConnectionsFaulted)
 }
 
+func TestSnapshot_requestCounters(t *testing.T) {
+	// The proxy rolls cleartext HTTP per request; the request counters, global
+	// and per host, must survive the stdout round-trip.
+	var c metricsCollector
+	c.collectFromReader(strings.NewReader(
+		`{"connections_matched":1,"connections_faulted":1,"requests_matched":10,"requests_faulted":4,`+
+			`"per_host":{"api.example.com":{"matched":1,"faulted":1,"requests_matched":10,"requests_faulted":4}}}`+"\n"), zerolog.Nop())
+
+	snap, ok := c.snapshot()
+	require.True(t, ok)
+	assert.Equal(t, int64(10), snap.RequestsMatched)
+	assert.Equal(t, int64(4), snap.RequestsFaulted)
+	assert.Equal(t, HostStat{Matched: 1, Faulted: 1, RequestsMatched: 10, RequestsFaulted: 4}, snap.PerHost["api.example.com"])
+}
+
 func TestRevertArgs(t *testing.T) {
 	got := strings.Join(sampleOpts(t).revertArgs(), " ")
 	// Revert must reproduce the same chain identity (exec-id) and filter so the
