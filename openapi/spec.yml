@@ -890,12 +890,13 @@ components:
         description:
           type: string
           maxLength: 512
+          x-go-type-skip-optional-pointer: true
           description: >-
-            Plain text explaining how to use the group's parameters. Shown at the top of the
-            group once it's expanded, so the name alone should tell users whether to expand it.
+            Optional plain text explaining how to use the group's parameters. Shown at the top of
+            the group once it's expanded, so the name alone should tell users whether to expand it.
+            Leave it out when it would only repeat the name.
       required:
         - name
-        - description
     ParameterOption:
       anyOf:
         - $ref: '#/components/schemas/ExplicitParameterOption'
