@@ -704,8 +704,9 @@ title, so users can tell from the title alone whether they need to expand it.
 ### Describing a Group
 
 To explain how to fill in a group, add it to the action's `parameterGroups` with a `description`. The description is
-plain text and shown at the top of the group once it's expanded. A group without a definition works just as well; it
-only has no description. If several definitions match the same group, the first one is used.
+optional plain text and shown at the top of the group once it's expanded; leave it out when it would only repeat the
+name. A group without a definition works just as well. If several definitions match the same group, the first one is
+used.
 
 ```json
 "parameterGroups": [

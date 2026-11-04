@@ -383,3 +383,13 @@ func TestUnmarshalMetricQuery(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, id, parsed.ExecutionId)
 }
+
+func TestParameterGroupWithoutDescription(t *testing.T) {
+	marshalled, err := json.Marshal(ParameterGroup{Name: "Traffic Filter"})
+	require.NoError(t, err)
+	require.JSONEq(t, `{"name":"Traffic Filter"}`, string(marshalled))
+
+	var unmarshalled ParameterGroup
+	require.NoError(t, json.Unmarshal([]byte(`{"name":"Traffic Filter"}`), &unmarshalled))
+	require.Equal(t, ParameterGroup{Name: "Traffic Filter"}, unmarshalled)
+}

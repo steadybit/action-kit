@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.11.2
+
+- Make `description` of a `ParameterGroup` optional. The Go field stays a `string`; an empty description is left out of the JSON
+
 ## 2.11.1
 
 - Add the constant `ParameterGroupAdditionalSettings` for the "Additional Settings" group, to name it explicitly on parameters that only had `advanced`
