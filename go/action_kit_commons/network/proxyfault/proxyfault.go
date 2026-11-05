@@ -25,7 +25,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -131,6 +133,11 @@ type Opts struct {
 	// connections. Nil (the default) means TLS is never decrypted and HTTPS is
 	// spliced through untouched.
 	TLSInterceptCA *TLSInterceptCA
+	// UpstreamInsecureSkipVerify forwards requests on intercepted HTTPS
+	// connections to the real dependency without verifying its certificate.
+	// Extensions set it from STEADYBIT_EXTENSION_INSECURE_SKIP_VERIFY (exttls),
+	// for test environments only.
+	UpstreamInsecureSkipVerify bool
 }
 
 // Proxy is a running transparent-proxy instance.
@@ -260,6 +267,9 @@ func Revert(ctx context.Context, runner nsrunner.Runner, opts Opts) error {
 // startArgs are the flags to launch the self-managed proxy.
 func (o Opts) startArgs() []string {
 	args := o.interceptArgs()
+	if o.UpstreamInsecureSkipVerify {
+		args = append(args, "--upstream-insecure-skip-verify")
+	}
 	if o.MaxDuration > 0 {
 		args = append(args, "--max-duration", o.MaxDuration.String())
 	}
@@ -547,6 +557,31 @@ func (p *netnsProxy) Stop() error {
 	return nil
 }
 
+// customCAMounts bind-mounts the custom CA certificates the extension trusts
+// into the proxy's sidecar, read-only and at the same paths. Extensions trust a
+// custom CA by mounting it and pointing SSL_CERT_DIR or SSL_CERT_FILE at it
+// (the exttls convention); the sidecar copies those variables, but its root is
+// an overlay of the extension's filesystem, which leaves mounted volumes out,
+// so without these mounts the proxy would find the paths empty. Only paths
+// that exist are mounted.
+func customCAMounts() []specs.Mount {
+	paths := filepath.SplitList(os.Getenv("SSL_CERT_DIR"))
+	if file := os.Getenv("SSL_CERT_FILE"); file != "" {
+		paths = append(paths, file)
+	}
+	var mounts []specs.Mount
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		mounts = append(mounts, specs.Mount{Destination: p, Source: p, Type: "bind", Options: []string{"rbind", "ro"}})
+	}
+	return mounts
+}
+
 // --- runc sidecar backend ---
 
 type runcProxy struct {
@@ -568,7 +603,7 @@ func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess 
 	}
 
 	processArgs := append([]string{proxyPath}, opts.startArgs()...)
-	if err := bundle.EditSpec(
+	editors := []ociruntime.SpecEditor{
 		ociruntime.WithHostname(containerId),
 		ociruntime.WithAnnotations(map[string]string{"com.steadybit.sidecar": "true"}),
 		ociruntime.WithNamespaces(ociruntime.FilterNamespaces(targetProcess.Namespaces, specs.NetworkNamespace)),
@@ -578,7 +613,14 @@ func newRuncProcess(ctx context.Context, r ociruntime.OciRuntime, targetProcess 
 		ociruntime.WithEnv("XTABLES_LOCKFILE=/tmp/xtables.lock"),
 		ociruntime.WithMountIfNotPresent(specs.Mount{Destination: "/tmp", Type: "tmpfs", Source: "tmpfs", Options: []string{"nosuid", "nodev", "noexec"}}),
 		ociruntime.WithProcessArgs(processArgs...),
-	); err != nil {
+	}
+	// The custom CA the extension trusts reaches the proxy through
+	// SSL_CERT_DIR / SSL_CERT_FILE, copied with the environment; the files
+	// themselves are mounted in, see customCAMounts.
+	for _, m := range customCAMounts() {
+		editors = append(editors, ociruntime.WithMountIfNotPresent(m))
+	}
+	if err := bundle.EditSpec(editors...); err != nil {
 		_ = bundle.Remove()
 		return nil, fmt.Errorf("failed to configure bundle: %w", err)
 	}
