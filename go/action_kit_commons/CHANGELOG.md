@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.16.0
+
+- feat(proxyfault): decode the proxy's per-request counters. `Snapshot` and `HostStat` gain `RequestsMatched` and `RequestsFaulted` (`requests_matched` / `requests_faulted`, globally and per host), so extensions can show the share of faulted requests now that transparent-proxy rolls the fault per request on cleartext HTTP. Older proxies report zero.
+- feat(proxyfault): let the proxy verify dependencies with the extension's custom CA. The paths in `SSL_CERT_DIR` / `SSL_CERT_FILE` that exist are bind-mounted read-only into the sidecar at the same place, so forwarded HTTPS requests trust the same CAs as the extension. `Opts.UpstreamInsecureSkipVerify` passes `--upstream-insecure-skip-verify`, for extensions to set from `STEADYBIT_EXTENSION_INSECURE_SKIP_VERIFY`.
+
+## 1.15.0
+
+- feat(proxyfault): opt in to intercepting loopback traffic. `InterceptLoopback` passes `--intercept-loopback` to the transparent proxy, which otherwise leaves loopback alone; `LoopbackExcludePorts` keeps the extension's own ports out when the target shares the host network. Both are part of the shared interception args, so `--revert` rebuilds the same filter.
+- chore(deps): bump `github.com/moby/sys/capability` to v0.5.0
+
 ## 1.14.2
 
 - fix(netfault): a TCP reset with mixed IPv4/IPv6 includes was not reverted. The filter of the attack registered as active was sorted in place after the registration, so the opts decoded on stop no longer matched it: the revert was skipped as "rejected at start", leaving the iptables rules on the host, and the attack stayed registered, rejecting every following network attack in that network namespace.
