@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.14
+
+- fix: `Iperf` package loss measurements are less flaky under network attacks
+  - `MeasurePackageLoss` sends at 10 Mbit/s instead of iperf's default 1 Mbit/s. A reading now has ~2,400 instead
+    of ~250 datagrams, so at 10% loss it scatters by ~0.6 instead of ~2 points and no longer falls outside the
+    expected range by chance
+  - `MeasurePackageLoss` stops an iperf run after 8s. Under the attack a run now and then hung until the attack
+    ended, and all following measurements then saw no loss
+  - `AssertPackageLoss` no longer counts a failed iperf run as a measurement of 0% loss
+  - `AssertPackageLossWithRetry` retries failed iperf runs (e.g. "unable to read from stream socket") instead of
+    giving up on the first one, and waits 500ms between measurements
+
 ## 1.4.13
 
 - fix: e2e coverage is merged across all `WithMinikube` runs of a test binary. Each run used to overwrite

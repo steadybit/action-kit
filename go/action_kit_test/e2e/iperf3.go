@@ -147,8 +147,13 @@ func (n *Iperf) Delete() error {
 	)
 }
 
+// MeasurePackageLoss runs one 2s UDP iperf3 test and returns the lost datagrams in percent.
+// It sends at 10 Mbit/s (~2,400 datagrams): at iperf's default 1 Mbit/s a reading has only ~250
+// datagrams, so at 10% loss it scatters by ~2 points and often falls outside the expected range by chance.
+// Under a network attack an iperf run now and then hangs until the attack ends; timeout cuts it off,
+// so the next measurement still happens while the attack is active.
 func (n *Iperf) MeasurePackageLoss() (float64, error) {
-	out, err := n.Minikube.PodExec(n.ClientPod, "iperf", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--no-delay", "--zerocopy", "--json")
+	out, err := n.Minikube.PodExec(n.ClientPod, "iperf", "timeout", "8", "iperf3", "--client", n.ServerIp, "--port=5201", "--udp", "--time=2", "--length=1k", "--bitrate=10M", "--bind=0.0.0.0", "--reverse", "--cport=5001", "--connect-timeout=3000", "--no-delay", "--zerocopy", "--json")
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", err, out)
 	}
@@ -175,6 +180,7 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 		if err != nil {
 			r.Failed = true
 			_, _ = fmt.Fprintf(r.Log, "failed to measure package loss: %s", err)
+			return
 		}
 		if loss < min || loss > max {
 			r.Failed = true
@@ -184,29 +190,29 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, min float64, max float64) {
 	})
 }
 
+// AssertPackageLossWithRetry measures up to maxRetries times and reports whether one measurement was within [min, max].
+// Failed iperf runs are retried too: a network attack also hits iperf's TCP control connection,
+// which now and then makes iperf abort (e.g. "unable to read from stream socket").
 func (n *Iperf) AssertPackageLossWithRetry(min float64, max float64, maxRetries int) bool {
-
 	measurements := make([]float64, 0, 5)
-	success := false
-	for range maxRetries {
+	failedRuns := 0
+	for i := range maxRetries {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
 		loss, err := n.MeasurePackageLoss()
 		if err != nil {
-			success = false
-			log.Err(err).Msg("failed to measure package loss")
-			break
+			failedRuns++
+			log.Warn().Err(err).Msg("failed to measure package loss")
+			continue
 		}
-		if loss < min || loss > max {
-			success = false
-			measurements = append(measurements, loss)
-		} else {
-			success = true
-			break
+		if loss >= min && loss <= max {
+			return true
 		}
+		measurements = append(measurements, loss)
 	}
-	if !success {
-		log.Info().Msgf("package loss %v is not in expected range [%f, %f]", measurements, min, max)
-	}
-	return success
+	log.Info().Msgf("package loss %v is not in expected range [%f, %f] (%d iperf runs failed)", measurements, min, max, failedRuns)
+	return false
 }
 
 func (n *Iperf) MeasureBandwidth() (float64, error) {
