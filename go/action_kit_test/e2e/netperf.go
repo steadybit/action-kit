@@ -4,8 +4,11 @@
 package e2e
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,19 +17,17 @@ import (
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-kit/extutil"
-	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	acorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	ametav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-const (
-	netserverDockerfile = "https://raw.githubusercontent.com/nerdalert/netperf-netserver/main/netserver/Dockerfile"
-	netserverImage      = "networkstatic/netserver:local"
-	netperfDockerfile   = "https://raw.githubusercontent.com/nerdalert/netperf-netserver/main/netperf/Dockerfile"
-	netperfImage        = "networkstatic/netperf:local"
-)
+// netperfImage holds both netperf and netserver.
+const netperfImage = "steadybit/netperf:local"
+
+//go:embed images/netperf.Dockerfile
+var netperfDockerfile []byte
 
 type Netperf struct {
 	Minikube  *Minikube
@@ -56,9 +57,10 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 			RestartPolicy: extutil.Ptr(corev1.RestartPolicyNever),
 			Containers: []acorev1.ContainerApplyConfiguration{
 				{
-					Name:  new("netserver"),
-					Image: new(netserverImage),
-					Args:  []string{"-D"},
+					Name:    new("netserver"),
+					Image:   new(netperfImage),
+					Command: []string{"netserver"},
+					Args:    []string{"-D"},
 					Ports: []acorev1.ContainerPortApplyConfiguration{
 						{
 							Name:          new("control"),
@@ -129,16 +131,17 @@ func (n *Netperf) Deploy(name string, opts ...func(server *acorev1.PodApplyConfi
 
 func (n *Netperf) buildImages() error {
 	n.imageOnce.Do(func() {
-		_ = n.Minikube.PullImage("ubuntu:latest") // netperf and netserver images are based on ubuntu, so we pull it to speed up the build
-		eg := errgroup.Group{}
-		eg.Go(func() error {
-			return n.Minikube.BuildImage(netserverDockerfile, netserverImage)
-
-		})
-		eg.Go(func() error {
-			return n.Minikube.BuildImage(netperfDockerfile, netperfImage)
-		})
-		n.imageErr = eg.Wait()
+		dir, err := os.MkdirTemp("", "netperf-image")
+		if err != nil {
+			n.imageErr = err
+			return
+		}
+		defer func() { _ = os.RemoveAll(dir) }()
+		if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), netperfDockerfile, 0o644); err != nil {
+			n.imageErr = err
+			return
+		}
+		n.imageErr = n.Minikube.BuildImage(dir, netperfImage)
 	})
 	return n.imageErr
 }
