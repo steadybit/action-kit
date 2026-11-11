@@ -7,13 +7,9 @@ package diskfill
 import (
 	"errors"
 	"fmt"
-	"io"
-	"math"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -56,71 +52,6 @@ type Opts struct {
 	Duration time.Duration
 }
 
-// UnlinkedFileMessage tells users where to find the filled space, as the fill
-// file has no name during the attack.
-const UnlinkedFileMessage = "The disk-fill file is deleted right after it is opened and is held open until the attack ends, so the filled space is freed even if the extension is terminated. It shows up in df, but not in ls or du; lsof +L1 lists it."
-
-// fillFd is the descriptor under which holderScript keeps the unlinked fill file open.
-const fillFd = "/proc/self/fd/3"
-
-// holderScript creates the fill file, unlinks it right away and keeps it open
-// on fd 3 while the fill command writes to it via fillFd. The kernel frees the
-// space as soon as the last descriptor is closed, so there is nothing to clean
-// up (see BusinessMap card 26837).
-// The holder ends on SIGINT/SIGTERM, at the deadline, or when its stdin reaches
-// EOF. Stdin is a pipe whose write end only the extension holds, so the
-// holder also ends when the extension dies, even when it runs in a sidecar
-// outside the extension's cgroup: runc copies its stdin to the sidecar and
-// closes it when the copy ends or runc dies; crun hands the pipe on as is.
-// Background jobs get /dev/null as stdin, hence the copy to fd 4. Everything
-// runs in the background so that the traps run as soon as a signal arrives; a
-// trap is deferred while a foreground command runs. Only the fill may inherit
-// fd 3, or the space stays allocated until that process ends. The holder waits
-// for its children before it exits, as the runtime considers the sidecar
-// stopped once the holder is gone.
-const holderScript = `trap 'kill $fill $timer $lifeline 2>/dev/null; wait' EXIT
-trap 'exit 0' INT TERM
-file=$1
-seconds=$2
-shift 2
-exec 3>"$file" || exit 1
-rm -f "$file" || exit 1
-exec 4<&0
-{ while read -r _; do :; done; kill -TERM $$; } <&4 3>&- 4<&- &
-lifeline=$!
-exec 4<&-
-sleep "$seconds" 3>&- &
-timer=$!
-"$@" &
-fill=$!
-wait $fill || exit
-wait $timer
-`
-
-func holderArgs(file string, duration time.Duration, fillArgs []string) []string {
-	seconds := int64(math.Ceil(duration.Seconds()))
-	if seconds <= 0 {
-		// Without a duration the space is held until Stop.
-		seconds = math.MaxInt32
-	}
-	return append([]string{"sh", "-c", holderScript, "diskfill", file, strconv.FormatInt(seconds, 10)}, fillArgs...)
-}
-
-// startWithLifeline starts cmd with the lifeline as its stdin; closing the
-// returned writer ends the holder.
-func startWithLifeline(cmd *exec.Cmd, logger zerolog.Logger) (*utils.BackgroundState, io.Closer, error) {
-	lifeline, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	state, err := utils.RunCommandInBackground(cmd, logger)
-	if err != nil {
-		_ = lifeline.Close()
-		return nil, nil, err
-	}
-	return state, lifeline, nil
-}
-
 func isNoop(args []string) bool {
 	return len(args) == 2 && args[0] == "echo" && args[1] == "noop"
 }
@@ -145,14 +76,6 @@ func (o Opts) Args(readDiskUsageFn func(path string) (*DiskUsage, error)) ([]str
 		fillArgs = ddArgs(kbytesToWrite, blockSizeInKB, fillFd)
 	}
 	return fillArgs, nil
-}
-
-// processArgs wraps the fill command in holderScript, which creates the fill file in dir.
-func (o Opts) processArgs(fillArgs []string, dir string) []string {
-	if isNoop(fillArgs) {
-		return fillArgs
-	}
-	return holderArgs(filepath.Join(dir, "disk-fill"), o.Duration, fillArgs)
 }
 
 func levelForErr(err error) zerolog.Level {

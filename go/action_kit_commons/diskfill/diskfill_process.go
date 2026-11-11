@@ -32,7 +32,7 @@ func NewDiskfillProcess(ctx context.Context, opts Opts) (Diskfill, error) {
 		return nil, err
 	}
 
-	processArgs := opts.processArgs(fillArgs, opts.TempPath)
+	processArgs := opts.holderArgs(fillArgs, opts.TempPath)
 	return &diskfillProcess{
 		cmd:      utils.RootCommandContext(context.Background(), processArgs[0], processArgs[1:]...),
 		fillArgs: fillArgs,

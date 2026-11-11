@@ -37,7 +37,7 @@ func NewDiskfillRunc(ctx context.Context, r ociruntime.OciRuntime, sidecar Sidec
 		return nil, err
 	}
 
-	bundle, err := createBundle(ctx, r, sidecar, opts.TempPath, opts.processArgs(fillArgs, mountpointInContainer)...)
+	bundle, err := createBundle(ctx, r, sidecar, opts.TempPath, opts.holderArgs(fillArgs, mountpointInContainer)...)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create start bundle")
 		return nil, err

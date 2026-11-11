@@ -29,7 +29,7 @@ type holder struct {
 func startHolder(t *testing.T, duration time.Duration, fillArgs ...string) *holder {
 	t.Helper()
 	h := &holder{dir: t.TempDir(), done: make(chan struct{})}
-	args := holderArgs(filepath.Join(h.dir, "disk-fill"), duration, fillArgs)
+	args := Opts{Duration: duration}.holderArgs(fillArgs, h.dir)
 	h.cmd = exec.Command(args[0], args[1:]...)
 	h.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	lifeline, err := h.cmd.StdinPipe()
@@ -47,8 +47,8 @@ func startHolder(t *testing.T, duration time.Duration, fillArgs ...string) *hold
 	return h
 }
 
-// heldSize also fails while fd 3 is not yet the unlinked fill file, e.g.
-// before the exec, when the forked Go child still has its own fd 3.
+// heldSize fails until fd 3 is the unlinked fill file; before the exec it is
+// still the forked Go child's own fd 3.
 func (h *holder) heldSize() (int64, error) {
 	fd := fmt.Sprintf("/proc/%d/fd/3", h.cmd.Process.Pid)
 	if target, err := os.Readlink(fd); err != nil {
@@ -82,9 +82,8 @@ func (h *holder) requireExit(t *testing.T, within time.Duration) error {
 	}
 }
 
-// requireNoLeftovers checks that no process of the holder's process group
-// (its lifeline subshell, the timer and the fill) outlives the holder: the
-// runtime considers the sidecar stopped as soon as the holder exits.
+// requireNoLeftovers checks that no child outlives the holder, as the runtime
+// considers the sidecar stopped once the holder exits.
 func (h *holder) requireNoLeftovers(t *testing.T) {
 	t.Helper()
 	assert.ErrorIs(t, syscall.Kill(-h.cmd.Process.Pid, 0), syscall.ESRCH)
@@ -102,6 +101,14 @@ func Test_holder_keeps_the_space_only_until_the_deadline(t *testing.T) {
 	entries, err := os.ReadDir(h.dir)
 	require.NoError(t, err)
 	assert.Empty(t, entries, "the fill file must be unlinked while it is held")
+
+	assert.NoError(t, h.requireExit(t, 5*time.Second))
+	h.requireNoLeftovers(t)
+}
+
+func Test_holder_stops_a_running_fill_at_the_deadline(t *testing.T) {
+	h := startHolder(t, time.Second, "sleep", "60")
+	h.requireHolding(t)
 
 	assert.NoError(t, h.requireExit(t, 5*time.Second))
 	h.requireNoLeftovers(t)
@@ -142,11 +149,15 @@ func Test_holder_returns_the_exit_code_of_a_failed_fill(t *testing.T) {
 	h.requireNoLeftovers(t)
 }
 
-func Test_holderArgs_holds_until_stop_without_duration(t *testing.T) {
-	args := holderArgs("/tmp/disk-fill", 0, []string{"true"})
-	assert.Contains(t, args, "2147483647")
+func Test_holderScript_has_no_comments(t *testing.T) {
+	assert.NotContains(t, holderScript, "#")
+	assert.Contains(t, holderScript, "wait $timer")
 }
 
-func Test_processArgs_runs_noop_without_holder(t *testing.T) {
-	assert.Equal(t, []string{"echo", "noop"}, Opts{}.processArgs([]string{"echo", "noop"}, "/tmp"))
+func Test_holderArgs_holds_until_stop_without_duration(t *testing.T) {
+	assert.Contains(t, Opts{}.holderArgs([]string{"true"}, "/tmp"), "2147483647")
+}
+
+func Test_holderArgs_runs_noop_without_holder(t *testing.T) {
+	assert.Equal(t, []string{"echo", "noop"}, Opts{}.holderArgs([]string{"echo", "noop"}, "/tmp"))
 }
