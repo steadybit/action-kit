@@ -47,26 +47,32 @@ import (
 var proxyPath = utils.LocateExecutable("transparent-proxy", "STEADYBIT_EXTENSION_TRANSPARENT_PROXY_PATH")
 var ipPath = utils.LocateExecutable("ip", "STEADYBIT_EXTENSION_IP_PATH")
 
-// Fault is the single fault the proxy injects on matching connections.
+// Fault is the single fault the proxy injects on matching traffic: per request
+// where it reads the requests (cleartext HTTP, and HTTPS decrypted with
+// Opts.TLSInterceptCA), per connection otherwise.
 type Fault struct {
 	Latency    time.Duration
 	Reset      bool
 	HTTPStatus int
 	// HTTPBody / HTTPHeaders customize the synthesized HTTP response that
-	// accompanies HTTPStatus (cleartext HTTP only). Empty keeps the proxy's
-	// defaults.
+	// accompanies HTTPStatus (cleartext HTTP, and HTTPS with
+	// Opts.TLSInterceptCA). Empty keeps the proxy's defaults.
 	HTTPBody    string
 	HTTPHeaders map[string]string
-	// Probability in [0,1] gates the fault per connection. nil (unset) lets the
-	// proxy default apply (always); an explicit value — including 0 (never) — is
-	// forwarded as-is, so callers can express "never" as well as "always".
+	// Probability in [0,1] gates the fault per request on cleartext HTTP and on
+	// HTTPS decrypted with Opts.TLSInterceptCA, also on keep-alive connections,
+	// and per connection otherwise (HTTPS without the CA, other TCP traffic).
+	// nil (unset) lets the proxy default apply (always); an explicit value —
+	// including 0 (never) — is forwarded as-is, so callers can express "never"
+	// as well as "always".
 	Probability *float64
 	Hosts       []string
 }
 
 // TLSInterceptCA carries the certificate authority the proxy uses to mint
-// per-SNI certificates, which is what lets an HTTPStatus fault reach an HTTPS
-// dependency instead of only a cleartext one.
+// per-SNI certificates, which is what lets a fault apply to each request on an
+// HTTPS dependency, as on a cleartext one: an HTTPStatus is synthesized, a
+// Latency delays the request and a Reset resets it.
 //
 // The CA belongs to the customer: they generate it, choose how long it lives,
 // and install it in the truststores of the workloads they want to fault. This
@@ -129,9 +135,11 @@ type Opts struct {
 	// the host network.
 	LoopbackExcludePorts []uint16
 	Fault                Fault
-	// TLSInterceptCA, when set, lets an HTTPStatus fault also apply to HTTPS
-	// connections. Nil (the default) means TLS is never decrypted and HTTPS is
-	// spliced through untouched.
+	// TLSInterceptCA, when set, makes the proxy decrypt matched HTTPS
+	// connections, so the fault applies per request there too (an HTTPStatus,
+	// a Latency or a Reset). Nil (the default) means TLS is never decrypted:
+	// HTTPS is spliced through, and a Latency or Reset applies once per
+	// connection.
 	TLSInterceptCA *TLSInterceptCA
 	// UpstreamInsecureSkipVerify forwards requests on intercepted HTTPS
 	// connections to the real dependency without verifying its certificate.
@@ -155,8 +163,9 @@ type Proxy interface {
 type HostStat struct {
 	Matched int64 `json:"matched"`
 	Faulted int64 `json:"faulted"`
-	// RequestsMatched and RequestsFaulted count cleartext HTTP requests, which
-	// the proxy rolls per request; the fields above count connections.
+	// RequestsMatched and RequestsFaulted count the requests the proxy reads
+	// and rolls per request (cleartext HTTP, and HTTPS decrypted with the
+	// interception CA); the fields above count connections.
 	RequestsMatched int64 `json:"requests_matched"`
 	RequestsFaulted int64 `json:"requests_faulted"`
 }
@@ -171,7 +180,8 @@ type Snapshot struct {
 	ConnectionsFaulted    int64 `json:"connections_faulted"`
 	LatencyApplied        int64 `json:"latency_applied"`
 	HTTPResponsesInjected int64 `json:"http_responses_injected"`
-	// RequestsMatched and RequestsFaulted count cleartext HTTP requests. The
+	// RequestsMatched and RequestsFaulted count the requests the proxy reads:
+	// cleartext HTTP, and HTTPS decrypted with the interception CA. The
 	// proxy rolls the fault per request there, so a keep-alive connection
 	// carrying many requests is one matched and at most one faulted connection;
 	// only these show the share of faulted requests. Zero on proxies that
