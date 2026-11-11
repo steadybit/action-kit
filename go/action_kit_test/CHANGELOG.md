@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.15
+
+- fix: `Netperf` builds one image (`steadybit/netperf:local`, with both netperf and netserver) from a Dockerfile
+  in this module, based on `debian:trixie-slim`, instead of the two upstream `nerdalert/netperf-netserver` images
+  based on `ubuntu:latest`. Ubuntu's mirrors were not resolvable from the GitHub runners, so every e2e run with a
+  netperf test failed (`E: Unable to locate package netperf`, then `ErrImagePull` for `networkstatic/netserver:local`)
+
 ## 1.4.14
 
 - fix: `Iperf` package loss measurements are less flaky under network attacks
