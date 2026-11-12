@@ -7,10 +7,10 @@ package diskfill
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -18,22 +18,24 @@ import (
 )
 
 type diskfillProcess struct {
-	state        *utils.BackgroundState
-	cmd          *exec.Cmd
-	pathToRemove string
+	state    *utils.BackgroundState
+	cmd      *exec.Cmd
+	lifeline io.Closer
+	fillArgs []string
 }
 
 func NewDiskfillProcess(ctx context.Context, opts Opts) (Diskfill, error) {
-	processArgs, err := opts.Args("", func(path string) (*DiskUsage, error) {
+	fillArgs, err := opts.Args(func(path string) (*DiskUsage, error) {
 		return readDiskUsageProcess(ctx, path)
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	processArgs := opts.holderArgs(fillArgs, opts.TempPath)
 	return &diskfillProcess{
-		cmd:          utils.RootCommandContext(context.Background(), processArgs[0], processArgs[1:]...),
-		pathToRemove: filepath.Join(opts.TempPath, "disk-fill"),
+		cmd:      utils.RootCommandContext(context.Background(), processArgs[0], processArgs[1:]...),
+		fillArgs: fillArgs,
 	}, nil
 }
 
@@ -51,11 +53,12 @@ func (df *diskfillProcess) Start() error {
 		Str("path", df.cmd.Path).
 		Msg("Starting diskfill")
 
-	if state, err := utils.RunCommandInBackground(df.cmd, log.Logger); err != nil {
+	state, lifeline, err := startWithLifeline(df.cmd, log.Logger)
+	if err != nil {
 		return fmt.Errorf("failed to start diskfill: %w", err)
-	} else {
-		df.state = state
 	}
+	df.state = state
+	df.lifeline = lifeline
 	return nil
 }
 
@@ -67,42 +70,29 @@ func (df *diskfillProcess) Stop() error {
 		// never started (or start failed) — nothing to stop
 		return nil
 	}
-	//as the process is running with a different user, we also need to do so, for sending signals
-	ctx := context.Background()
 	// Capture the pid up front so the timer goroutine doesn't read df.cmd.Process
 	// concurrently with the exec waiter.
 	pid := strconv.Itoa(df.cmd.Process.Pid)
-	if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGINT", pid).Run(); err != nil {
-		log.Warn().Err(err).Msg("failed to send SIGINT to diskfill")
-	}
+	_ = df.lifeline.Close()
 
 	timer := time.AfterFunc(10*time.Second, func() {
-		if err := utils.RootCommandContext(ctx, "kill", "-s", "SIGTERM", pid).Run(); err != nil {
+		//as the process is running with a different user, we also need to do so, for sending signals
+		if err := utils.RootCommandContext(context.Background(), "kill", "-s", "SIGTERM", pid).Run(); err != nil {
 			log.Warn().Err(err).Msg("failed to send SIGTERM to diskfill")
 		}
 	})
 
 	df.state.Wait()
 	timer.Stop()
-
-	var deleteFileErr error
-	if !df.Noop() {
-		if out, err := withCLocale(utils.RootCommandContext(ctx, "rm", df.pathToRemove)).CombinedOutput(); err != nil && !strings.Contains(string(out), "No such file or directory") {
-			log.Error().Err(err).Msgf("failed to remove file %s", out)
-			deleteFileErr = fmt.Errorf("failed to remove file %s! You have to remove it manually now! %s", df.pathToRemove, out)
-		} else {
-			log.Debug().Msgf("removed file %s: %s", df.pathToRemove, out)
-		}
-	}
-	return deleteFileErr
+	return nil
 }
 
 func (df *diskfillProcess) Args() []string {
-	return append([]string{}, df.cmd.Args...)
+	return append([]string{}, df.fillArgs...)
 }
 
 func (df *diskfillProcess) Noop() bool {
-	return df.cmd.Args[0] == "echo" && df.cmd.Args[1] == "noop"
+	return isNoop(df.fillArgs)
 }
 
 func CheckPathWritableProcess(ctx context.Context, targetPath string) error {

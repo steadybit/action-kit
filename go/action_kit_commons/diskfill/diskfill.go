@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/rs/zerolog"
@@ -48,9 +48,16 @@ type Opts struct {
 	Mode      Mode // PERCENTAGE or MB_TO_FILL or MB_LEFT
 	TempPath  string
 	Method    Method // AT_ONCE or OVER_TIME
+	// Duration bounds how long the space is held, also when the extension is gone and Stop is never called.
+	Duration time.Duration
 }
 
-func (o Opts) Args(tempPathOverride string, readDiskUsageFn func(path string) (*DiskUsage, error)) ([]string, error) {
+func isNoop(args []string) bool {
+	return len(args) == 2 && args[0] == "echo" && args[1] == "noop"
+}
+
+// Args returns the fill command, which writes to the file held open by holderScript.
+func (o Opts) Args(readDiskUsageFn func(path string) (*DiskUsage, error)) ([]string, error) {
 	kbytesToWrite, noop, err := calculateKBytesToWrite(o, readDiskUsageFn)
 	if err != nil {
 		return nil, err
@@ -59,21 +66,16 @@ func (o Opts) Args(tempPathOverride string, readDiskUsageFn func(path string) (*
 		return nil, errors.New("invalid size to write")
 	}
 
-	file := filepath.Join(o.TempPath, "disk-fill")
-	if tempPathOverride != "" {
-		file = filepath.Join(tempPathOverride, "disk-fill")
-	}
-
-	var processArgs []string
+	var fillArgs []string
 	if noop {
-		processArgs = []string{"echo", "noop"}
+		fillArgs = []string{"echo", "noop"}
 	} else if o.Method == AtOnce {
-		processArgs = fallocateArgs(kbytesToWrite, file)
+		fillArgs = fallocateArgs(kbytesToWrite, fillFd)
 	} else if o.Method == OverTime {
 		blockSizeInKB := calculateBlockSizeKBytes(o, kbytesToWrite)
-		processArgs = ddArgs(kbytesToWrite, blockSizeInKB, file)
+		fillArgs = ddArgs(kbytesToWrite, blockSizeInKB, fillFd)
 	}
-	return processArgs, nil
+	return fillArgs, nil
 }
 
 func levelForErr(err error) zerolog.Level {
