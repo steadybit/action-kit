@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.16
+
+- chore: the `Netperf` image runs as the unprivileged user `65534` (nobody) instead of root
+
 ## 1.4.15
 
 - fix: `Netperf` builds one image (`steadybit/netperf:local`, with both netperf and netserver) from a Dockerfile

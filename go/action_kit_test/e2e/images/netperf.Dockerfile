@@ -5,3 +5,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends netperf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Run netserver and netperf as nobody: they need no root, all ports are above 1024.
+# Numeric so that runAsNonRoot can verify it.
+USER 65534
