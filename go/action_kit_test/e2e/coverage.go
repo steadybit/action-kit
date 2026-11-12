@@ -24,6 +24,14 @@ var (
 	coverageMu  sync.Mutex
 )
 
+// CollectCoverage adds the extension's coverage so far to the e2e report. Coverage is otherwise only
+// collected once all test cases ran, from the extension's in-memory counters, so a test that kills or
+// restarts the extension process loses the coverage of every test before it. Such a test calls this
+// right before stopping the extension; the report merges this run with the one collected at the end.
+func CollectCoverage(m *Minikube, e *Extension) {
+	processCoverage(e, m.Runtime)
+}
+
 func processCoverage(extension *Extension, runtime Runtime) {
 	if extension == nil || extension.Client == nil {
 		log.Info().Msg("no extension to collect coverage from.")
