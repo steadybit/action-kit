@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.1
+
+- fix(diskfill): the fill file is unlinked right after it is opened and held open by a holder process until the attack ends, so the filled space is freed even if the extension is terminated during the attack. The holder ends after `Opts.Duration` (also while the fill still runs), on `Stop`, or when the extension dies; `Stop` no longer removes a file. The file shows up in `df`, but not in `ls` or `du`; extensions can show `UnlinkedFileMessage` to tell users. `Opts.Args` no longer takes a path override.
+- chore(deps): bump `golang.org/x/sys` to v0.50.0 and `golang.org/x/sync` to v0.25.0
+
 ## 1.16.0
 
 - feat(proxyfault): decode the proxy's per-request counters. `Snapshot` and `HostStat` gain `RequestsMatched` and `RequestsFaulted` (`requests_matched` / `requests_faulted`, globally and per host), so extensions can show the share of faulted requests now that transparent-proxy rolls the fault per request on cleartext HTTP. Older proxies report zero.
