@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.17
+
+- fix: `CollectCoverage(m, e)` adds the extension's coverage so far to the e2e report. Coverage is only collected
+  after all test cases ran, from the running extension's in-memory counters, so a test that kills the extension
+  process (e.g. `pkill -9`) dropped the coverage of every test before it. Such a test now calls `CollectCoverage`
+  right before the kill, and the report merges both runs
+
 ## 1.4.16
 
 - chore: the `Netperf` image runs as the unprivileged user `65534` (nobody) instead of root
