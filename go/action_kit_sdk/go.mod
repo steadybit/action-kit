@@ -7,7 +7,7 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.35.1
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.11.2
-	github.com/steadybit/extension-kit v1.12.2
+	github.com/steadybit/extension-kit v1.12.3
 	github.com/stretchr/testify v1.12.1
 )
 
@@ -40,6 +40,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
